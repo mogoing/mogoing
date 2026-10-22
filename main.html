@@ -173,7 +173,7 @@
   .stage::-webkit-scrollbar{display:none}
   .page{
     flex:none;width:var(--page-w);
-    display:flex;flex-wrap:wrap;justify-content:space-between; /* 盒子均匀排布，间距=--gap */
+    display:flex;flex-wrap:wrap;justify-content:flex-start; /* 左对齐，避免末行被拉开 */
     column-gap:var(--gap);row-gap:var(--row-gap);
     padding:0 calc(var(--gap) / 2) 6px; /* 左右各半列间隙：页间=页内=--gap，无缝衔接 */
     box-sizing:border-box;
