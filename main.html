@@ -513,9 +513,6 @@
     <div class="top-right">
       <button class="top-icon" id="goNews" title="活动"><img src="assets/news.png" alt="活动"></button>
       <button class="top-icon" id="goEmails" title="邮件"><img src="assets/emails.png" alt="邮件"></button>
-      <button class="top-icon" id="goFullscreen" title="全屏">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-      </button>
     </div>
   </header>
   <p class="hint" id="hint"></p>
@@ -565,7 +562,7 @@
     { name:'愤怒的小鸟', desc:'原版弹弓', icon:'ab', target:'ab.html' },
     { name:'保卫萝卜', desc:'经典塔防', icon:'bwlb', target:'bwlb.html?v=1' },
     { name:'弹钢琴', desc:'音律漫游', icon:'piano', target:'piano.html' },
-    { name:'纸卡丁车', desc:'纸片竞速', icon:'kart', target:'kagit-kart/' },
+    { name:'纸卡丁车', desc:'纸片竞速', icon:'kart', target:'kagit-kart.html' },
   ];
   const PER_PAGE = 6;   // 一页六个（两排三个）
   const ICONS = {
@@ -711,10 +708,6 @@
   // 活动 / 邮件
   document.getElementById('goNews').addEventListener('click', () => location.href = 'news.html');
   document.getElementById('goEmails').addEventListener('click', () => location.href = 'email.html');
-  document.getElementById('goFullscreen').addEventListener('click', () => {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-    else document.exitFullscreen();
-  });
   // 管理员专属：显示管理后台入口，隐藏"我的日记"（管理员界面不要我的日记）
   if (manager) {
     const adminBtn = document.getElementById('goAdmin');
@@ -913,7 +906,7 @@
 
   render();
 /* ===== 资源预下载中心：进页面自动后台下载，杜绝中途损坏 ===== */
-var DL_VER = 'v90';
+var DL_VER = 'v98';
 var DL_LIST = [
   ['ab/ruffle.js?v=47',465076,'Ruffle 启动器'],
   ['ab/core.ruffle.c80159b526e567babaf5.js',108322,'Ruffle 内核 A'],
