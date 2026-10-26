@@ -214,9 +214,11 @@ function Eco(){
 }
 
 Eco.isSupported=function(){
-  return !!(window.VideoEncoder&&window.VideoDecoder&&window.AudioEncoder&&window.AudioDecoder
+  // 视频编解码可用即可；音频编码器可选（缺失时输出静音省流版）
+  return !!(window.VideoEncoder&&window.VideoDecoder
     && window.MediaSource && window.MediaSource.isTypeSupported('video/webm;codecs="vp9"'));
 };
+Eco.hasAudio=function(){ return !!(window.AudioEncoder&&window.AudioDecoder); };
 
 Eco.prototype.start=function(m3u8Url,video){
   var self=this;
@@ -246,14 +248,18 @@ Eco.prototype.start=function(m3u8Url,video){
     error:function(e){ self.fail('vEnc: '+e.message); }
   });
   this.vEnc.configure({codec:'vp09.00.10.08',width:1280,height:720,bitrate:1500*1000,framerate:30});
-  this.aDec=new AudioDecoder({
-    output:function(ad){ self.onAudioFrame(ad); },
-    error:function(e){ self.fail('aDec: '+e.message); }
-  });
-  this.aEnc=new AudioEncoder({
-    output:function(c,m){ self.onAudioEncoded(c,m); },
-    error:function(e){ self.fail('aEnc: '+e.message); }
-  });
+  if(window.AudioDecoder){
+    this.aDec=new AudioDecoder({
+      output:function(ad){ self.onAudioFrame(ad); },
+      error:function(e){ self.fail('aDec: '+e.message); }
+    });
+  }
+  if(window.AudioEncoder){
+    this.aEnc=new AudioEncoder({
+      output:function(c,m){ self.onAudioEncoded(c,m); },
+      error:function(e){ self.fail('aEnc: '+e.message); }
+    });
+  }
   return msReady.then(function(){ return self.loadAndLoop(); })
     .catch(function(e){ self.running=false; if(self.onerror) self.onerror(e); throw e; });
 };
@@ -313,7 +319,7 @@ Eco.prototype.pullLoop=function(){
 Eco.prototype.processSegment=function(tsData){
   var self=this;
   var dem=tsDemux(tsData);
-  if(dem.a.length>0 && self.aEnc.state==='unconfigured'){
+  if(dem.a.length>0 && self.aEnc && self.aEnc.state==='unconfigured'){
     self.aInfo=adtsInfo(dem.a);
     try{
       self.aDec.configure({codec:'mp4a.40.2',sampleRate:self.aInfo.sampleRate,numberOfChannels:self.aInfo.channels,description:self.aInfo.asc});
@@ -337,7 +343,7 @@ Eco.prototype.processSegment=function(tsData){
 
 Eco.prototype.drainAudio=function(){
   var self=this;
-  if(!self.aInfo){ return; }
+  if(!self.aInfo || !self.aEnc){ return; }
   var raw=self.audioRaw, i=0, consumed=0;
   while(i+7<=raw.length){
     if(raw[i]===0xFF && (raw[i+1]&0xF0)===0xF0){
@@ -385,7 +391,7 @@ Eco.prototype.onVideoEncoded=function(chunk,meta){
       self.muxer=new WebMMuxer({
         target:'media-source',
         video:{codec:'V_VP9',width:1280,height:720,frameRate:30},
-        audio:{codec:'A_OPUS',sampleRate:48000,numberOfChannels:(self.aInfo?self.aInfo.channels:2)},
+        audio:(self.aEnc&&self.aInfo)?{codec:'A_OPUS',sampleRate:48000,numberOfChannels:self.aInfo.channels}:undefined,
         firstTimestampBehavior:'offset'
       });
       self.muxer.onReady=function(e){ try{ self.sb.appendBuffer(e); }catch(err){} };
@@ -398,6 +404,7 @@ Eco.prototype.onVideoEncoded=function(chunk,meta){
 Eco.prototype.onAudioFrame=function(ad){
   var self=this;
   if(!self.running){ ad.close(); return; }
+  if(!self.aEnc){ ad.close(); return; }
   try{ self.aEnc.encode(ad); }catch(e){ self.fail('aEnc.encode: '+e.message); }
   ad.close();
 };
@@ -410,7 +417,7 @@ Eco.prototype.onAudioEncoded=function(chunk,meta){
 Eco.prototype.finish=function(){
   var self=this;
   self.running=false;
-  var pending=2, done=false;
+  var pending=(self.aEnc?2:1), done=false;
   var fin=function(){ if(--pending<=0){ try{ if(self.ms&&self.ms.readyState==='open') self.ms.endOfStream(); }catch(e){} if(self.onend) self.onend(); } };
   if(self.vEnc && self.vEnc.state==='configured') self.vEnc.flush().then(fin,fin); else fin();
   if(self.aEnc && self.aEnc.state==='configured') self.aEnc.flush().then(fin,fin); else fin();
