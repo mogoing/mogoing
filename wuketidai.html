@@ -227,7 +227,7 @@ function switchEp(n){
     hls.attachMedia(v);
     hls.on(Hls.Events.FRAG_LOADED,function(e,d){hlsSpeed(d);});
     hls.on(Hls.Events.ERROR,function(e,d){
-      if(d.fatal)loadTip.textContent='加载失败，点击重试';loadTip.classList.add('show');
+      if(d.fatal){loadTip.textContent='加载失败，点击重试';loadTip.classList.add('show');lastFail='hls';}
     });
   }else if(v.canPlayType('application/vnd.apple.mpegurl')){
     v.src=PROXY+encodeURIComponent(ep.u);
@@ -303,12 +303,12 @@ function enterEco(){
   if(hls){hls.destroy();hls=null;}
   try{v.src='';v.removeAttribute('src');}catch(e){}
   eco=new Eco();
-  eco.onerror=function(e){loadTip.textContent='省流模式出错：'+e.message;loadTip.classList.add('show');exitEco(true);};
+  eco.onerror=function(e){loadTip.textContent='省流失败：'+e.message+'（点此重试）';loadTip.classList.add('show');lastFail='eco';};
   eco.onstat=function(st){if(st.done){loadTip.textContent='本集已播完';}};
   ecoBtn.classList.add('on');ecoBtn.textContent='切回原画';
   ecoOn=true;
   loadTip.textContent='省流模式启动…';loadTip.classList.add('show');
-  eco.start(PROXY+encodeURIComponent(ep.u),v);
+  eco.start(ep.u,v);
 }
 function exitEco(keepPos){
   if(!ecoOn)return;
@@ -326,9 +326,9 @@ function switchEp(n,fromEco){
   if(ecoOn){
     if(eco){eco.stop();eco=null;}
     eco=new Eco();
-    eco.onerror=function(e){loadTip.textContent='省流模式出错：'+e.message;loadTip.classList.add('show');exitEco(true);};
+    eco.onerror=function(e){loadTip.textContent='省流失败：'+e.message+'（点此重试）';loadTip.classList.add('show');lastFail='eco';};
     ecoBtn.classList.add('on');
-    eco.start(PROXY+encodeURIComponent(ep.u),v);
+    eco.start(ep.u,v);
     loadTip.textContent='省流模式加载中…';loadTip.classList.add('show');
     setEpUI();
     return;
@@ -340,7 +340,7 @@ function switchEp(n,fromEco){
     hls.attachMedia(v);
     hls.on(Hls.Events.FRAG_LOADED,function(e,d){hlsSpeed(d);});
     hls.on(Hls.Events.ERROR,function(e,d){
-      if(d.fatal)loadTip.textContent='加载失败，点击重试';loadTip.classList.add('show');
+      if(d.fatal){loadTip.textContent='加载失败，点击重试';loadTip.classList.add('show');lastFail='hls';}
     });
   }else if(v.canPlayType('application/vnd.apple.mpegurl')){
     v.src=PROXY+encodeURIComponent(ep.u);
@@ -372,6 +372,13 @@ function hlsSpeed(d){
     slowShown=false;slowTip.classList.remove('show');
   }
 }
+var lastFail=null;
+loadTip.addEventListener('click',function(){
+  loadTip.classList.remove('show');
+  if(lastFail==='eco'){ if(ecoOn) exitEco(true); setTimeout(enterEco,50); }
+  else if(lastFail==='hls'){ switchEp(cur,true); }
+  lastFail=null;
+});
 document.getElementById('slowGo').addEventListener('click',function(){
   slowTip.classList.remove('show');slowShown=false;
   enterEco();
