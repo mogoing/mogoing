@@ -289,12 +289,12 @@ var eco=null,ecoOn=false,ecoBtn=document.getElementById('ecoBtn'),ecoMode=docume
 if(!(window.Eco&&Eco.isSupported())){
   ecoBtn.disabled=true;
   ecoBtn.style.opacity=.4;
-  ecoMode.textContent='设备不支持省流（需新版浏览器）';
+  ecoMode.textContent='当前浏览器不支持，请用微信打开';
 }else{
   ecoMode.textContent=Eco.hasAudio()?'720P省流 · 1.5Mbps':'720P省流(静音) · 1.5Mbps';
 }
 ecoBtn.addEventListener('click',function(){
-  if(!(window.Eco&&Eco.isSupported())){ loadTip.textContent='设备不支持实时转码，请换 Chrome/Edge 或系统浏览器'; loadTip.classList.add('show'); return; }
+  if(!(window.Eco&&Eco.isSupported())){ loadTip.textContent='实时转码需较新内核，请复制链接到微信打开，即可使用720P省流'; loadTip.classList.add('show'); return; }
   if(ecoOn){exitEco();}else{enterEco();}
 });
 function enterEco(){
