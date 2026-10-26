@@ -186,7 +186,7 @@ function switchEp(n){
   var ep=EPS[n-1];
   if(hls){hls.destroy();hls=null;}
   if(window.Hls&&Hls.isSupported()){
-    hls=new Hls({maxBufferLength:180,maxBufferSize:120*1000*1000,maxMaxBufferLength:600,backBufferLength:60});
+    hls=new Hls({maxBufferLength:180,maxBufferSize:120*1000*1000,maxMaxBufferLength:600,backBufferLength:60,enableWorker:true,fragLoadingMaxRetry:8,fragLoadingTimeOut:20000,fragLoadingRetryDelay:500,manifestLoadingMaxRetry:5,manifestLoadingTimeOut:15000,levelLoadingMaxRetry:8,levelLoadingTimeOut:20000,startLevel:-1});
     hls.loadSource(ep.u);
     hls.attachMedia(v);
     hls.on(Hls.Events.ERROR,function(e,d){
