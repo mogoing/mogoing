@@ -13,6 +13,9 @@ function fetchBuf(url){
     return r.arrayBuffer();
   });
 }
+function resolveUrl(base,u){
+  try{ return new URL(u,base).href; }catch(e){ return u; }
+}
 function concatArr(arr){
   var n=arr.filter(function(x){return x&&x.length>0;});
   if(n.length===0) return new Uint8Array(0);
@@ -220,17 +223,24 @@ Eco.isSupported=function(){
 };
 Eco.hasAudio=function(){ return !!(window.AudioEncoder&&window.AudioDecoder); };
 
-Eco.prototype.start=function(m3u8Url,video){
+Eco.prototype.start=function(origUrl,video){
   var self=this;
   if(this.running) return Promise.reject(new Error('already running'));
   this.running=true;
-  this.m3u8Url=m3u8Url; this.video=video;
+  this.m3u8Url=origUrl; this.video=video;
+  this.audioOk=null; // true=含音轨 false=纯视频(静音)
   this.ms=new MediaSource();
   video.src=URL.createObjectURL(this.ms);
   var msReady=new Promise(function(res,rej){
     self.ms.addEventListener('sourceopen',function(){
       try{
-        self.sb=self.ms.addSourceBuffer('video/webm;codecs="vp9,opus"');
+        try{
+          self.sb=self.ms.addSourceBuffer('video/webm;codecs="vp9,opus"');
+          self.audioOk=true;
+        }catch(e){
+          self.sb=self.ms.addSourceBuffer('video/webm;codecs="vp9"');
+          self.audioOk=false;
+        }
         self.sb.mode='segments';
         res();
       }catch(e){ rej(e); }
@@ -282,12 +292,16 @@ Eco.prototype.fail=function(msg){
 
 Eco.prototype.loadAndLoop=function(){
   var self=this;
-  return fetchBuf(this.m3u8Url).then(function(buf){
+  var proxy=Eco.PROXY;
+  return fetchBuf(proxy+encodeURIComponent(this.m3u8Url)).then(function(buf){
     var pl=parseM3U8(new TextDecoder().decode(buf));
     if(!pl.segs.length) throw new Error('no segments');
+    var base=self.m3u8Url.replace(/[^/]*$/,'');
+    for(var i=0;i<pl.segs.length;i++) pl.segs[i].uri=proxy+encodeURIComponent(resolveUrl(base,pl.segs[i].uri));
     self.pl=pl;
     if(pl.key && pl.key.method==='AES-128'){
-      return fetchBuf(pl.key.uri).then(function(kb){
+      var ku=proxy+encodeURIComponent(resolveUrl(base,pl.key.uri));
+      return fetchBuf(ku).then(function(kb){
         self.key={kb:new Uint8Array(kb), iv:hexToBuf(pl.key.iv)||new Uint8Array(16)};
       });
     }
@@ -319,7 +333,7 @@ Eco.prototype.pullLoop=function(){
 Eco.prototype.processSegment=function(tsData){
   var self=this;
   var dem=tsDemux(tsData);
-  if(dem.a.length>0 && self.aEnc && self.aEnc.state==='unconfigured'){
+  if(dem.a.length>0 && self.audioOk!==false && self.aEnc && self.aEnc.state==='unconfigured'){
     self.aInfo=adtsInfo(dem.a);
     try{
       self.aDec.configure({codec:'mp4a.40.2',sampleRate:self.aInfo.sampleRate,numberOfChannels:self.aInfo.channels,description:self.aInfo.asc});
@@ -391,7 +405,7 @@ Eco.prototype.onVideoEncoded=function(chunk,meta){
       self.muxer=new WebMMuxer({
         target:'media-source',
         video:{codec:'V_VP9',width:1280,height:720,frameRate:30},
-        audio:(self.aEnc&&self.aInfo)?{codec:'A_OPUS',sampleRate:48000,numberOfChannels:self.aInfo.channels}:undefined,
+        audio:(self.audioOk&&self.aEnc&&self.aInfo)?{codec:'A_OPUS',sampleRate:48000,numberOfChannels:self.aInfo.channels}:undefined,
         firstTimestampBehavior:'offset'
       });
       self.muxer.onReady=function(e){ try{ self.sb.appendBuffer(e); }catch(err){} };
@@ -423,5 +437,6 @@ Eco.prototype.finish=function(){
   if(self.aEnc && self.aEnc.state==='configured') self.aEnc.flush().then(fin,fin); else fin();
 };
 
+Eco.PROXY='https://mogo-proxy.3122182865.workers.dev/p?u=';
 window.Eco=Eco;
 })();
