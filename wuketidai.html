@@ -99,6 +99,7 @@ var EPS=[
   {n:19,u:"https://fengbao13.com/video/wuketidai/f05d6297d0df/index.m3u8"},
   {n:20,u:"https://fengbao13.com/video/wuketidai/1d5f63598d12/index.m3u8"}
 ];
+var PROXY='https://mogo-proxy.3122182865.workers.dev/p?u=';
 var v=document.getElementById('v'),hls=null,cur=1,played=[1];
 var epsBox=document.getElementById('eps'),loadTip=document.getElementById('loadTip');
 var bar=document.getElementById('bar'),barFill=document.getElementById('barFill'),barDot=document.getElementById('barDot');
@@ -187,13 +188,13 @@ function switchEp(n){
   if(hls){hls.destroy();hls=null;}
   if(window.Hls&&Hls.isSupported()){
     hls=new Hls({maxBufferLength:180,maxBufferSize:120*1000*1000,maxMaxBufferLength:600,backBufferLength:60,enableWorker:true,fragLoadingMaxRetry:8,fragLoadingTimeOut:20000,fragLoadingRetryDelay:500,manifestLoadingMaxRetry:5,manifestLoadingTimeOut:15000,levelLoadingMaxRetry:8,levelLoadingTimeOut:20000,startLevel:-1});
-    hls.loadSource(ep.u);
+    hls.loadSource(PROXY+encodeURIComponent(ep.u));
     hls.attachMedia(v);
     hls.on(Hls.Events.ERROR,function(e,d){
       if(d.fatal)loadTip.textContent='加载失败，点击重试';loadTip.classList.add('show');
     });
   }else if(v.canPlayType('application/vnd.apple.mpegurl')){
-    v.src=ep.u;
+    v.src=PROXY+encodeURIComponent(ep.u);
   }
   loadTip.textContent='加载中…';loadTip.classList.add('show');
   setEpUI();
