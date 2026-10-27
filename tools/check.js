@@ -135,6 +135,13 @@ for (const kw of ['zuoti.html', 'kaoshi.html', 'ziliao.html', 'list.html#star', 
 }
 const quizHtml = fs.readFileSync(path.join(ROOT, 'edu/quiz.html'), 'utf8');
 if (!quizHtml.includes("kaoshi.html") || !quizHtml.includes("zuoti.html")) F('quiz.html 返回键未按入口动态指向');
+// 交卷回归：showReport 必须接收 auto，且按模式区分解析展示范围
+if (!/showReport\(stat,\s*auto\)/.test(quizHtml)) F('quiz.html showReport 未传 auto（交卷死页 bug）');
+if (!quizHtml.includes("isExam")) F('quiz.html 缺考试/刷题解析范围区分');
+const videoHtmlSrc = fs.readFileSync(path.join(ROOT, 'edu/video.html'), 'utf8');
+if (!/function esc\(/.test(videoHtmlSrc)) F('video.html 缺 esc 函数（页面卡加载中 bug）');
+const docSrc = fs.readFileSync(path.join(ROOT, 'edu/doc.html'), 'utf8');
+if (!docSrc.includes("state.sub !== 'all'")) F('doc.html 分类筛选未生效');
 for (const [f2, kws] of [['edu/zuoti.html', ['综合素质 · 科目一', '教育教学知识与能力 · 科目二', '结构化 + 答辩', 'quiz.html?bank=']],
                          ['edu/kaoshi.html', ['EXAMS', '120', 'mock-18', 'quiz.html?bank=']],
                          ['edu/ziliao.html', ['doc.html', 'videos.html', 'all.html']]]) {

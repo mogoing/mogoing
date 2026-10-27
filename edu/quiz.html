@@ -254,8 +254,7 @@ function doSubmit(auto){
     var msg = '确认交卷吗？\n\n单选已答 ' + stat.answered + ' 题，未答 ' + stat.blank + ' 题';
     if (stat.subjTotal) msg += '\n主观题已写 ' + stat.subjDone + '/' + stat.subjTotal + ' 题';
     if (!confirm(msg)) return;
-  }
-  submitted = true;
+  }  submitted = true;
   clearInterval(timerId);
 
   // 记进度（批量）
@@ -281,10 +280,10 @@ function doSubmit(auto){
   if (wrongMode){
     // 重做模式：答对的从错题本移除（markDone 已处理），刷新数据
   }
-  showReport(stat);
+  showReport(stat, auto);
 }
 
-function showReport(stat){
+function showReport(stat, auto){
   var st = document.getElementById('stage');
   document.querySelector('.exam-top').style.display = 'none';
   var el = document.createElement('div');
@@ -335,10 +334,24 @@ function showReport(stat){
   el.querySelector('#againBtn').addEventListener('click', function(){ location.reload(); });
   el.querySelector('#homeBtn').addEventListener('click', function(){ location.href = 'list.html'; });
 
-  // 逐题回顾
+  // 逐题回顾：刷题/错题重做模式只显示做过的题；考试（整卷）模式显示全部
+  var isExam = meta && meta.kind === 'mixed';
+  var reviewList = [];
   items.forEach(function(it, i){
-    st.appendChild(reviewCard(it, i));
+    var answered = answers[i] !== undefined || (texts[i] || '').trim();
+    if (wrongMode || isExam || answered) reviewList.push(i);
   });
+  if (!reviewList.length) reviewList = items.map(function(_, i){ return i; }).slice(0, 1);
+  reviewList.forEach(function(i){
+    st.appendChild(reviewCard(items[i], i));
+  });
+  if (reviewList.length < items.length){
+    var note = document.createElement('p');
+    note.className = 'muted';
+    note.style.cssText = 'font-size:12px;font-weight:700;text-align:center;margin-top:12px';
+    note.textContent = '（刷题模式只展示你做过的 ' + reviewList.length + ' 题解析；想看全部题目带答案请去 资料 → 全部题目搜索）';
+    st.appendChild(note);
+  }
   window.scrollTo({ top: 0 });
 }
 

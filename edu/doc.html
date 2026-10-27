@@ -53,6 +53,8 @@ function renderList(){
   box.innerHTML = '';
   var subs = [];
   lecs.forEach(function(l){ if (subs.indexOf(l.sub) < 0) subs.push(l.sub); });
+  // 筛选：选了具体科目就只渲染该科目（参考 videos.html 的逻辑）
+  if (state.sub !== 'all') subs = subs.filter(function(s){ return s === state.sub; });
   var subMeta = { zhsz:'综合素质 · 科目一', jyjs:'教育教学 · 科目二', ms:'面试', mock:'模拟卷', guide:'备考指南', video:'视频课程', recite:'背诵速记' };
   var shown = 0;
   subs.forEach(function(s){

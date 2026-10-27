@@ -46,6 +46,8 @@ var i = parseInt(QS.get('i'), 10);
 var v = VS[i];
 var box = document.getElementById('main');
 
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 if (!v){
   box.innerHTML = '<div class="empty">视频不存在或已下架</div>';
 } else {
