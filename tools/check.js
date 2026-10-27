@@ -10,7 +10,7 @@ const W = m => { warns++; console.log('[WARN] ' + m); };
 const OK = m => console.log('[ok] ' + m);
 
 /* 1. HTML 内嵌脚本语法 */
-for (const f of ['main.html', 'edu/load.html', 'edu/index.html', 'edu/list.html', 'edu/quiz.html', 'edu/all.html', 'edu/doc.html']) {
+for (const f of ['main.html', 'edu/load.html', 'edu/index.html', 'edu/list.html', 'edu/quiz.html', 'edu/all.html', 'edu/doc.html', 'edu/videos.html', 'edu/video.html']) {
   const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   scripts.forEach((s, i) => {
@@ -126,14 +126,38 @@ else {
 
 /* 7. 装载页与页面返回链 */
 const load = fs.readFileSync(path.join(ROOT, 'edu/load.html'), 'utf8');
-for (const kw of ['edu-res-', 'sha256', '跳过，直接进', '← 主菜单', 'data/manifest.json']) {
+for (const kw of ['edu-res-', 'sha256', '跳过，直接进', '返回主菜单', 'data/manifest.json']) {
   if (!load.includes(kw)) F('load.html 缺关键逻辑: ' + kw);
 }
 const idxHtml = fs.readFileSync(path.join(ROOT, 'edu/index.html'), 'utf8');
-if (!idxHtml.includes('← 主菜单')) W('index.html 返回键不是主菜单样式');
+if (!idxHtml.includes('videos.html')) W('index.html 缺视频课入口');
 const quizHtml = fs.readFileSync(path.join(ROOT, 'edu/quiz.html'), 'utf8');
-if (!quizHtml.includes('← 上一级')) W('quiz.html 返回键不是上一级样式');
+if (!quizHtml.includes('返回列表')) W('quiz.html 返回键应指向列表页');
 OK('返回链检查完毕');
+
+/* 8. 视频模块 */
+const vsPath = path.join(ROOT, 'edu/js/videos.js');
+if (!fs.existsSync(vsPath)) F('edu/js/videos.js 缺失');
+else {
+  const sb3 = {}; sb3.window = sb3; vm.createContext(sb3);
+  vm.runInContext(fs.readFileSync(vsPath, 'utf8'), sb3);
+  const vids = sb3.window.EDU_VIDEOS || [];
+  if (!vids.length) F('EDU_VIDEOS 为空');
+  else {
+    OK('videos=' + vids.length);
+    const badV = vids.filter(v => !v.title || !v.url || !v.type ||
+      (v.type === 'bili' && !v.bv) || (v.type === 'm3u8' && !/\.m3u8($|\?)/.test(v.url)) ||
+      (v.type !== 'bili' && v.type !== 'm3u8' && !/^https?:\/\//.test(v.url)));
+    if (badV.length) F('视频数据字段异常: ' + badV.map(v => v.title).join(' / '));
+    const videoHtml = fs.readFileSync(path.join(ROOT, 'edu/video.html'), 'utf8');
+    const videosHtml = fs.readFileSync(path.join(ROOT, 'edu/videos.html'), 'utf8');
+    for (const kw of ['player.bilibili.com', 'hls', 'goBtn', 'goBank']) {
+      if (!videoHtml.includes(kw)) F('video.html 缺逻辑: ' + kw);
+    }
+    if (!videosHtml.includes('video.html?i=')) F('videos.html 未链接播放页');
+    if (!videoHtml.includes('videos.html')) W('video.html 返回键应指向 videos.html');
+  }
+}
 
 console.log('\n========== 结果: FAIL=' + fails + ' WARN=' + warns + ' ==========');
 process.exit(fails ? 1 : 0);

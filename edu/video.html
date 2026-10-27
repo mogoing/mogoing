@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>播放 · 视频课</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/edu.css">
+<style>
+  .player-wrap{background:#1d1830;border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
+  .player-wrap iframe{display:block;width:100%;aspect-ratio:16/9;border:0}
+  .v-title{font-size:19px;font-weight:800;margin-top:16px;line-height:1.45}
+  .v-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .v-desc{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:16px 18px;margin-top:14px;font-size:14.5px;line-height:1.85;white-space:pre-wrap}
+  .v-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .v-tip{font-size:12px;color:var(--muted);font-weight:700;margin-top:12px;line-height:1.7}
+  .v-note{margin-top:14px;background:rgba(255,184,76,.12);border:1px solid rgba(255,184,76,.4);border-radius:14px;padding:10px 14px;font-size:12.5px;font-weight:700;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="videos.html" title="返回视频列表" aria-label="返回视频列表"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
+  <div class="tb-title">
+    <span class="em">▶</span>
+    <div><h1 id="h1">播放</h1><small id="subline">视频课</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow" id="main">
+  <p class="muted" style="font-weight:700;text-align:center;padding:40px 0">加载中…</p>
+</div>
+
+<div class="toast"></div>
+
+<script src="js/common.js"></script>
+<script src="js/videos.js"></script>
+<script>
+EDU.initTheme();
+var VS = window.EDU_VIDEOS || [];
+var QS = new URLSearchParams(location.search);
+var i = parseInt(QS.get('i'), 10);
+var v = VS[i];
+var box = document.getElementById('main');
+
+if (!v){
+  box.innerHTML = '<div class="empty">视频不存在或已下架</div>';
+} else {
+  document.title = v.title + ' · 视频课';
+  document.getElementById('h1').textContent = '播放';
+  document.getElementById('subline').textContent = v.platform || '';
+  var html = '';
+  // ===== 播放器 =====
+  if (v.type === 'bili' && v.bv){
+    // B站官方嵌入播放器
+    html += '<div class="player-wrap"><iframe src="https://player.bilibili.com/player.html?bvid=' +
+      esc(v.bv) + '&autoplay=0&danmaku=0&high_quality=1" scrolling="no" frameborder="0" allowfullscreen="true" ' +
+      'referrerpolicy="no-referrer" allow="encrypted-media; fullscreen"></iframe></div>';
+  } else if (v.type === 'm3u8' && v.url){
+    // 自托管 hls 流
+    html += '<div class="player-wrap" id="hlsBox"><div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">加载播放器…</div></div>';
+  } else {
+    // search / link：站内无法嵌第三方页面，给大的引导卡
+    html += '<div class="player-wrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:44px 20px;text-align:center">' +
+      '<div style="font-size:44px">▶</div>' +
+      '<div style="color:#fff;font-weight:800;font-size:16px">该资源在 ' + esc(v.platform || '外部平台') + ' 播放</div>' +
+      '<div style="color:rgba(255,255,255,.65);font-size:12.5px;font-weight:700;max-width:400px;line-height:1.8">第三方平台不允许站内嵌套播放，点下面按钮新窗口前往' +
+      (v.kw ? '，关键词已复制' : '') + '</div>' +
+      '<button class="btn" id="goBtn" style="min-width:200px">前往观看 →</button></div>';
+  }
+  // ===== 标题与内容 =====
+  html += '<div class="v-title">' + esc(v.title) + '</div>';
+  html += '<div class="v-meta">' +
+    (v.platform ? '<span class="qtag">' + esc(v.platform) + '</span>' : '') +
+    (v.stage ? '<span class="qtag">' + esc(v.stage) + '</span>' : '') +
+    (v.sec ? '<span class="qtag">' + esc(v.sec) + '</span>' : '') +
+  '</div>';
+  if (v.desc) html += '<div class="v-desc">' + esc(v.desc) + '</div>';
+  // 关联题库（看完就刷）
+  if (v.bank){
+    html += '<div class="v-actions"><button class="btn mint" id="goBank">✏️ 看完刷本题库 →</button></div>';
+  }
+  html += '<div class="v-note">⚠️ 平台内容与链接可能变动；本站不存储任何视频文件，均跳转或嵌入官方/原作者播放器。</div>';
+  box.innerHTML = html;
+
+  // 事件
+  var goBtn = document.getElementById('goBtn');
+  if (goBtn){
+    goBtn.addEventListener('click', function(){
+      if (v.kw){
+        try {
+          if (navigator.clipboard) navigator.clipboard.writeText(v.kw).catch(function(){});
+          else {
+            var inp = document.createElement('textarea');
+            inp.value = v.kw; document.body.appendChild(inp); inp.select();
+            document.execCommand('copy'); document.body.removeChild(inp);
+          }
+        } catch(e){}
+        EDU.toast('关键词已复制：' + v.kw, 2600);
+      }
+      window.open(v.url, '_blank', 'noopener');
+    });
+  }
+  var goBank = document.getElementById('goBank');
+  if (goBank) goBank.addEventListener('click', function(){
+    location.href = 'quiz.html?bank=' + encodeURIComponent(v.bank);
+  });
+
+  // hls.js 播放
+  if (v.type === 'm3u8' && v.url){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+    s.onload = function(){
+      var boxEl = document.getElementById('hlsBox');
+      boxEl.innerHTML = '<video id="vplayer" controls playsinline style="width:100%;aspect-ratio:16/9;display:block"></video>';
+      var video = document.getElementById('vplayer');
+      if (video.canPlayType('application/vnd.apple.mpegurl')){
+        video.src = v.url; video.play().catch(function(){});
+      } else if (window.Hls && Hls.isSupported()){
+        var hls = new Hls();
+        hls.loadSource(v.url);
+        hls.attachMedia(video);
+      } else {
+        boxEl.innerHTML = '<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">当前环境不支持此格式</div>';
+      }
+    };
+    document.head.appendChild(s);
+  }
+}
+</script>
+</body>
+</html>

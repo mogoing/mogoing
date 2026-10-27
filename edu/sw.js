@@ -54,3 +54,4 @@ self.addEventListener('fetch', function(e){
     })
   );
 });
+/* videos.js 清单走壳缓存（含在其它分支中，无需特殊处理） */

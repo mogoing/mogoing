@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>视频课 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="index.html" title="返回模块首页" aria-label="返回模块首页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
+  <div class="tb-title">
+    <span class="em">🎬</span>
+    <div><h1>视频课</h1><small>官方渠道 · 慕课 · B站 · 纪录片</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow">
+  <input class="searchbox" id="kw" type="search" placeholder="搜索视频标题，如：试讲 / 教育学 / 纪录片" enterkeyhint="search">
+  <div class="filterbar" id="secBar"></div>
+  <div id="vlist"></div>
+</div>
+
+<div class="toast"></div>
+
+<script src="js/common.js"></script>
+<script src="js/videos.js"></script>
+<script>
+EDU.initTheme();
+var VS = window.EDU_VIDEOS || [];
+var state = { sec:'all', kw:'' };
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function chip(label, on, fn){
+  var c = document.createElement('button');
+  c.className = 'chip' + (on ? ' on' : '');
+  c.textContent = label;
+  c.addEventListener('click', fn);
+  return c;
+}
+function renderBar(){
+  var bar = document.getElementById('secBar');
+  bar.innerHTML = '';
+  var secs = [];
+  VS.forEach(function(v){ if (secs.indexOf(v.sec) < 0) secs.push(v.sec); });
+  bar.appendChild(chip('全部', state.sec === 'all', function(){ state.sec='all'; renderBar(); render(); }));
+  secs.forEach(function(s){
+    bar.appendChild(chip(s, state.sec === s, function(){ state.sec=s; renderBar(); render(); }));
+  });
+}
+function stars(n){
+  var s = '';
+  for (var i = 0; i < n; i++) s += '★';
+  return s;
+}
+function render(){
+  var box = document.getElementById('vlist');
+  box.innerHTML = '';
+  var kw = state.kw.toLowerCase();
+  var secs = [];
+  VS.forEach(function(v){
+    if (state.sec !== 'all' && v.sec !== state.sec) return;
+    if (kw && (v.title + ' ' + (v.desc||'') + ' ' + (v.platform||'')).toLowerCase().indexOf(kw) < 0) return;
+    if (secs.indexOf(v.sec) < 0) secs.push(v.sec);
+  });
+  if (!secs.length){ box.innerHTML = '<div class="empty">没有匹配的视频</div>'; return; }
+  secs.forEach(function(sec){
+    var h = document.createElement('div');
+    h.className = 'frame-h'; h.style.marginTop = '18px';
+    var n = VS.filter(function(v){ return v.sec === sec; }).length;
+    h.innerHTML = '<span class="ft">' + esc(sec) + '</span><span class="fd">' + n + ' 条</span>';
+    box.appendChild(h);
+    VS.filter(function(v){
+      return v.sec === sec &&
+        (state.sec === 'all' || state.sec === sec) &&
+        (!kw || (v.title + ' ' + (v.desc||'') + ' ' + (v.platform||'')).toLowerCase().indexOf(kw) >= 0);
+    }).forEach(function(v){
+      var item = document.createElement('div');
+      item.className = 'bank-item';
+      item.innerHTML =
+        '<span class="be" style="background:linear-gradient(135deg,rgba(255,107,107,.16),rgba(255,217,61,.22))">▶</span>' +
+        '<div class="bi"><div class="bt">' + esc(v.title) + '</div>' +
+        '<div class="bd">' + esc(v.platform || '') + ' · ' + esc(v.stage || '') + ' · <span style="color:#FFB84C">' + stars(v.stars || 3) + '</span></div></div>' +
+        '<span class="bgo">观看</span>';
+      item.addEventListener('click', function(){
+        location.href = 'video.html?i=' + encodeURIComponent(VS.indexOf(v));
+      });
+      box.appendChild(item);
+    });
+  });
+}
+document.getElementById('kw').addEventListener('input', function(){
+  state.kw = this.value.trim(); render();
+});
+renderBar();
+render();
+</script>
+</body>
+</html>
