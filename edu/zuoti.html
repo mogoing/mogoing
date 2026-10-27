@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>做题 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="index.html" title="返回模块首页" aria-label="返回模块首页"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
+  <div class="tb-title">
+    <span class="em">✏️</span>
+    <div><h1>做题</h1><small>分科目章节练 · 做到哪了接着刷</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow" id="main"></div>
+
+<div class="toast"></div>
+<div class="syncbar"></div>
+
+<script src="js/common.js"></script>
+<script src="data/index.js"></script>
+<script>
+EDU.initTheme();
+var idx = window.EDU_INDEX || [];
+
+function renderBanks(){
+  var box = document.getElementById('main');
+  box.innerHTML = '';
+  var subs = [];
+  idx.forEach(function(m){ if (subs.indexOf(m.sub) < 0) subs.push(m.sub); });
+  var subMeta = { zhsz:'综合素质 · 科目一', jyjs:'教育教学知识与能力 · 科目二', ms:'结构化 + 答辩' };
+  var subOrder = ['zhsz', 'jyjs', 'ms'];
+  subOrder.forEach(function(s){
+    if (subs.indexOf(s) < 0) return;
+    var h = document.createElement('div');
+    h.className = 'frame-h'; h.style.marginTop = '20px';
+    h.innerHTML = '<span class="ft">' + subMeta[s] + '</span>';
+    box.appendChild(h);
+    idx.filter(function(m){ return m.sub === s; }).forEach(function(m){
+      var p = EDU.bankProgress(m.id, m.count);
+      var st = EDU.bankState(m.id);
+      var item = document.createElement('div');
+      item.className = 'bank-item';
+      var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答', mixed:'整卷'}[m.kind] || '';
+      item.innerHTML =
+        '<span class="be" style="background:linear-gradient(135deg,rgba(155,93,229,.15),rgba(255,157,226,.2))">' +
+          ({single:'✏️',short:'📝',material:'📄',writing:'🖋️',design:'📐',interview:'🎤'}[m.kind] || '📘') + '</span>' +
+        '<div class="bi"><div class="bt">' + m.title + '</div>' +
+        '<div class="bd">' + kindName + ' · ' + m.count + '题 · 建议用时' + m.suggestMin + '分钟' +
+          (st.star.length ? ' · ⭐' + st.star.length : '') +
+          (st.wrong.length ? ' · 错题' + st.wrong.length : '') + '</div>' +
+        '<div style="height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:8px"><i style="display:block;height:100%;width:' + p[1] + '%;background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));border-radius:4px"></i></div></div>' +
+        '<span class="bgo">' + (p[0] ? '继续 ' + Math.min(p[0]+1, m.count) : '开始') + '</span>';
+      item.addEventListener('click', function(){
+        location.href = 'quiz.html?bank=' + encodeURIComponent(m.id);
+      });
+      box.appendChild(item);
+    });
+  });
+}
+
+EDU.loadProgress().then(renderBanks);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>
+

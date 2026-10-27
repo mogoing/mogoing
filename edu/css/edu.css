@@ -41,6 +41,42 @@ body{
 .back svg{width:20px;height:20px;display:block}
 .back:hover{transform:translateX(-2px);box-shadow:0 14px 30px rgba(155,93,229,.2)}
 .back:active{transform:scale(.88)}
+
+/* ===== 首页三大卡片 ===== */
+.big3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+.big-card{
+  position:relative;border:none;border-radius:24px;cursor:pointer;text-align:left;
+  padding:22px 16px 18px;font-family:inherit;color:#fff;overflow:hidden;
+  box-shadow:0 12px 28px rgba(155,93,229,.22);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  transition:transform .16s;
+}
+.big-card:active{transform:scale(.96)}
+.big-card .be{font-size:34px;line-height:1}
+.big-card .bt{font-size:17px;font-weight:800}
+.big-card .bd{font-size:11.5px;font-weight:700;opacity:.85;text-align:center;line-height:1.5}
+.big-card::after{content:"";position:absolute;top:-30px;right:-30px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.18)}
+.big-card.zzt{background:linear-gradient(150deg,#FF6B6B,#FF9F6B)}
+.big-card.kaos{background:linear-gradient(150deg,#9B5DE5,#FF9DE2)}
+.big-card.zil{background:linear-gradient(150deg,#4ECDC4,#2FBFB5)}
+
+/* 打卡旁的胶囊链接 */
+.mini-link{
+  display:inline-flex;align-items:center;gap:5px;
+  border:1.5px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:800;
+  cursor:pointer;font-family:inherit;transition:transform .14s;text-decoration:none;
+}
+.mini-link:active{transform:scale(.94)}
+.mini-link b{font-weight:800;color:var(--grape)}
+
+@media (max-width:640px){
+  .big3{grid-template-columns:repeat(3,1fr);gap:10px}
+  .big-card{padding:16px 8px 14px;border-radius:20px}
+  .big-card .be{font-size:28px}
+  .big-card .bt{font-size:14.5px}
+  .big-card .bd{font-size:10px}
+}
 .back:active{transform:scale(.92)}
 .tb-title{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
 .tb-title .em{flex:none;width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;
@@ -262,5 +298,6 @@ html[data-theme="dark"] .toast{background:rgba(240,235,250,.95);color:#332B48}
   .tiles{grid-template-columns:repeat(2,1fr)}
   .ansgrid{grid-template-columns:repeat(auto-fill,minmax(40px,1fr))}
   .exam-top{flex-wrap:wrap}
+  .pos-tag{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

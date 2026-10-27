@@ -10,7 +10,7 @@ const W = m => { warns++; console.log('[WARN] ' + m); };
 const OK = m => console.log('[ok] ' + m);
 
 /* 1. HTML 内嵌脚本语法 */
-for (const f of ['main.html', 'edu/load.html', 'edu/index.html', 'edu/list.html', 'edu/quiz.html', 'edu/all.html', 'edu/doc.html', 'edu/videos.html', 'edu/video.html']) {
+for (const f of ['main.html', 'edu/load.html', 'edu/index.html', 'edu/zuoti.html', 'edu/kaoshi.html', 'edu/ziliao.html', 'edu/list.html', 'edu/quiz.html', 'edu/all.html', 'edu/doc.html', 'edu/videos.html', 'edu/video.html']) {
   const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   scripts.forEach((s, i) => {
@@ -124,16 +124,24 @@ else {
   if (!miss) OK('manifest 与磁盘双向一致（sha 抽样通过）');
 }
 
-/* 7. 装载页与页面返回链 */
+/* 7. 装载页与页面返回链 + 新版三卡片结构 */
 const load = fs.readFileSync(path.join(ROOT, 'edu/load.html'), 'utf8');
 for (const kw of ['edu-res-', 'sha256', '跳过，直接进', '返回主菜单', 'data/manifest.json']) {
   if (!load.includes(kw)) F('load.html 缺关键逻辑: ' + kw);
 }
 const idxHtml = fs.readFileSync(path.join(ROOT, 'edu/index.html'), 'utf8');
-if (!idxHtml.includes('videos.html')) W('index.html 缺视频课入口');
+for (const kw of ['zuoti.html', 'kaoshi.html', 'ziliao.html', 'list.html#star', 'list.html#wrong', 'big-card']) {
+  if (!idxHtml.includes(kw)) F('index.html 缺: ' + kw);
+}
 const quizHtml = fs.readFileSync(path.join(ROOT, 'edu/quiz.html'), 'utf8');
-if (!quizHtml.includes('返回列表')) W('quiz.html 返回键应指向列表页');
-OK('返回链检查完毕');
+if (!quizHtml.includes("kaoshi.html") || !quizHtml.includes("zuoti.html")) F('quiz.html 返回键未按入口动态指向');
+for (const [f2, kws] of [['edu/zuoti.html', ['综合素质 · 科目一', '教育教学知识与能力 · 科目二', '结构化 + 答辩', 'quiz.html?bank=']],
+                         ['edu/kaoshi.html', ['EXAMS', '120', 'mock-18', 'quiz.html?bank=']],
+                         ['edu/ziliao.html', ['doc.html', 'videos.html', 'all.html']]]) {
+  const c = fs.readFileSync(path.join(ROOT, f2), 'utf8');
+  for (const kw of kws) if (!c.includes(kw)) F(f2 + ' 缺: ' + kw);
+}
+OK('返回链与新结构检查完毕');
 
 /* 8. 视频模块 */
 const vsPath = path.join(ROOT, 'edu/js/videos.js');

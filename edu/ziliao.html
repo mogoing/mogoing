@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>资料 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="index.html" title="返回模块首页" aria-label="返回模块首页"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
+  <div class="tb-title">
+    <span class="em">📚</span>
+    <div><h1>资料</h1><small>讲义 · 视频 · 全部题目搜索</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow" id="main">
+
+  <!-- 讲义框 -->
+  <section class="frame">
+    <div class="frame-h"><span class="ft">📖 讲义</span><span class="fd">58 份资料在线阅读 · 和题库互相跳转</span></div>
+    <div class="bank-item" id="goDoc">
+      <span class="be" style="background:linear-gradient(135deg,rgba(78,205,196,.18),rgba(155,93,229,.15))">📖</span>
+      <div class="bi"><div class="bt">备考讲义</div><div class="bd">职业理念 / 法律法规 / 面试总纲 / 背诵手册…</div></div>
+      <span class="bgo">阅读</span>
+    </div>
+  </section>
+
+  <!-- 视频框 -->
+  <section class="frame">
+    <div class="frame-h"><span class="ft">🎬 视频课</span><span class="fd">官方渠道 · 慕课 · B站 · 纪录片</span></div>
+    <div class="bank-item" id="goVideos">
+      <span class="be" style="background:linear-gradient(135deg,rgba(255,107,107,.16),rgba(255,217,61,.22))">▶</span>
+      <div class="bi"><div class="bt">视频课</div><div class="bd">可嵌入播放 · 看完直接刷对应题库</div></div>
+      <span class="bgo">观看</span>
+    </div>
+  </section>
+
+  <!-- 题库搜索框 -->
+  <section class="frame">
+    <div class="frame-h"><span class="ft">🔎 全部题目</span><span class="fd">1127 题带答案 · 关键字搜索 · 星标筛选</span></div>
+    <div class="bank-item" id="goAll">
+      <span class="be" style="background:linear-gradient(135deg,rgba(155,93,229,.16),rgba(255,157,226,.2))">🔎</span>
+      <div class="bi"><div class="bt">全部题目搜索</div><div class="bd">带答案 · 查阅背题用 · 支持只看星标</div></div>
+      <span class="bgo">进入</span>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast"></div>
+
+<script src="js/common.js"></script>
+<script>
+EDU.initTheme();
+document.getElementById('goDoc').addEventListener('click', function(){ location.href = 'doc.html'; });
+document.getElementById('goVideos').addEventListener('click', function(){ location.href = 'videos.html'; });
+document.getElementById('goAll').addEventListener('click', function(){ location.href = 'all.html'; });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>

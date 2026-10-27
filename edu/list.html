@@ -188,7 +188,9 @@ function buildQ(m, q, starOn){
 }
 
 /* ===== 路由 ===== */
+if (!HASH){ location.replace('zuoti.html'); } // 默认视图已由做题页承担
 EDU.loadProgress().then(function(){
+  if (!HASH) return;
   if (HASH === 'star') renderStar();
   else if (HASH === 'wrong') renderWrong();
   else renderBanks();

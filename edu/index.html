@@ -15,7 +15,7 @@
 <div class="blob blob-a"></div><div class="blob blob-b"></div>
 
 <header class="topbar">
-  <a class="back" href="../main.html" title="返回主菜单" aria-label="返回主菜单"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
+  <a class="back" href="../main.html" title="返回主菜单" aria-label="返回主菜单"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
   <div class="tb-title">
     <span class="em">🎓</span>
     <div><h1>教资刷题</h1><small id="subline">小学教师资格证 · 笔试 + 面试</small></div>
@@ -24,10 +24,31 @@
 </header>
 
 <div class="wrap narrow">
-  <!-- 倒计时 + 打卡 -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px">
+  <!-- 倒计时 + 打卡 + 星标/错题胶囊 -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px">
     <span class="pill sun" id="cd">📅 考试倒计时</span>
     <span class="pill mintp" id="streak">🔥 连续打卡 0 天</span>
+    <a class="mini-link" href="list.html#star">⭐ 星标 <b id="starN">0</b></a>
+    <a class="mini-link" href="list.html#wrong">📕 错题本 <b id="wrongN">0</b></a>
+  </div>
+
+  <!-- 三大卡片 -->
+  <div class="big3">
+    <button class="big-card zzt" id="cardZuo">
+      <span class="be">✏️</span>
+      <span class="bt">做题</span>
+      <span class="bd">分科目章节练<br>做到哪了接着刷</span>
+    </button>
+    <button class="big-card kaos" id="cardKao">
+      <span class="be">🏆</span>
+      <span class="bt">考试</span>
+      <span class="bd">整卷模考 · 120分钟<br>交卷才出分</span>
+    </button>
+    <button class="big-card zil" id="cardZi">
+      <span class="be">📚</span>
+      <span class="bt">资料</span>
+      <span class="bd">讲义 · 视频<br>全部题目搜索</span>
+    </button>
   </div>
 
   <!-- 每日一题 -->
@@ -41,9 +62,6 @@
       <div id="dailyBody"><p class="muted" style="font-weight:700">加载中…</p></div>
     </div>
   </section>
-
-  <!-- 框套框 -->
-  <div id="frames"></div>
 </div>
 
 <div class="toast"></div>
@@ -55,6 +73,10 @@
 EDU.initTheme();
 var idx = window.EDU_INDEX || [];
 
+document.getElementById('cardZuo').addEventListener('click', function(){ location.href = 'zuoti.html'; });
+document.getElementById('cardKao').addEventListener('click', function(){ location.href = 'kaoshi.html'; });
+document.getElementById('cardZi').addEventListener('click', function(){ location.href = 'ziliao.html'; });
+
 /* 倒计时 */
 (function(){
   var d = EDU.examCountdown();
@@ -64,7 +86,7 @@ var idx = window.EDU_INDEX || [];
   else el.textContent = '📅 距笔试还有 ' + d + ' 天';
 })();
 
-/* 打卡展示 */
+/* 打卡 + 星标/错题计数 */
 function renderStreak(){
   var s = EDU.streak();
   document.getElementById('streak').textContent = '🔥 连续打卡 ' + s + ' 天';
@@ -75,6 +97,15 @@ function renderStreak(){
     dots += '<i class="' + (EDU.P.daily[key] ? 'on' : '') + '"></i>';
   }
   document.getElementById('streakDots').innerHTML = dots;
+  var sn = 0, wn = 0;
+  idx.forEach(function(m){
+    var st = EDU.P.banks[m.id];
+    if (!st) return;
+    sn += (st.star || []).length;
+    wn += (st.wrong || []).length;
+  });
+  document.getElementById('starN').textContent = sn;
+  document.getElementById('wrongN').textContent = wn;
 }
 
 /* 每日一题 */
@@ -136,62 +167,6 @@ function renderDaily(){
   });
 }
 
-/* 框套框渲染 */
-function tile(m){
-  var p = EDU.bankProgress(m.id, m.count);
-  var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答', mixed:'整卷'}[m.kind] || '';
-  var em = {single:'✏️', short:'📝', material:'📄', writing:'🖋️', design:'📐', interview:'🎤', mixed:'🏆'}[m.kind] || '📘';
-  var color = {zhsz:'c-coral', jyjs:'c-mint', ms:'c-grape', mock:'c-sun'}[m.sub] || 'c-grape';
-  var t = document.createElement('button');
-  t.className = 'tile ' + color;
-  t.innerHTML = '<span class="te">' + em + '</span>' +
-    '<span class="tn">' + m.title + '</span>' +
-    '<span class="td">' + kindName + ' · ' + m.count + '题</span>' +
-    '<span class="bar"><i></i></span>' +
-    '<span class="tnum">' + (p[0] ? '已做 ' + p[0] + '/' + m.count : '未开始') + '</span>';
-  requestAnimationFrame(function(){ t.querySelector('.bar i').style.width = p[1] + '%'; });
-  t.addEventListener('click', function(){ location.href = 'quiz.html?bank=' + encodeURIComponent(m.id); });
-  return t;
-}
-function frame(title, desc, moreHref, moreText, tiles){
-  var sec = document.createElement('section');
-  sec.className = 'frame';
-  sec.innerHTML = '<div class="frame-h"><span class="ft">' + title + '</span><span class="fd">' + desc + '</span>' +
-    (moreHref ? '<a class="fmore" href="' + moreHref + '">' + moreText + ' →</a>' : '') + '</div>';
-  var g = document.createElement('div');
-  g.className = 'tiles';
-  tiles.forEach(function(x){ g.appendChild(x); });
-  sec.appendChild(g);
-  return sec;
-}
-function renderFrames(){
-  var box = document.getElementById('frames');
-  box.innerHTML = '';
-  var subs = [];
-  idx.forEach(function(m){ if (subs.indexOf(m.sub) < 0) subs.push(m.sub); });
-  var subMeta = { zhsz:'综合素质 · 科目一', jyjs:'教育教学知识与能力 · 科目二', mock:'整卷模考 · 120 分钟', ms:'结构化 + 答辩' };
-  subs.forEach(function(s){
-    var banks = idx.filter(function(m){ return m.sub === s; });
-    box.appendChild(frame(subMeta[s] || s, banks.length + ' 个题库', null, '', banks.map(tile)));
-  });
-  /* 我的框：汇总 / 星标 / 错题本 / 讲义 */
-  var tools = [
-    { t:'全部题目', d:'搜索 · 带答案', e:'🔎', h:'all.html' },
-    { t:'星标清单', d:'我收藏的题', e:'⭐', h:'list.html#star' },
-    { t:'错题本', d:'做错的题重做', e:'📕', h:'list.html#wrong' },
-    { t:'备考讲义', d:'58 份资料在线看', e:'📚', h:'doc.html' },
-    { t:'视频课', d:'官方·慕课·B站·纪录片', e:'🎬', h:'videos.html' }
-  ];
-  var ft = tools.map(function(x){
-    var t = document.createElement('button');
-    t.className = 'tile c-grape';
-    t.innerHTML = '<span class="te">' + x.e + '</span><span class="tn">' + x.t + '</span><span class="td">' + x.d + '</span>';
-    t.addEventListener('click', function(){ location.href = x.h; });
-    return t;
-  });
-  box.appendChild(frame('我的', '汇总 · 收藏 · 错题 · 讲义', null, '', ft));
-}
-
 /* 启动 */
 EDU.loadProgress().then(function(synced){
   if (!synced){
@@ -199,7 +174,6 @@ EDU.loadProgress().then(function(synced){
     if (!u.ok) EDU.toast('未登录主站账号，进度不会保存', 3000);
   }
   renderStreak();
-  renderFrames();
   renderDaily();
 });
 

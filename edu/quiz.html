@@ -13,9 +13,9 @@
 <div class="blob blob-a"></div><div class="blob blob-b"></div>
 
 <div class="exam-top">
-  <a class="back" href="list.html" id="backBtn" title="返回列表" aria-label="返回列表"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
+  <a class="back" href="list.html" id="backBtn" title="返回列表" aria-label="返回列表"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
   <span class="timer" id="timer">--:--</span>
-  <span class="qtag" id="posTag" style="font-size:13px">-</span>
+  <span class="qtag pos-tag" id="posTag" style="font-size:13px">-</span>
   <span style="flex:1"></span>
   <button class="btn ghost sm" id="sheetBtn">▦ 答题卡</button>
   <button class="btn sm" id="submitBtn">交卷</button>
@@ -269,6 +269,14 @@ function doSubmit(auto){
     }
   });
   EDU.saveProgress(true);
+  // 模拟卷记入模考历史（kaoshi.html 展示已考次数与最高分）
+  if (meta && meta.kind === 'mixed'){
+    if (!EDU.P.mockHist) EDU.P.mockHist = [];
+    EDU.P.mockHist.push({ id: meta.id, score: stat.score, date: new Date().toISOString().slice(0, 10) });
+    var mh = EDU.P.mockHist;
+    while (mh.length > 60) mh.shift();
+    EDU.saveProgress(true);
+  }
   if (!wrongMode && meta) EDU.clearDraft(meta.id);
   if (wrongMode){
     // 重做模式：答对的从错题本移除（markDone 已处理），刷新数据
@@ -444,6 +452,9 @@ document.addEventListener('keydown', function(e){
 /* ===== 启动 ===== */
 EDU.loadProgress().then(function(){
   assemble().then(function(){
+    // 返回按钮固定指向上级页面（按入口区分，不读浏览器历史）
+    document.getElementById('backBtn').href =
+      wrongMode ? 'list.html#wrong' : (meta && meta.kind === 'mixed' ? 'kaoshi.html' : 'zuoti.html');
     tryRestore();
     // 未续答时，跳到第一道未做过的题（“做到哪了”续刷）
     if (!wrongMode && meta && !(answers && Object.keys(answers).length)){
