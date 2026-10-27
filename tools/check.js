@@ -167,5 +167,16 @@ else {
   }
 }
 
+/* 9. 考试日期有效性：必须是未来日期，防止倒计时再变成“已开考” */
+const commonJs = fs.readFileSync(path.join(ROOT, 'edu/js/common.js'), 'utf8');
+const dm = commonJs.match(/EXAM_DATE\s*=\s*'(\d{4}-\d{2}-\d{2})'/);
+if (!dm) F('common.js 缺 EXAM_DATE 配置');
+else {
+  const exam = new Date(dm[1] + 'T09:00:00+08:00');
+  const days = Math.ceil((exam - new Date()) / 86400000);
+  if (days <= 0) F('EXAM_DATE ' + dm[1] + ' 已过期，倒计时会显示“待官方公布”');
+  else OK('EXAM_DATE=' + dm[1] + '（还剩 ' + days + ' 天）');
+}
+
 console.log('\n========== 结果: FAIL=' + fails + ' WARN=' + warns + ' ==========');
 process.exit(fails ? 1 : 0);

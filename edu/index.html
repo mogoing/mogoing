@@ -81,7 +81,7 @@ document.getElementById('cardZi').addEventListener('click', function(){ location
 (function(){
   var d = EDU.examCountdown();
   var el = document.getElementById('cd');
-  if (d === null) el.textContent = '📅 本轮考试已开考，关注下轮报名';
+  if (d === null) el.textContent = '📅 下轮笔试时间待官方公布';
   else if (d === 0) el.textContent = '📅 今天笔试！稳住，我们能赢';
   else el.textContent = '📅 距笔试还有 ' + d + ' 天';
 })();
