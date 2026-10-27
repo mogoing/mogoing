@@ -5,13 +5,6 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;background:#0a0e17;overflow:hidden;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#e8ecf4}
-#slowTip{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:120;display:none;align-items:center;gap:10px;padding:9px 16px;border-radius:12px;background:rgba(20,16,40,.92);border:1px solid rgba(139,92,246,.4);backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.4);font-size:13px;color:#e8e6ff;white-space:nowrap}
-#slowTip.show{display:flex;animation:tipIn .3s cubic-bezier(.2,.9,.3,1.2)}
-@keyframes tipIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-#slowTip .s1{color:#c4b5fd}
-#slowTip .go{border:0;border-radius:9px;padding:5px 12px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
-#slowTip .go:active{transform:scale(.92)}
-#slowTip .x{border:0;background:transparent;color:#7d7aa8;font-size:14px;cursor:pointer;padding:2px}
 #top{position:fixed;top:0;left:0;right:0;height:52px;z-index:100;display:flex;align-items:center;gap:10px;padding:0 10px;background:rgba(10,14,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.08)}
 #top .btn{height:34px;border:0;border-radius:17px;padding:0 16px;background:linear-gradient(135deg,#2b6df0,#1e4fd8);color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.25);transition:transform .15s,filter .15s}
 #top .btn:active{transform:translateY(1px) scale(.96)}
@@ -54,15 +47,22 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .epBtn.on{background:#2b6df0;color:#fff;border-color:#5a8ff5;box-shadow:0 0 10px rgba(43,109,240,.35)}
 .epBtn:active{transform:scale(.94)}
 .epBtn.done{background:rgba(46,160,67,.15);color:#6fca85}
+#ecoBtn{height:32px;border:0;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.1);color:#dfe6f5;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+#ecoBtn.on{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 0 10px rgba(139,92,246,.5)}
+#ecoBtn:active{transform:scale(.94)}
+#ecoMode{font-size:12px;color:#7c8db0}
+#slowTip{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:120;display:none;align-items:center;gap:10px;padding:9px 16px;border-radius:12px;background:rgba(20,16,40,.92);border:1px solid rgba(139,92,246,.4);backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.4);font-size:13px;color:#e8e6ff;white-space:nowrap}
+#slowTip.show{display:flex;animation:tipIn .3s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes tipIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+#slowTip .s1{color:#c4b5fd}
+#slowTip .go{border:0;border-radius:9px;padding:5px 12px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+#slowTip .go:active{transform:scale(.92)}
+#slowTip .x{border:0;background:transparent;color:#7d7aa8;font-size:14px;cursor:pointer;padding:2px}
 #toolRow{position:relative;z-index:30;display:flex;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
 #spd125{height:32px;border:0;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.1);color:#dfe6f5;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
 #spd125.on{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 0 10px rgba(139,92,246,.5)}
 #spd125:active{transform:scale(.94)}
 #spdTip{font-size:12px;color:#7c8db0}
-#ecoBtn{height:32px;border:0;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.1);color:#dfe6f5;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
-#ecoBtn.on{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 0 10px rgba(139,92,246,.5)}
-#ecoBtn:active{transform:scale(.94)}
-#ecoMode{font-size:12px;color:#7c8db0}
 @media (min-width:900px){#eps{justify-content:center;grid-template-columns:repeat(5,minmax(0,140px))}}
 </style></head><body>
 <div id="top"><button class="btn" id="btnBack">← 返回</button><div class="t">玉簟秋</div><button class="btn" id="btnHome">⌂ 主页</button></div>
@@ -117,6 +117,7 @@ var EPS=[
   {n:25,u:"https://svip.feifei-play.com/20261026/46786_9e1b394b/index.m3u8"},
   {n:26,u:"https://svip.feifei-play.com/20261026/46787_e4a43d1e/index.m3u8"}
 ];
+var PROXY='';
 var v=document.getElementById('v'),hls=null,cur=1,played=[1];
 var epsBox=document.getElementById('eps'),loadTip=document.getElementById('loadTip');
 var bar=document.getElementById('bar'),barFill=document.getElementById('barFill'),barDot=document.getElementById('barDot');
@@ -183,7 +184,6 @@ gPlayer.addEventListener('pointerup',function(){
   gesture=null;
 });
 gPlayer.addEventListener('pointercancel',function(){gesture=null;});
-// 选集按钮
 EPS.forEach(function(ep){
   var b=document.createElement('button');
   b.className='epBtn'+(ep.n===cur?' on':'');
@@ -222,19 +222,6 @@ function switchEp(n){
   cur=n;
   if(played.indexOf(n)<0)played.push(n);
   var ep=EPS[n-1];
-  if(ecoOn){
-    if(eco){eco.stop();eco=null;}
-    eco=new Eco();
-    eco.onerror=function(e){
-      loadTip.textContent='省流失败：'+e.message+'（点此重试）';
-      loadTip.classList.add('show');lastFail='eco';
-    };
-    ecoBtn.classList.add('on');
-    eco.start(ep.u,v);
-    loadTip.textContent='省流模式加载中…';loadTip.classList.add('show');
-    setEpUI();
-    return;
-  }
   if(hls){hls.destroy();hls=null;}
   if(window.Hls&&Hls.isSupported()){
     hls=new Hls({maxBufferLength:180,maxBufferSize:120*1000*1000,maxMaxBufferLength:600,backBufferLength:60,enableWorker:true,fragLoadingMaxRetry:8,fragLoadingTimeOut:20000,fragLoadingRetryDelay:500,manifestLoadingMaxRetry:5,manifestLoadingTimeOut:15000,levelLoadingMaxRetry:8,levelLoadingTimeOut:20000,startLevel:-1});
@@ -254,14 +241,12 @@ switchEp(1);
 v.addEventListener('loadeddata',function(){loadTip.classList.remove('show');});
 v.addEventListener('waiting',function(){loadTip.classList.add('show');});
 v.addEventListener('playing',function(){loadTip.classList.remove('show');});
-// 播放/暂停
 playBtn.addEventListener('click',function(){
   if(v.paused){v.play();}else{v.pause();}
 });
 v.addEventListener('play',function(){playBtn.textContent='⏸';bigPlay.classList.add('hide');hideCtrlSoon();requestWake();});
 v.addEventListener('pause',function(){playBtn.textContent='▶';bigPlay.classList.remove('hide');ctrl.classList.remove('forced');showCtrl();releaseWake();});
 bigPlay.addEventListener('click',function(){v.play();});
-// 进度
 function fmt(s){s=Math.max(0,s|0);var m=Math.floor(s/60),ss=s%60;return (m<10?'0':'')+m+':'+(ss<10?'0':'')+ss;}
 v.addEventListener('timeupdate',function(){
   if(v.duration){var p=v.currentTime/v.duration;barFill.style.width=(p*100)+'%';barDot.style.left=(p*100)+'%';}
@@ -271,7 +256,6 @@ bar.addEventListener('click',function(e){
   var r=bar.getBoundingClientRect(),p=(e.clientX-r.left)/r.width;
   if(v.duration){v.currentTime=p*v.duration;}
 });
-// 倍速
 var spd125=document.getElementById('spd125'),spdTip=document.getElementById('spdTip'),spdOn=false;
   spd125.addEventListener('click',function(){
     spdOn=!spdOn;
@@ -279,7 +263,6 @@ var spd125=document.getElementById('spd125'),spdTip=document.getElementById('spd
     spd125.classList.toggle('on',spdOn);
     spdTip.textContent=spdOn?'已开启':'默认速度';
   });
-// 全屏
 var fullBtn=document.getElementById('fullBtn');
 fullBtn.addEventListener('click',function(){
   var el=v.parentElement;
@@ -287,7 +270,6 @@ fullBtn.addEventListener('click',function(){
   else if(el.requestFullscreen){el.requestFullscreen();}
   else if(el.webkitRequestFullscreen){el.webkitRequestFullscreen();}
 });
-// 点击画面显示/隐藏控制条
 var playerWrap=document.getElementById('playerWrap');
 playerWrap.addEventListener('click',function(e){
   if(justGestured)return;
@@ -296,13 +278,12 @@ playerWrap.addEventListener('click',function(e){
   if(ctrl.classList.contains('lock')){ctrl.classList.remove('lock');if(hideTimer)clearTimeout(hideTimer);}
   else{showCtrl();}
 });
-// 返回
 document.getElementById('hideCtrlBtn').addEventListener('click',function(){
   ctrl.classList.remove('lock');
   ctrl.classList.add('forced');
   if(hideTimer)clearTimeout(hideTimer);
 });
-document.getElementById('btnBack').addEventListener('click',function(){history.back();});
+document.getElementById('btnBack').addEventListener('click',function(){if(history.length>1){history.back();}else{location.href='look.html';}});
 document.getElementById('btnHome').addEventListener('click',function(){location.href='main.html';});
 loadTip.addEventListener('click',function(){loadTip.classList.remove('show');switchEp(cur,true);});
 document.addEventListener('keydown',function(e){
