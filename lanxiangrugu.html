@@ -54,7 +54,11 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .epBtn.on{background:#2b6df0;color:#fff;border-color:#5a8ff5;box-shadow:0 0 10px rgba(43,109,240,.35)}
 .epBtn:active{transform:scale(.94)}
 .epBtn.done{background:rgba(46,160,67,.15);color:#6fca85}
-#toolRow{position:relative;z-index:30;display:none;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)} /* 省流按钮暂隐藏(换源后不用)，需要时改回 display:flex */
+#toolRow{position:relative;z-index:30;display:flex;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#spd125{height:32px;border:0;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.1);color:#dfe6f5;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+#spd125.on{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 0 10px rgba(139,92,246,.5)}
+#spd125:active{transform:scale(.94)}
+#spdTip{font-size:12px;color:#7c8db0}
 #ecoBtn{height:32px;border:0;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.1);color:#dfe6f5;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
 #ecoBtn.on{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 0 10px rgba(139,92,246,.5)}
 #ecoBtn:active{transform:scale(.94)}
@@ -69,29 +73,21 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
     <div id="gestureTip"></div>
     <div id="bigPlay"><div class="tri"></div></div>
     <div id="loadTip">加载中…</div>
-<div id="slowTip"><span>网速偏慢</span><span class="s1" id="slowKb"></span><button class="go" id="slowGo">切720P省流</button><button class="x" id="slowX">✕</button></div>
     <div id="ctrl">
       <div id="bar"><div id="barTrack"><div id="barFill"></div><div id="barDot"></div></div></div>
       <div class="row">
         <button id="playBtn">▶</button>
         <div id="time">00:00 / 00:00</div>
-        <div id="spd">
-          <button class="spdBtn" data-spd="0.5">0.5x</button>
-          <button class="spdBtn" data-spd="1">1x</button>
-          <button class="spdBtn" data-spd="1.25">1.25x</button>
-          <button class="spdBtn" data-spd="1.5">1.5x</button>
-          <button class="spdBtn" data-spd="2">2x</button>
-        </div>
+        
         <button id="fullBtn">⛶</button><button id="hideCtrlBtn">▾</button>
       </div>
     </div>
   </div>
-  <div id="toolRow"><button id="ecoBtn">720P省流</button><span id="ecoMode"></span></div>
+  <div id="toolRow"><button id="spd125">1.25x</button><span id="spdTip"></span></div>
   <div id="eps"></div>
 </div>
 <script src="hls.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/webm-muxer@2.0.0/build/webm-muxer.min.js"></script>
-<script src="eco.js"></script>
+
 <script>
 var EPS=[
   {n:1,u:"https://fengbao12.com/video/lanxiangrugu/b7dbece99e0a/index.m3u8"},
@@ -264,7 +260,6 @@ function switchEp(n){
     hls=new Hls({maxBufferLength:180,maxBufferSize:120*1000*1000,maxMaxBufferLength:600,backBufferLength:60,enableWorker:true,fragLoadingMaxRetry:8,fragLoadingTimeOut:20000,fragLoadingRetryDelay:500,manifestLoadingMaxRetry:5,manifestLoadingTimeOut:15000,levelLoadingMaxRetry:8,levelLoadingTimeOut:20000,startLevel:-1});
     hls.loadSource(ep.u);
     hls.attachMedia(v);
-    hls.on(Hls.Events.FRAG_LOADED,function(e,d){hlsSpeed(d);});
     hls.on(Hls.Events.ERROR,function(e,d){
       if(d.fatal){loadTip.textContent='加载失败，点击重试';loadTip.classList.add('show');lastFail='hls';}
     });
@@ -292,14 +287,13 @@ bar.addEventListener('click',function(e){
   var r=bar.getBoundingClientRect(),p=(e.clientX-r.left)/r.width;
   if(v.duration){v.currentTime=p*v.duration;}
 });
-var spdBtns=document.querySelectorAll('.spdBtn');
-spdBtns.forEach(function(b){
-  if(b.dataset.spd==='1')b.classList.add('on');
-  b.addEventListener('click',function(){
-    v.playbackRate=parseFloat(b.dataset.spd);
-    spdBtns.forEach(function(x){x.classList.toggle('on',x===b);});
+var spd125=document.getElementById('spd125'),spdTip=document.getElementById('spdTip'),spdOn=false;
+  spd125.addEventListener('click',function(){
+    spdOn=!spdOn;
+    v.playbackRate=spdOn?1.25:1;
+    spd125.classList.toggle('on',spdOn);
+    spdTip.textContent=spdOn?'已开启':'默认速度';
   });
-});
 var fullBtn=document.getElementById('fullBtn');
 fullBtn.addEventListener('click',function(){
   var el=v.parentElement;
@@ -322,84 +316,13 @@ document.getElementById('hideCtrlBtn').addEventListener('click',function(){
 });
 document.getElementById('btnBack').addEventListener('click',function(){history.back();});
 document.getElementById('btnHome').addEventListener('click',function(){location.href='main.html';});
-var eco=null,ecoOn=false,ecoBtn=document.getElementById('ecoBtn'),ecoMode=document.getElementById('ecoMode');
-if(!(window.Eco&&Eco.isSupported())){
-  ecoBtn.disabled=true;
-  ecoBtn.style.opacity=.4;
-  ecoMode.textContent='当前浏览器不支持，请用微信打开';
-}else{
-  ecoMode.textContent=Eco.hasAudio()?'720P省流 · 1.5Mbps':'720P省流(静音) · 1.5Mbps';
-}
-ecoBtn.addEventListener('click',function(){
-  if(!(window.Eco&&Eco.isSupported())){ loadTip.textContent='实时转码需较新内核，请复制链接到微信打开，即可使用720P省流'; loadTip.classList.add('show'); return; }
-  if(ecoOn){exitEco();}else{enterEco();}
-});
-function enterEco(){
-  if(ecoOn)return;
-  var ep=EPS[cur-1];
-  if(hls){hls.destroy();hls=null;}
-  try{v.src='';v.removeAttribute('src');}catch(e){}
-  eco=new Eco();
-  eco.onerror=function(e){
-    loadTip.textContent='省流失败：'+e.message+'（点此重试）';
-    loadTip.classList.add('show');lastFail='eco';
-  };
-  eco.onstat=function(st){if(st.done){loadTip.textContent='本集已播完';}};
-  ecoBtn.classList.add('on');ecoBtn.textContent='切回原画';
-  ecoOn=true;
-  loadTip.textContent='省流模式启动…';loadTip.classList.add('show');
-  eco.start(ep.u,v);
-}
-function exitEco(keepPos){
-  if(!ecoOn)return;
-  var t=v.currentTime;
-  if(eco){eco.stop();eco=null;}
-  ecoBtn.classList.remove('on');ecoBtn.textContent='720P省流';
-  ecoOn=false;
-  switchEp(cur,true);
-}
-// 网速监测（只提醒，不自动切）
-var spdWin=[],slowTip=document.getElementById('slowTip'),slowKb=document.getElementById('slowKb');
-var spdTimer=null,slowShown=false;
-function hlsSpeed(d){
-  if(!d.frag||!d.frag.stats)return;
-  var st=d.frag.stats;
-  if(!st.loaded||!st.loading)return;
-  var kb=st.loaded/1024,sec=(st.loading)/1000;
-  if(sec<0.05)return;
-  spdWin.push(kb/sec);
-  if(spdWin.length>6)spdWin.shift();
-  if(spdWin.length<3)return;
-  var avg=spdWin.reduce(function(a,b){return a+b;},0)/spdWin.length;
-  if(!ecoOn&&avg<180&&!slowShown){
-    slowShown=true;
-    slowKb.textContent='约'+Math.round(avg)+'KB/s';
-    slowTip.classList.add('show');
-    if(spdTimer)clearTimeout(spdTimer);
-    spdTimer=setTimeout(function(){slowTip.classList.remove('show');slowShown=false;},8000);
-  }else if(ecoOn||avg>=180){
-    slowShown=false;slowTip.classList.remove('show');
-  }
-}
-var lastFail=null;
-loadTip.addEventListener('click',function(){
-  loadTip.classList.remove('show');
-  if(lastFail==='eco'){ if(ecoOn) exitEco(true); setTimeout(enterEco,50); }
-  else if(lastFail==='hls'){ switchEp(cur,true); }
-  lastFail=null;
-});
-var slowGo=document.getElementById('slowGo'),slowX=document.getElementById('slowX');
-if(slowGo)slowGo.addEventListener('click',function(){
-  slowTip.classList.remove('show');slowShown=false;
-  enterEco();
-});
-if(slowX)slowX.addEventListener('click',function(){
-  slowTip.classList.remove('show');slowShown=false;
-});
+loadTip.addEventListener('click',function(){loadTip.classList.remove('show');switchEp(cur,true);});
 document.addEventListener('keydown',function(e){
   if(e.code==='Space'){e.preventDefault();v.paused?v.play():v.pause();}
   if(e.code==='ArrowLeft')v.currentTime-=5;
   if(e.code==='ArrowRight')v.currentTime+=5;
   if(e.code==='KeyF')fullBtn.click();
 });
-</script></body></html>
+</script><script defer src="https://cdn.jsdelivr.net/npm/webm-muxer@2.0.0/build/webm-muxer.min.js"></script>
+<script defer src="eco.js"></script>
+</body></html>
