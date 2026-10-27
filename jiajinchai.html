@@ -54,7 +54,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 .epBtn.on{background:#2b6df0;color:#fff;border-color:#5a8ff5;box-shadow:0 0 10px rgba(43,109,240,.35)}
 .epBtn:active{transform:scale(.94)}
 .epBtn.done{background:rgba(46,160,67,.15);color:#6fca85}
-#toolRow{position:relative;z-index:30;display:flex;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#toolRow{position:relative;z-index:30;display:none;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)} /* 省流按钮暂隐藏(换源后不用)，需要时改回 display:flex */
 #ecoBtn{height:32px;border:0;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.1);color:#dfe6f5;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
 #ecoBtn.on{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 0 10px rgba(139,92,246,.5)}
 #ecoBtn:active{transform:scale(.94)}
@@ -185,6 +185,7 @@ EPS.forEach(function(ep){
   b.textContent=''+ep.n;
   b.onclick=function(){switchEp(ep.n);};
   epsBox.appendChild(b);
+});
 // 视频比例自适应：画布只占视频大小
 v.addEventListener('loadedmetadata',function(){
   var vw=v.videoWidth,vh=v.videoHeight;
@@ -203,7 +204,6 @@ window.addEventListener('resize',function(){
     var h=Math.min(wrap.clientWidth*vh/vw,maxH);
     wrap.style.height=h+'px';
   }
-});
 });
 function setEpUI(){
   var bs=epsBox.querySelectorAll('.epBtn');
