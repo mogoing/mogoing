@@ -292,27 +292,28 @@ Eco.prototype.fail=function(msg){
 
 Eco.prototype.loadAndLoop=function(){
   var self=this;
-  var proxy=Eco.PROXY;
+  var proxy=Eco.PROXY||'';
   var base=this.m3u8Url.replace(/[^/]*$/,'');
+  function wrap(u){ return proxy ? proxy+encodeURIComponent(u) : u; }
   function prepare(text){
     var pl=parseM3U8(text);
     if(!pl.segs.length) throw new Error('no segments');
-    for(var i=0;i<pl.segs.length;i++) pl.segs[i].uri=proxy+encodeURIComponent(resolveUrl(base,pl.segs[i].uri));
+    for(var i=0;i<pl.segs.length;i++) pl.segs[i].uri=wrap(resolveUrl(base,pl.segs[i].uri));
     self.pl=pl;
     if(pl.key && pl.key.method==='AES-128'){
-      var ku=proxy+encodeURIComponent(resolveUrl(base,pl.key.uri));
+      var ku=wrap(resolveUrl(base,pl.key.uri));
       return fetchBuf(ku).then(function(kb){
         self.key={kb:new Uint8Array(kb), iv:hexToBuf(pl.key.iv)||new Uint8Array(16)};
       });
     }
   }
-  return fetchBuf(proxy+encodeURIComponent(this.m3u8Url)).then(function(buf){
+  return fetchBuf(wrap(this.m3u8Url)).then(function(buf){
     var text=new TextDecoder().decode(buf);
     if(text.indexOf('#EXT-X-STREAM-INF')>=0){
       // master playlist：选第一个(通常最低码率)子流，再拉一次
       var sub=parseM3U8(text).segs[0];
       if(!sub) throw new Error('no variant');
-      return fetchBuf(proxy+encodeURIComponent(resolveUrl(base,sub.uri))).then(function(b2){
+      return fetchBuf(wrap(resolveUrl(base,sub.uri))).then(function(b2){
         return prepare(new TextDecoder().decode(b2));
       });
     }
