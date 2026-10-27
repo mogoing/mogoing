@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>资源装载 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="css/edu.css">
+<style>
+  .loader-card{
+    max-width:520px;margin:8vh auto 0;background:var(--card);border-radius:26px;
+    box-shadow:var(--shadow);padding:30px clamp(20px,5vw,40px);text-align:center;
+  }
+  .ld-em{font-size:44px;line-height:1}
+  .ld-title{font-size:20px;font-weight:800;margin-top:10px}
+  .ld-sub{font-size:12.5px;color:var(--muted);font-weight:700;margin-top:4px}
+  .ld-state{font-size:14.5px;font-weight:800;margin-top:22px;min-height:22px}
+  .ld-bar{
+    height:16px;border-radius:9px;background:var(--card2);border:1px solid var(--line);
+    overflow:hidden;margin-top:12px;position:relative;
+  }
+  .ld-bar i{
+    display:block;height:100%;width:0;border-radius:9px;
+    background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));
+    transition:width .25s ease-out;
+  }
+  .ld-nums{display:flex;justify-content:space-between;margin-top:10px;font-size:13px;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+  .ld-pct{font-size:46px;font-weight:800;margin-top:18px;background:linear-gradient(135deg,var(--coral),var(--grape));-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+  .ld-detail{font-size:12px;color:var(--muted);font-weight:700;margin-top:14px;line-height:1.8}
+  .ld-err{color:var(--ng);font-weight:800;font-size:14px;margin-top:16px;display:none}
+  .ld-btns{margin-top:22px;display:none;gap:10px;justify-content:center}
+  .ld-btns .btn{min-width:150px}
+  .ld-ok{color:var(--ok)}
+  .ld-steps{display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+  .ld-step{font-size:11.5px;font-weight:800;color:var(--muted);background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+  .ld-step.doing{color:#fff;background:linear-gradient(135deg,var(--grape),var(--pink));border-color:transparent}
+  .ld-step.done{color:var(--ok);border-color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar" style="max-width:520px">
+  <a class="back" href="../main.html" title="返回上级菜单">← 主菜单</a>
+  <div class="tb-title">
+    <span class="em">🎓</span>
+    <div><h1>资源装载</h1><small>首次下载 · 之后校验秒进</small></div>
+  </div>
+</header>
+
+<div class="loader-card">
+  <div class="ld-em">📦</div>
+  <div class="ld-title">备考资源装载</div>
+  <div class="ld-sub" id="ldSub">正在检查本地缓存…</div>
+
+  <div class="ld-steps">
+    <span class="ld-step" id="st1">1 检查</span>
+    <span class="ld-step" id="st2">2 校验</span>
+    <span class="ld-step" id="st3">3 下载</span>
+    <span class="ld-step" id="st4">4 进入</span>
+  </div>
+
+  <div class="ld-state" id="ldState">准备中…</div>
+  <div class="ld-bar"><i id="ldBar"></i></div>
+  <div class="ld-nums"><span id="ldGot">0 MB</span><span id="ldPct2">0%</span><span id="ldTotal">-- MB</span></div>
+  <div class="ld-pct" id="ldPct">0%</div>
+  <div class="ld-detail" id="ldDetail"></div>
+  <div class="ld-err" id="ldErr"></div>
+  <div class="ld-btns" id="ldBtns">
+    <button class="btn" id="retryBtn">↻ 重试</button>
+    <button class="btn ghost" id="skipBtn">跳过，直接进 →</button>
+  </div>
+</div>
+
+<div class="toast"></div>
+
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var stateEl = $('ldState'), barEl = $('ldBar'), pctEl = $('ldPct'), pct2El = $('ldPct2');
+var gotEl = $('ldGot'), totalEl = $('ldTotal'), detailEl = $('ldDetail'), errEl = $('ldErr');
+var btnsEl = $('ldBtns');
+var stepEls = [$('st1'), $('st2'), $('st3'), $('st4')];
+
+function step(i, doing){ // 0-3
+  stepEls.forEach(function(s, j){
+    s.className = 'ld-step' + (j < i ? ' done' : (j === i && doing ? ' doing' : ''));
+  });
+}
+function fmtMB(b){ return (b / 1048576).toFixed(1) + ' MB'; }
+function setProgress(got, total, doneN, allN, label){
+  var pct = total ? Math.round(got / total * 100) : 0;
+  barEl.style.width = pct + '%';
+  pctEl.textContent = pct + '%';
+  pct2El.textContent = pct + '%';
+  gotEl.textContent = fmtMB(got);
+  totalEl.textContent = fmtMB(total);
+  stateEl.textContent = label;
+  if (doneN !== undefined) detailEl.textContent = '已完成 ' + doneN + ' / ' + allN + ' 个文件';
+}
+function fail(msg){
+  errEl.textContent = msg; errEl.style.display = '';
+  btnsEl.style.display = 'flex';
+  stateEl.textContent = '出错了';
+}
+
+/* 环境检查：不支持 Cache API / SHA 的环境（非 https 或老内核）直接放行 */
+if (!window.caches || !window.crypto || !crypto.subtle || location.protocol === 'file:'){
+  step(3, false); stateEl.textContent = '当前环境不支持离线装载，直接进入…';
+  setTimeout(function(){ location.replace('index.html'); }, 600);
+  return;
+}
+
+var VER_KEY = 'edu_res_ver';
+var RES_CACHE_PREFIX = 'edu-res-';
+var metaCacheName = 'edu-meta';
+
+function hex(buf){
+  return Array.prototype.map.call(new Uint8Array(buf), function(b){
+    return ('0' + b.toString(16)).slice(-2);
+  }).join('');
+}
+async function sha256(buf){
+  return hex(await crypto.subtle.digest('SHA-256', buf));
+}
+
+var manifestURL = new URL('data/manifest.json', location.href).href;
+var baseDir = new URL('.', location.href).href;
+
+/* 并发控制器 */
+async function pool(items, n, worker){
+  var idx = 0, results = new Array(items.length);
+  async function run(){
+    while (idx < items.length){
+      var i = idx++;
+      results[i] = await worker(items[i], i);
+    }
+  }
+  var runs = [];
+  for (var k = 0; k < Math.min(n, items.length); k++) runs.push(run());
+  await Promise.all(runs);
+  return results;
+}
+
+async function getManifest(){
+  // 带时间戳绕过一切缓存，确保看到最新版本
+  try {
+    var r = await fetch(manifestURL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (r.ok) return r.json();
+  } catch (e){}
+  // 离线兜底：SW 壳缓存或上次存过
+  if (window.caches){
+    var meta = await caches.open(metaCacheName);
+    var hit = await meta.match(new Request(manifestURL));
+    if (hit) return hit.json();
+  }
+  throw new Error('网络不可用且无本地清单');
+}
+
+async function downloadOne(cache, relPath, info, gotRef){
+  var url = baseDir + relPath;
+  var r = await fetch(url + (url.indexOf('?') < 0 ? '?v=' + VER : ''), { cache: 'reload' });
+  if (!r.ok) throw new Error(relPath + ' HTTP ' + r.status);
+  var buf = await r.arrayBuffer();
+  var digest = await sha256(buf);
+  if (digest !== info.sha) throw new Error(relPath + ' 校验不符（可能下载不完整）');
+  // 以不带查询参数的规范 URL 存入缓存（页面/SW 按规范 URL 取）
+  await cache.put(new Request(url), new Response(buf.slice(0), {
+    status: 200, headers: { 'Content-Type': guessType(relPath), 'Content-Length': String(buf.byteLength) }
+  }));
+  gotRef.v += buf.byteLength;
+}
+
+function guessType(p){
+  if (/\.js$/.test(p)) return 'application/javascript; charset=utf-8';
+  if (/\.md$/.test(p)) return 'text/markdown; charset=utf-8';
+  if (/\.json$/.test(p)) return 'application/json';
+  if (/\.png$/.test(p)) return 'image/png';
+  return 'application/octet-stream';
+}
+
+async function cleanOldCaches(currentVer){
+  var names = await caches.keys();
+  await Promise.all(names.map(function(n){
+    if (n.indexOf(RES_CACHE_PREFIX) === 0 && n !== RES_CACHE_PREFIX + currentVer){
+      return caches.delete(n);
+    }
+  }));
+}
+
+var VER = '';
+var entry = function(){ location.replace('index.html'); };
+
+async function verifyMode(cache, files){
+  // 校验模式：逐文件核对 SHA（本地缓存读取，速度快）
+  step(1, true);
+  $('ldSub').textContent = '检测到已下载资源，正在校验完整性…';
+  var names = Object.keys(files);
+  var totalBytes = 0, got = { v: 0 };
+  names.forEach(function(k){ totalBytes += files[k].size; });
+  setProgress(0, totalBytes, 0, names.length, '正在校验…');
+  var broken = [];
+  await pool(names, 8, async function(k){
+    var hit = await cache.match(new URL(baseDir + k).href);
+    if (!hit){ broken.push(k); got.v += files[k].size; }
+    else {
+      var buf = await hit.arrayBuffer();
+      if (buf.byteLength !== files[k].size || (await sha256(buf)) !== files[k].sha){
+        broken.push(k);
+      }
+      got.v += files[k].size;
+    }
+    setProgress(got.v, totalBytes, undefined, undefined, '正在校验完整性…');
+  });
+  return broken;
+}
+
+async function downloadMode(files, needList, updateHint){
+  step(2, false); step(3, true);
+  $('ldSub').textContent = updateHint ? '有更新，正在下载新资源…' : '首次下载，只需一次，之后秒进';
+  var cache = await caches.open(RES_CACHE_PREFIX + VER);
+  var names = Object.keys(files);
+  var totalBytes = 0, got = { v: 0 }, doneN = 0, failed = [];
+  names.forEach(function(k){ totalBytes += files[k].size; });
+
+  var todo = needList || names;
+  // 需要下载的字节（进度条按需下载量计）
+  var dlBytes = 0, dlGot = { v: 0 };
+  todo.forEach(function(k){ dlBytes += files[k].size; });
+  if (needList){
+    // 显示总量按“待下载”计，体验更真实
+    totalBytes = dlBytes;
+  }
+  setProgress(0, totalBytes || 1, 0, todo.length, '开始下载…');
+
+  await pool(todo, 6, async function(k){
+    for (var attempt = 0; attempt < 3; attempt++){
+      try {
+        await downloadOne(cache, k, files[k], dlGot);
+        doneN++;
+        setProgress(dlGot.v, totalBytes, doneN, todo.length, '正在下载资源…');
+        return;
+      } catch (e){
+        if (attempt === 2) failed.push(k + '：' + e.message);
+      }
+    }
+  });
+  if (failed.length){
+    throw new Error(failed.slice(0, 4).join('；') + (failed.length > 4 ? ' 等 ' + failed.length + ' 个失败' : ''));
+  }
+  // 校验刚下载的（可选快速全量校验——下载时已逐文件校验过，跳过）
+  await cleanOldCaches(VER);
+  localStorage.setItem(VER_KEY, VER);
+}
+
+async function storeManifest(m){
+  var meta = await caches.open(metaCacheName);
+  await meta.put(new Request(manifestURL), new Response(JSON.stringify(m), {
+    status: 200, headers: { 'Content-Type': 'application/json' }
+  }));
+}
+
+async function main(){
+  step(0, true);
+  var m;
+  try { m = await getManifest(); }
+  catch (e){ fail('资源清单获取失败，请检查网络后重试。（' + e.message + '）'); return; }
+  VER = m.ver;
+  var files = m.files || {};
+  var names = Object.keys(files);
+  var totalBytes = 0;
+  names.forEach(function(k){ totalBytes += files[k].size; });
+  totalEl.textContent = fmtMB(totalBytes);
+  detailEl.textContent = '共 ' + names.length + ' 个文件 · 版本 ' + VER + ' · 更新于 ' + (m.generated || '--');
+
+  var savedVer = null;
+  try { savedVer = localStorage.getItem(VER_KEY); } catch(e){}
+
+  var cache = await caches.open(RES_CACHE_PREFIX + VER);
+
+  if (savedVer === VER){
+    // ===== 校验模式 =====
+    var broken;
+    try { broken = await verifyMode(cache, files); }
+    catch (e){ fail('本地缓存校验异常（' + e.message + '），点重试或跳过。'); return; }
+    if (!broken.length){
+      step(3, false); stepEls.forEach(function(s){ s.className = 'ld-step done'; });
+      stateEl.innerHTML = '<span class="ld-ok">✅ 校验通过，直接进入…</span>';
+      barEl.style.width = '100%'; pctEl.textContent = '100%'; pct2El.textContent = '100%';
+      gotEl.textContent = fmtMB(totalBytes);
+      detailEl.textContent = '全部 ' + names.length + ' 个文件完整无损';
+      setTimeout(entry, 500);
+      return;
+    }
+    // 部分损坏 → 只补损坏的
+    step(2, true);
+    stateEl.textContent = '发现 ' + broken.length + ' 个文件损坏，正在修复…';
+    try {
+      await downloadMode(files, broken, savedVer && savedVer !== VER);
+    } catch (e){ fail('修复失败：' + e.message); return; }
+    stepEls.forEach(function(s){ s.className = 'ld-step done'; });
+    stateEl.innerHTML = '<span class="ld-ok">✅ 修复完成，正在进入…</span>';
+    setTimeout(entry, 500);
+    return;
+  }
+
+  // ===== 下载模式（首次 / 版本更新）=====
+  try {
+    await downloadMode(files, null, savedVer && savedVer !== VER);
+    await storeManifest(m);
+  } catch (e){ fail('下载失败：' + e.message); return; }
+  stepEls.forEach(function(s){ s.className = 'ld-step done'; });
+  stateEl.innerHTML = '<span class="ld-ok">✅ 资源就绪！正在进入…</span>';
+  barEl.style.width = '100%'; pctEl.textContent = '100%'; pct2El.textContent = '100%';
+  setTimeout(entry, 600);
+}
+
+$('retryBtn').addEventListener('click', function(){
+  errEl.style.display = 'none'; btnsEl.style.display = 'none';
+  location.reload();
+});
+$('skipBtn').addEventListener('click', entry);
+main();
+})();
+</script>
+</body>
+</html>

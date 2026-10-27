@@ -215,18 +215,51 @@ EDU.examCountdown = function(){
   return Math.ceil(t / 86400000);
 };
 
-/* ===== 动态加载题库数据 ===== */
+/* ===== 动态加载题库数据（装载页缓存优先，其次网络） ===== */
+function execJS(code){
+  (new Function(code))();
+}
 EDU.loadBank = function(bankId){
   return new Promise(function(res, rej){
     if (window.EDU_DATA && window.EDU_DATA[bankId]) return res(window.EDU_DATA[bankId]);
-    var s = document.createElement('script');
-    s.src = 'data/' + encodeURIComponent(bankId) + '.js';
-    s.onload = function(){
+    var url = 'data/' + encodeURIComponent(bankId) + '.js';
+    var finish = function(){
       var d = window.EDU_DATA && window.EDU_DATA[bankId];
       d ? res(d) : rej(new Error('data missing'));
     };
-    s.onerror = function(){ rej(new Error('data load fail')); };
-    document.head.appendChild(s);
+    var fromScript = function(){
+      var s = document.createElement('script');
+      s.src = url; s.onload = finish;
+      s.onerror = function(){ rej(new Error('data load fail')); };
+      document.head.appendChild(s);
+    };
+    if (window.caches && caches.match){
+      caches.match(new URL(url, location.href).href).then(function(hit){
+        if (hit) return hit.text();
+        return fetch(url).then(function(r){
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        });
+      }).then(function(code){ execJS(code); finish(); })
+        .catch(function(){ fromScript(); });
+    } else fromScript();
+  });
+};
+
+/* ===== 讲义文本获取（同上：缓存优先） ===== */
+EDU.fetchDoc = function(url){
+  if (window.caches && caches.match){
+    return caches.match(new URL(url, location.href).href).then(function(hit){
+      if (hit) return hit.text();
+      return fetch(url).then(function(r){
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      });
+    });
+  }
+  return fetch(url).then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.text();
   });
 };
 
