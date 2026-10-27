@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>备考讲义 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" id="backBtn" href="index.html" title="返回">←</a>
+  <div class="tb-title">
+    <span class="em">📚</span>
+    <div><h1 id="h1">备考讲义</h1><small id="subline">58 份资料在线阅读</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow">
+  <div id="listView">
+    <input class="searchbox" id="kw" type="search" placeholder="搜索讲义标题，如：职业理念 / 面试 / 模拟卷" enterkeyhint="search">
+    <div class="filterbar" id="subBar"></div>
+    <div id="lecList"></div>
+  </div>
+  <div id="docView" style="display:none">
+    <div class="filterbar" id="bankChips" style="margin-bottom:12px"></div>
+    <div class="doc-body" id="docBody">加载中…</div>
+  </div>
+</div>
+
+<div class="toast"></div>
+<div class="syncbar"></div>
+
+<script src="js/common.js"></script>
+<script src="data/index.js"></script>
+<script src="data/lectures.js"></script>
+<script>
+EDU.initTheme();
+var lecs = window.EDU_LECTURES || [];
+var idx = window.EDU_INDEX || [];
+var state = { sub:'all', kw:'' };
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ===== 列表视图 ===== */
+function renderList(){
+  var box = document.getElementById('lecList');
+  box.innerHTML = '';
+  var subs = [];
+  lecs.forEach(function(l){ if (subs.indexOf(l.sub) < 0) subs.push(l.sub); });
+  var subMeta = { zhsz:'综合素质 · 科目一', jyjs:'教育教学 · 科目二', ms:'面试', mock:'模拟卷', guide:'备考指南', video:'视频课程', recite:'背诵速记' };
+  var shown = 0;
+  subs.forEach(function(s){
+    var items = lecs.filter(function(l){
+      return l.sub === s &&
+        (!state.kw || l.title.toLowerCase().indexOf(state.kw.toLowerCase()) >= 0);
+    });
+    if (!items.length) return;
+    shown += items.length;
+    var h = document.createElement('div');
+    h.className = 'frame-h'; h.style.marginTop = '18px';
+    h.innerHTML = '<span class="ft">' + (subMeta[s] || s) + '</span><span class="fd">' + items.length + ' 份</span>';
+    box.appendChild(h);
+    items.forEach(function(l){
+      var banks = (l.banks || []).length;
+      var item = document.createElement('div');
+      item.className = 'bank-item';
+      item.innerHTML =
+        '<span class="be" style="background:linear-gradient(135deg,rgba(78,205,196,.18),rgba(155,93,229,.15))">📄</span>' +
+        '<div class="bi"><div class="bt">' + esc(l.title) + '</div>' +
+        '<div class="bd">' + l.subName + (banks ? ' · 关联题库 ' + banks + ' 个' : '') + '</div></div>' +
+        '<span class="bgo">阅读</span>';
+      item.addEventListener('click', function(){
+        location.hash = '#url=' + l.url;
+      });
+      box.appendChild(item);
+    });
+  });
+  if (!shown) box.innerHTML = '<div class="empty">没有匹配的讲义</div>';
+}
+
+function renderSubBar(){
+  var sb = document.getElementById('subBar'); sb.innerHTML = '';
+  [['all','全部'],['zhsz','综合素质'],['jyjs','教育教学'],['ms','面试'],['mock','模拟卷'],['guide','备考指南'],['recite','背诵速记'],['video','视频课程']].forEach(function(s){
+    var c = document.createElement('button');
+    c.className = 'chip' + (state.sub === s[0] ? ' on' : '');
+    c.textContent = s[1];
+    c.addEventListener('click', function(){
+      state.sub = s[0]; renderSubBar(); renderList();
+    });
+    sb.appendChild(c);
+  });
+}
+
+/* ===== 阅读视图 ===== */
+function openDoc(url){
+  document.getElementById('listView').style.display = 'none';
+  document.getElementById('docView').style.display = '';
+  document.getElementById('backBtn').setAttribute('href', 'doc.html');
+  var m = url.match(/([^\/]+)\.md$/);
+  document.getElementById('h1').textContent = '讲义';
+  document.getElementById('subline').textContent = decodeURIComponent(m ? m[1] : url);
+  var body = document.getElementById('docBody');
+  body.textContent = '加载中…';
+  fetch(url).then(function(r){
+    if (!r.ok) throw new Error(r.status);
+    return r.text();
+  }).then(function(t){
+    body.innerHTML = EDU.mdToHtml(t);
+    window.scrollTo({ top: 0 });
+  }).catch(function(){
+    body.innerHTML = '<p style="font-weight:800">讲义加载失败</p><p class="muted" style="font-weight:600;font-size:13px;margin-top:6px">可能是网络问题或该文件未上传。</p>';
+  });
+  // 关联题库
+  var lec = lecs.filter(function(l){ return l.url === url; })[0];
+  var chips = document.getElementById('bankChips');
+  chips.innerHTML = '';
+  if (lec && lec.banks && lec.banks.length){
+    lec.banks.forEach(function(bid){
+      var m = idx.filter(function(x){ return x.id === bid; })[0];
+      if (!m) return;
+      var c = document.createElement('button');
+      c.className = 'chip';
+      c.textContent = '✏️ 刷「' + m.title + '」';
+      c.addEventListener('click', function(){
+        location.href = 'quiz.html?bank=' + encodeURIComponent(bid);
+      });
+      chips.appendChild(c);
+    });
+  }
+}
+
+/* ===== 路由 ===== */
+function route(){
+  var h = location.hash;
+  var m = h.match(/#url=(.+)$/);
+  if (m){ openDoc(decodeURIComponent(m[1])); }
+  else {
+    document.getElementById('listView').style.display = '';
+    document.getElementById('docView').style.display = 'none';
+    document.getElementById('backBtn').setAttribute('href', 'index.html');
+    document.getElementById('h1').textContent = '备考讲义';
+    document.getElementById('subline').textContent = '58 份资料在线阅读';
+    renderList();
+  }
+}
+window.addEventListener('hashchange', route);
+
+document.getElementById('kw').addEventListener('input', function(){
+  state.kw = this.value.trim(); renderList();
+});
+
+EDU.loadProgress().then(function(){
+  renderSubBar();
+  route();
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>

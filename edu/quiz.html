@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>考试模式 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<div class="exam-top">
+  <a class="back" href="list.html" id="backBtn" title="退出">←</a>
+  <span class="timer" id="timer">--:--</span>
+  <span class="qtag" id="posTag" style="font-size:13px">-</span>
+  <span style="flex:1"></span>
+  <button class="btn ghost sm" id="sheetBtn">▦ 答题卡</button>
+  <button class="btn sm" id="submitBtn">交卷</button>
+</div>
+
+<div class="narrow" id="stage">
+  <div class="qcard"><p class="muted" style="font-weight:700;text-align:center">加载中…</p></div>
+</div>
+
+<!-- 答题卡抽屉 -->
+<div class="mask" id="mask">
+  <div class="sheet">
+    <h3>▦ 答题卡 <button id="sheetClose">✕</button></h3>
+    <div class="ansgrid" id="ansgrid"></div>
+    <div class="leg">
+      <span><i style="background:linear-gradient(135deg,var(--mint),#2FBFB5)"></i>已作答</span>
+      <span><i style="background:var(--card2);border:1px solid var(--line)"></i>未作答</span>
+      <span><i style="outline:2px solid var(--grape);outline-offset:1px"></i>当前题</span>
+    </div>
+    <p class="muted" style="font-size:12px;font-weight:700;margin-top:10px">做题不固定数量：想做几题做几题，全做完再交卷也行。</p>
+  </div>
+</div>
+
+<div class="toast"></div>
+<div class="syncbar"></div>
+
+<script src="js/common.js"></script>
+<script src="data/index.js"></script>
+<script>
+EDU.initTheme();
+var idx = window.EDU_INDEX || [];
+var QS = new URLSearchParams(location.search);
+
+/* ===== 会话状态 ===== */
+var items = [];        // [{bankId, bankMeta, q}]
+var meta = null;       // 当前题库元数据（单库模式）
+var wrongMode = QS.get('wrong') === '1';
+var cur = 0;
+var answers = {};      // idx -> 选中的选项字母（单选）
+var texts = {};        // idx -> 主观题作答内容
+var started = Date.now();
+var remainSec = 0;
+var timerId = null;
+var submitted = false;
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ===== 装配题目 ===== */
+function assemble(){
+  if (wrongMode){
+    var ids = (QS.get('banks') || '').split(',').filter(Boolean);
+    var jobs = ids.map(function(id){ return EDU.loadBank(id); });
+    return Promise.all(jobs).then(function(datas){
+      items = [];
+      ids.forEach(function(id, i){
+        var m = idx.filter(function(x){ return x.id === id; })[0];
+        var wrongs = EDU.bankState(id).wrong.slice().sort(function(a,b){ return a-b; });
+        wrongs.forEach(function(n){
+          var q = datas[i].q.filter(function(x){ return x.n === n; })[0];
+          if (q && q.opts && q.opts.length) items.push({ bankId:id, bankMeta:m, q:q });
+        });
+      });
+      if (!items.length) throw new Error('empty');
+      return null;
+    });
+  }
+  var bankId = QS.get('bank');
+  meta = idx.filter(function(m){ return m.id === bankId; })[0];
+  if (!meta) return Promise.reject(new Error('no bank'));
+  return EDU.loadBank(bankId).then(function(data){
+    items = data.q.map(function(q){ return { bankId:bankId, bankMeta:meta, q:q }; });
+    return data;
+  });
+}
+
+/* ===== 恢复草稿 ===== */
+function tryRestore(){
+  if (wrongMode || !meta) return;
+  var st = EDU.P.banks && EDU.P.banks[meta.id] && EDU.P.banks[meta.id].draft;
+  if (st && st.answers && Object.keys(st.answers).length){
+    if (confirm('发现上次未交卷的作答（' + Object.keys(st.answers).length + ' 题已作答），继续上次吗？\n「取消」将清空草稿重新开始。')){
+      answers = st.answers || {};
+      texts = st.texts || {};
+      if (typeof st.cur === 'number') cur = Math.min(st.cur, items.length - 1);
+      if (st.remainSec) remainSec = st.remainSec;
+      return;
+    }
+    EDU.clearDraft(meta.id);
+  }
+}
+
+/* ===== 计时 ===== */
+function fmt(s){
+  var h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h ? h + ':' + ('0'+m).slice(-2) : m) + ':' + ('0'+x).slice(-2);
+}
+function startTimer(min){
+  if (!remainSec) remainSec = Math.max(60, Math.round(min*60));
+  renderTimer();
+  timerId = setInterval(function(){
+    remainSec--;
+    renderTimer();
+    if (remainSec <= 300 && remainSec > 0) document.getElementById('timer').classList.add('warn');
+    if (remainSec <= 0){ clearInterval(timerId); EDU.toast('时间到，自动交卷'); doSubmit(true); }
+    // 每 20 秒存草稿
+    if (!wrongMode && meta && remainSec % 20 === 0) persistDraft();
+  }, 1000);
+}
+function renderTimer(){
+  var t = document.getElementById('timer');
+  t.textContent = '⏱ ' + fmt(Math.max(0, remainSec));
+  t.classList.toggle('warn', remainSec <= 300);
+}
+function persistDraft(){
+  if (submitted || wrongMode || !meta) return;
+  EDU.saveDraft(meta.id, { answers:answers, texts:texts, cur:cur, remainSec:remainSec, ts:Date.now() });
+}
+
+/* ===== 渲染当前题 ===== */
+function render(){
+  if (cur < 0) cur = 0;
+  if (cur >= items.length) cur = items.length - 1;
+  var it = items[cur], q = it.q, m = it.bankMeta;
+  var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答'}[q.type || m.kind] || '';
+  document.getElementById('posTag').textContent = '第 ' + (cur+1) + ' / ' + items.length + ' 题';
+  var st = document.getElementById('stage');
+  var el = document.createElement('div');
+  el.className = 'qcard';
+  var html =
+    '<div class="qmeta">' +
+      '<span class="qno">' + (cur+1) + ' / ' + items.length + '</span>' +
+      (kindName ? '<span class="qtag">' + kindName + (m.kind === 'mixed' && q.score ? ' · ' + q.score + '分' : '') + '</span>' : '') +
+      '<span class="qtag">' + m.title + '</span>' +
+      '<button class="qstar' + (EDU.isStar(it.bankId, q.n) ? ' on' : '') + '" title="星标">⭐</button>' +
+    '</div>';
+  if (q.material || (m.kind === 'material' && q.stem && q.stem.length > 80))
+    html += '<div class="qmaterial"></div>';
+  html += '<div class="qstem"></div>';
+  if (q.opts && q.opts.length){
+    html += '<div class="qopts">' + q.opts.map(function(o){
+      return '<button class="opt" data-k="' + o[0] + '"><b>' + o[0] + '</b><span>' + esc(o[1]) + '</span></button>';
+    }).join('') + '</div>';
+  } else {
+    html += '<textarea class="qtext" placeholder="在这里作答（不评分，交卷后对照参考答案自查）"></textarea>';
+  }
+  html += '<div class="exam-nav">' +
+    '<button class="nav-btn" id="prevBtn">← 上一题</button>' +
+    '<button class="nav-btn" id="nextBtn">下一题 →</button>' +
+  '</div>';
+  el.innerHTML = html;
+  st.innerHTML = '';
+  st.appendChild(el);
+
+  // 材料与题干
+  if (q.material) el.querySelector('.qmaterial').textContent = q.material;
+  var stemText = q.stem || '';
+  if (q.ask) stemText += '\n\n' + q.ask;
+  if (q.task) stemText += '\n\n【任务要求】\n' + q.task;
+  el.querySelector('.qstem').textContent = stemText;
+
+  // 星标
+  el.querySelector('.qstar').addEventListener('click', function(){
+    var on = EDU.toggleStar(it.bankId, q.n);
+    this.classList.toggle('on', on);
+    EDU.toast(on ? '已收藏 ⭐' : '已取消收藏');
+  });
+
+  // 选项
+  var sel = answers[cur];
+  if (q.opts && q.opts.length){
+    el.querySelectorAll('.opt').forEach(function(b){
+      if (b.getAttribute('data-k') === sel) b.classList.add('sel');
+      b.addEventListener('click', function(){
+        answers[cur] = b.getAttribute('data-k');
+        el.querySelectorAll('.opt').forEach(function(x){ x.classList.remove('sel'); });
+        b.classList.add('sel');
+        persistDraft();
+        setTimeout(function(){ if (cur < items.length - 1) { cur++; render(); } }, 220);
+      });
+    });
+  } else {
+    var ta = el.querySelector('.qtext');
+    ta.value = texts[cur] || '';
+    ta.addEventListener('input', function(){ texts[cur] = ta.value; persistDraft(); });
+  }
+
+  // 导航
+  el.querySelector('#prevBtn').addEventListener('click', function(){ cur--; render(); });
+  el.querySelector('#nextBtn').addEventListener('click', function(){ cur++; render(); });
+
+  renderSheet();
+}
+
+/* ===== 答题卡 ===== */
+function renderSheet(){
+  var g = document.getElementById('ansgrid');
+  g.innerHTML = '';
+  items.forEach(function(it, i){
+    var answered = answers[i] !== undefined || (texts[i] || '').trim();
+    var c = document.createElement('button');
+    c.className = 'acell' + (answered ? ' done' : '') + (i === cur ? ' cur' : '');
+    c.textContent = i + 1;
+    c.addEventListener('click', function(){
+      cur = i; render();
+      document.getElementById('mask').classList.remove('show');
+      window.scrollTo({ top: 0 });
+    });
+    g.appendChild(c);
+  });
+}
+
+/* ===== 交卷 ===== */
+function collectSingleStat(){
+  var answered = 0, right = 0, wrong = 0, blank = 0, subjDone = 0, subjTotal = 0, score = 0, scoreTotal = 0;
+  items.forEach(function(it, i){
+    var q = it.q;
+    if (q.opts && q.opts.length){
+      if (q.score) scoreTotal += q.score;
+      if (answers[i] === undefined){ blank++; }
+      else {
+        answered++;
+        if (answers[i] === q.ans){ right++; if (q.score) score += q.score; }
+        else wrong++;
+      }
+    } else {
+      subjTotal++;
+      if ((texts[i] || '').trim()) subjDone++;
+    }
+  });
+  return { answered:answered, right:right, wrong:wrong, blank:blank, subjDone:subjDone, subjTotal:subjTotal, score:score, scoreTotal:scoreTotal };
+}
+function doSubmit(auto){
+  if (submitted) return;
+  var stat = collectSingleStat();
+  if (!auto){
+    var msg = '确认交卷吗？\n\n单选已答 ' + stat.answered + ' 题，未答 ' + stat.blank + ' 题';
+    if (stat.subjTotal) msg += '\n主观题已写 ' + stat.subjDone + '/' + stat.subjTotal + ' 题';
+    if (!confirm(msg)) return;
+  }
+  submitted = true;
+  clearInterval(timerId);
+
+  // 记进度（批量）
+  items.forEach(function(it, i){
+    var q = it.q;
+    if (q.opts && q.opts.length){
+      if (answers[i] === undefined) return; // 未答不记
+      EDU.markDone(it.bankId, q.n, answers[i] === q.ans ? 'right' : 'wrong');
+    } else {
+      if ((texts[i] || '').trim()) EDU.markDone(it.bankId, q.n, 'done');
+    }
+  });
+  EDU.saveProgress(true);
+  if (!wrongMode && meta) EDU.clearDraft(meta.id);
+  if (wrongMode){
+    // 重做模式：答对的从错题本移除（markDone 已处理），刷新数据
+  }
+  showReport(stat);
+}
+
+function showReport(stat){
+  var st = document.getElementById('stage');
+  document.querySelector('.exam-top').style.display = 'none';
+  var el = document.createElement('div');
+  el.className = 'qcard report';
+  var singles = items.filter(function(x){ return x.q.opts && x.q.opts.length; }).length;
+  var isMock = meta && meta.kind === 'mixed';
+  var scoreLine = '';
+  if (isMock && stat.scoreTotal){
+    scoreLine = '<div class="score">' + stat.score + '</div><div class="sub">预估得分 / ' + stat.scoreTotal + ' 分（主观题按参考要点自查给分）</div>';
+  } else if (singles){
+    scoreLine = '<div class="score">' + stat.right + ' / ' + singles + '</div><div class="sub">单选答对题数</div>';
+  } else {
+    scoreLine = '<div class="score">' + stat.subjDone + ' / ' + stat.subjTotal + '</div><div class="sub">已作答主观题</div>';
+  }
+  var extra = '';
+  if (stat.subjTotal) extra += '<div class="rstat"><b>' + stat.subjDone + '/' + stat.subjTotal + '</b><span>主观题已写</span></div>';
+  var wrongIds = [];
+  items.forEach(function(it, i){
+    if (it.q.opts && it.q.opts.length && answers[i] !== undefined && answers[i] !== it.q.ans) wrongIds.push(i);
+  });
+  el.innerHTML =
+    '<div class="pill sun" style="margin-bottom:8px">' + (auto ? '⏰ 时间到自动交卷' : '✅ 交卷成功') + '</div>' +
+    scoreLine +
+    '<div class="rrow">' +
+      '<div class="rstat"><b>' + stat.answered + '</b><span>已答单选</span></div>' +
+      '<div class="rstat"><b style="color:var(--ok)">' + stat.right + '</b><span>答对</span></div>' +
+      '<div class="rstat"><b style="color:var(--ng)">' + stat.wrong + '</b><span>答错</span></div>' +
+      '<div class="rstat"><b>' + stat.blank + '</b><span>未答</span></div>' +
+      extra +
+    '</div>' +
+    '<div class="rrow">' +
+      (wrongMode ? '' : '<button class="btn mint" id="redoWrong">▶ 只重做错题（' + wrongIds.length + '）</button>') +
+      '<button class="btn ghost" id="againBtn">↻ 再来一次</button>' +
+      '<button class="btn" id="homeBtn">返回列表</button>' +
+    '</div>' +
+    '<hr style="border:none;border-top:1px dashed var(--line);margin:18px 0">' +
+    '<p style="font-weight:800;margin-bottom:4px">📖 逐题对答案</p>' +
+    '<p class="muted" style="font-size:12.5px;font-weight:700">标绿的是正确答案；主观题对照参考要点自查，只有交卷后才显示答案。</p>';
+  st.innerHTML = '';
+  st.appendChild(el);
+  var rw = el.querySelector('#redoWrong');
+  if (rw){
+    if (!wrongIds.length){ rw.disabled = true; rw.textContent = '▶ 全对，没有错题'; }
+    else rw.addEventListener('click', function(){
+      location.href = 'quiz.html?wrong=1&banks=' + encodeURIComponent(meta ? meta.id : QS.get('bank'));
+    });
+  }
+  el.querySelector('#againBtn').addEventListener('click', function(){ location.reload(); });
+  el.querySelector('#homeBtn').addEventListener('click', function(){ location.href = 'list.html'; });
+
+  // 逐题回顾
+  items.forEach(function(it, i){
+    st.appendChild(reviewCard(it, i));
+  });
+  window.scrollTo({ top: 0 });
+}
+
+function reviewCard(it, i){
+  var q = it.q, m = it.bankMeta;
+  var myAns = answers[i];
+  var myTxt = texts[i] || '';
+  var el = document.createElement('div');
+  el.className = 'qcard';
+  el.style.marginTop = '16px';
+  var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答'}[q.type || m.kind] || '';
+  var html = '<div class="qmeta"><span class="qno">第 ' + (i+1) + ' 题</span>' +
+    (kindName ? '<span class="qtag">' + kindName + '</span>' : '') +
+    '<button class="qstar' + (EDU.isStar(it.bankId, q.n) ? ' on' : '') + '">⭐</button></div>';
+  if (q.material) html += '<div class="qmaterial"></div>';
+  html += '<div class="qstem"></div>';
+  if (q.opts && q.opts.length){
+    html += '<div class="qopts">' + q.opts.map(function(o){
+      var cls = '';
+      if (o[0] === q.ans) cls = ' right';
+      else if (o[0] === myAns) cls = ' wrong';
+      return '<div class="opt' + cls + '"><b>' + o[0] + '</b><span>' + esc(o[1]) + '</span></div>';
+    }).join('') + '</div>';
+    if (myAns === undefined) html += '<p class="muted" style="font-size:12.5px;font-weight:700;margin-top:8px">此题未作答</p>';
+  } else {
+    if (myTxt) html += '<div class="qmaterial" style="border-style:solid"><b>我的作答</b>\n' + esc(myTxt) + '</div>';
+    else html += '<p class="muted" style="font-size:12.5px;font-weight:700;margin-top:8px">此题未作答</p>';
+  }
+  if (q.opts && q.opts.length){
+    html += '<div class="qsol"><div class="st"><span class="verdict ' + (myAns === q.ans ? 'ok">答对' : 'ng">答错') + '</span>' +
+      '<span class="verdict ok">正确答案 ' + q.ans + '</span></div>' +
+      (q.sol ? '<div></div>' : '') + '</div>';
+  } else {
+    html += '<div class="qsol"><div class="st">📋 参考答案' + (m.kind === 'mixed' && q.score ? '（' + q.score + ' 分）' : '') + '</div><div></div></div>';
+  }
+  if (q.tip) html += '<div class="qsol" style="background:rgba(155,93,229,.08);border-color:rgba(155,93,229,.3)"><div class="st">' +
+    (q.opts && q.opts.length ? '' : (m.kind === 'interview' ? '💡 答题思路' : '💡 要点提示')) + '</div><div></div></div>';
+  el.innerHTML = html;
+  if (q.material) el.querySelector('.qmaterial').textContent = q.material;
+  var stemText = q.stem || '';
+  if (q.ask) stemText += '\n\n' + q.ask;
+  if (q.task) stemText += '\n\n【任务要求】\n' + q.task;
+  el.querySelector('.qstem').textContent = stemText;
+  var solDivs = el.querySelectorAll('.qsol > div:last-child');
+  if (solDivs.length){
+    // 每个 qsol 的内容 div：solDivs[0]=主答案区，最后一个=tip 区
+    if (q.opts && q.opts.length){
+      if (q.sol) solDivs[0].textContent = q.sol;
+    } else {
+      solDivs[0].textContent = q.sol || '本题无参考答案，可对照讲义自查。';
+    }
+    if (q.tip) solDivs[solDivs.length - 1].textContent = q.tip;
+  }
+  el.querySelector('.qstar').addEventListener('click', function(){
+    var on = EDU.toggleStar(it.bankId, q.n);
+    this.classList.toggle('on', on);
+    EDU.toast(on ? '已收藏 ⭐' : '已取消收藏');
+  });
+  return el;
+}
+
+/* ===== 退出拦截（防误触） ===== */
+document.getElementById('backBtn').addEventListener('click', function(e){
+  if (submitted) return;
+  var stat = collectSingleStat();
+  if (stat.answered + stat.subjDone > 0){
+    if (confirm('还没交卷，退出将保留草稿（下次进来可继续）。\n确定退出吗？')){ persistDraft(); }
+    else e.preventDefault();
+  }
+});
+document.getElementById('submitBtn').addEventListener('click', function(){ doSubmit(false); });
+document.getElementById('sheetBtn').addEventListener('click', function(){
+  renderSheet();
+  document.getElementById('mask').classList.add('show');
+});
+document.getElementById('sheetClose').addEventListener('click', function(){
+  document.getElementById('mask').classList.remove('show');
+});
+document.getElementById('mask').addEventListener('click', function(e){
+  if (e.target === this) this.classList.remove('show');
+});
+window.addEventListener('beforeunload', function(e){
+  if (!submitted){
+    persistDraft();
+    var stat = collectSingleStat();
+    if (stat.answered + stat.subjDone > 0){ e.preventDefault(); e.returnValue = ''; }
+  }
+});
+
+/* ===== 键盘（桌面端）：1-4 / A-D 选择，←→ 翻题，S 星标 ===== */
+document.addEventListener('keydown', function(e){
+  if (submitted || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  var it = items[cur];
+  if (!it) return;
+  var k = e.key.toUpperCase();
+  var order = ['A','B','C','D'];
+  if (it.q.opts && it.q.opts.length){
+    var n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 4) selOpt(order[n-1]);
+    else if (order.indexOf(k) >= 0) selOpt(k);
+  }
+  if (e.key === 'ArrowLeft'){ cur--; render(); }
+  if (e.key === 'ArrowRight'){ cur++; render(); }
+  if (k === 'S'){ EDU.toggleStar(it.bankId, it.q.n); render(); }
+  function selOpt(letter){
+    var btn = document.querySelector('.opt[data-k="' + letter + '"]');
+    if (btn) btn.click();
+  }
+});
+
+/* ===== 启动 ===== */
+EDU.loadProgress().then(function(){
+  assemble().then(function(){
+    tryRestore();
+    // 未续答时，跳到第一道未做过的题（“做到哪了”续刷）
+    if (!wrongMode && meta && !(answers && Object.keys(answers).length)){
+      var doneMap = (EDU.P.banks[meta.id] && EDU.P.banks[meta.id].done) || {};
+      var fi = -1;
+      for (var i = 0; i < items.length; i++){ if (!doneMap[items[i].q.n]){ fi = i; break; } }
+      if (fi > 0) cur = fi;
+    }
+    // 计时：整卷用建议用时；章节按题型给每题时间（下限 5 分钟），面试/主观题更宽裕
+    var perQ = { single:1, short:3, material:5, writing:15, design:15, interview:2, mixed:0 };
+    var minutes;
+    if (wrongMode) minutes = Math.max(5, items.length * 2);
+    else if (meta && meta.kind === 'mixed') minutes = meta.suggestMin;
+    else if (meta) minutes = Math.max(meta.suggestMin, Math.ceil(items.length * (perQ[meta.kind] || 1)));
+    else minutes = 45;
+    startTimer(minutes);
+    render();
+  }).catch(function(e){
+    document.getElementById('stage').innerHTML =
+      '<div class="qcard"><p style="font-weight:800">题库加载失败</p>' +
+      '<p class="muted" style="font-weight:600;font-size:13px;margin-top:6px">' + (e.message === 'empty' ? '错题本是空的，先去考试模式交卷攒错题吧。' : '请返回列表重新进入。') + '</p>' +
+      '<p style="margin-top:14px"><a class="btn ghost" href="list.html" style="text-decoration:none;display:inline-block">返回列表</a></p></div>';
+    document.querySelector('.exam-top').style.visibility = 'hidden';
+  });
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>

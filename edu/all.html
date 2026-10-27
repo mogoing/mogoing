@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>全部题目 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="index.html" title="返回">←</a>
+  <div class="tb-title">
+    <span class="em">🔎</span>
+    <div><h1>全部题目</h1><small>带答案 · 可搜索 · 背题/查阅用</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow">
+  <input class="searchbox" id="kw" type="search" placeholder="搜索题目关键字，如：素质教育 / 最近发展区 / 体罚" enterkeyhint="search">
+  <div class="filterbar" id="subBar"></div>
+  <div class="filterbar" id="bankBar"></div>
+  <div class="filterbar" id="moreBar"></div>
+  <p class="muted" id="countLine" style="font-size:12.5px;font-weight:700;margin:10px 2px 0"></p>
+  <div id="qlist"></div>
+  <div style="text-align:center;margin-top:16px"><button class="btn ghost" id="moreBtn" style="display:none">加载更多</button></div>
+</div>
+
+<div class="toast"></div>
+<div class="syncbar"></div>
+
+<script src="js/common.js"></script>
+<script src="data/index.js"></script>
+<script>
+EDU.initTheme();
+var idx = window.EDU_INDEX || [];
+var PAGE = 80;
+
+var state = { sub:'all', bank:'all', starOnly:false, undoneOnly:false, kw:'', shown:PAGE };
+var loaded = {};   // bankId -> data
+
+function bankEl(id){
+  if (loaded[id]) return Promise.resolve(loaded[id]);
+  return EDU.loadBank(id).then(function(d){ loaded[id] = d; return d; });
+}
+function ensureBanks(){
+  var need = idx.filter(function(m){
+    if (state.bank !== 'all') return m.id === state.bank;
+    if (state.sub !== 'all') return m.sub === state.sub;
+    return true;
+  });
+  return Promise.all(need.map(function(m){ return bankEl(m.id); })).then(function(){ return need; });
+}
+
+function hi(text){
+  var e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (!state.kw) return e;
+  var kws = state.kw.split(/\s+/).filter(Boolean);
+  kws.forEach(function(k){
+    try {
+      e = e.replace(new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'), function(m){ return '<mark>' + m + '</mark>'; });
+    } catch(err){}
+  });
+  return e;
+}
+function matchQ(q){
+  if (state.starOnly && !EDU.isStar(curBank.id, q.n)) return false;
+  if (!state.kw) return true;
+  var hay = (q.stem || '') + ' ' + (q.ask || '') + ' ' + (q.material || '') + ' ' +
+    (q.opts || []).map(function(o){ return o[1]; }).join(' ') + ' ' + (q.sol || '');
+  return state.kw.split(/\s+/).filter(Boolean).every(function(k){
+    return hay.toLowerCase().indexOf(k.toLowerCase()) >= 0;
+  });
+}
+
+var curBank = null;
+function qCard(m, q){
+  var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答', mixed:''}[q.type || m.kind] || '';
+  var el = document.createElement('div');
+  el.className = 'qcard'; el.style.marginTop = '14px';
+  var html = '<div class="qmeta"><span class="qno">第 ' + q.n + ' 题</span>' +
+    (kindName ? '<span class="qtag">' + kindName + '</span>' : '') +
+    '<span class="qtag">' + m.title + '</span>' +
+    '<button class="qstar' + (EDU.isStar(m.id, q.n) ? ' on' : '') + '">⭐</button></div>';
+  if (q.material) html += '<div class="qmaterial"></div>';
+  html += '<div class="qstem"></div>';
+  if (q.opts && q.opts.length){
+    html += '<div class="qopts">' + q.opts.map(function(o){
+      var mark = (q.ans && o[0] === q.ans) ? ' right' : '';
+      return '<div class="opt' + mark + '"><b>' + o[0] + '</b><span>' + hi(o[1]) + '</span></div>';
+    }).join('') + '</div>';
+    if (q.ans) html += '<div class="qsol"><div class="st"><span class="verdict ok">答案 ' + q.ans + '</span></div></div>';
+  }
+  if (q.sol) html += '<div class="qsol"><div class="st">解析</div><div class="soltext"></div></div>';
+  if (q.tip) html += '<div class="qsol" style="background:rgba(155,93,229,.08);border-color:rgba(155,93,229,.3)"><div class="st">' +
+    (m.kind === 'interview' ? '💡 答题思路' : '💡 提示') + '</div><div class="tiptext"></div></div>';
+  el.innerHTML = html;
+  // 材料与题干（富文本高亮）
+  if (q.material) el.querySelector('.qmaterial').innerHTML = hi(q.material);
+  var stemText = q.stem || '';
+  if (q.ask) stemText += '\n\n' + q.ask;
+  if (q.task) stemText += '\n\n【任务要求】\n' + q.task;
+  el.querySelector('.qstem').innerHTML = hi(stemText).replace(/\n/g,'<br>');
+  if (q.sol) el.querySelector('.soltext').innerHTML = hi(q.sol).replace(/\n/g,'<br>');
+  var tipEl = el.querySelector('.tiptext');
+  if (q.tip && tipEl) tipEl.innerHTML = hi(q.tip).replace(/\n/g,'<br>');
+  el.querySelector('.qstar').addEventListener('click', function(){
+    var on = EDU.toggleStar(m.id, q.n);
+    this.classList.toggle('on', on);
+    EDU.toast(on ? '已收藏 ⭐' : '已取消收藏');
+  });
+  return el;
+}
+
+function render(){
+  var list = document.getElementById('qlist');
+  list.innerHTML = '<p class="muted" style="font-weight:700;text-align:center;padding:20px 0">加载中…</p>';
+  ensureBanks().then(function(banks){
+    list.innerHTML = '';
+    var total = 0, shown = 0;
+    banks.forEach(function(m){
+      curBank = m;
+      var qs = m.qs ? m.qs : (loaded[m.id] && loaded[m.id].q) || [];
+      var hits = [];
+      qs.forEach(function(q){
+        if (matchQ(q)){ total++; hits.push(q); }
+      });
+      if (!hits.length) return;
+      var h = document.createElement('div');
+      h.className = 'frame-h'; h.style.marginTop = '20px';
+      h.innerHTML = '<span class="ft">' + m.title + '</span><span class="fd">' + hits.length + ' 题</span>';
+      list.appendChild(h);
+      hits.slice(0, Math.max(0, state.shown - shown)).forEach(function(q){
+        list.appendChild(qCard(m, q)); shown++;
+      });
+    });
+    document.getElementById('countLine').textContent =
+      '共 ' + total + ' 题' + (state.kw ? '（关键字：' + state.kw + '）' : '') +
+      (total > shown ? ' · 已显示 ' + shown + ' 题' : '');
+    var mb = document.getElementById('moreBtn');
+    if (total > shown){ mb.style.display = ''; mb.textContent = '加载更多（还剩 ' + (total - shown) + ' 题）'; }
+    else mb.style.display = 'none';
+    if (!total) list.innerHTML = '<div class="empty">没有匹配的题目，换个关键字试试</div>';
+  });
+}
+
+/* ===== 筛选条 ===== */
+function chip(label, on, fn){
+  var c = document.createElement('button');
+  c.className = 'chip' + (on ? ' on' : '');
+  c.textContent = label;
+  c.addEventListener('click', fn);
+  return c;
+}
+function renderBars(){
+  var sb = document.getElementById('subBar'); sb.innerHTML = '';
+  var subs = [['all','全部科目'],['zhsz','综合素质'],['jyjs','教育教学'],['ms','面试'],['mock','模拟卷']];
+  subs.forEach(function(s){
+    sb.appendChild(chip(s[1], state.sub === s[0], function(){
+      state.sub = s[0]; state.bank = 'all'; state.shown = PAGE; renderBars(); render();
+    }));
+  });
+  var bb = document.getElementById('bankBar'); bb.innerHTML = '';
+  var banks = idx.filter(function(m){ return state.sub === 'all' || m.sub === state.sub; });
+  bb.appendChild(chip('全部题库', state.bank === 'all', function(){
+    state.bank = 'all'; state.shown = PAGE; renderBars(); render();
+  }));
+  banks.forEach(function(m){
+    bb.appendChild(chip(m.title, state.bank === m.id, function(){
+      state.bank = m.id; state.shown = PAGE; renderBars(); render();
+    }));
+  });
+  var mb = document.getElementById('moreBar'); mb.innerHTML = '';
+  mb.appendChild(chip('⭐ 只看星标', state.starOnly, function(){
+    state.starOnly = !state.starOnly; state.shown = PAGE; renderBars(); render();
+  }));
+}
+
+/* ===== 事件 ===== */
+var kwTimer = null;
+document.getElementById('kw').addEventListener('input', function(){
+  clearTimeout(kwTimer);
+  kwTimer = setTimeout(function(){
+    state.kw = document.getElementById('kw').value.trim();
+    state.shown = PAGE;
+    render();
+  }, 300);
+});
+document.getElementById('moreBtn').addEventListener('click', function(){
+  state.shown += PAGE; render();
+});
+
+/* ===== 启动 ===== */
+EDU.loadProgress().then(function(){
+  renderBars();
+  render();
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>

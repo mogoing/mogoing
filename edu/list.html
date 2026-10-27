@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>题库列表 · 教资刷题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="index.html" title="返回">←</a>
+  <div class="tb-title">
+    <span class="em">📚</span>
+    <div><h1 id="h1">题库列表</h1><small id="subline">选择一个题库开始</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow" id="main"></div>
+
+<div class="toast"></div>
+<div class="syncbar"></div>
+
+<script src="js/common.js"></script>
+<script src="data/index.js"></script>
+<script>
+EDU.initTheme();
+var idx = window.EDU_INDEX || [];
+var QS = new URLSearchParams(location.search);
+var HASH = location.hash.replace('#','');
+
+function go(url){ location.href = url; }
+
+/* ===== 默认视图：按科目分组列出题库 ===== */
+function renderBanks(){
+  document.getElementById('h1').textContent = '题库列表';
+  document.getElementById('subline').textContent = '点题库进考试模式 · 带答案浏览请进「全部题目」';
+  var box = document.getElementById('main');
+  box.innerHTML = '';
+  var subs = [];
+  idx.forEach(function(m){ if (subs.indexOf(m.sub) < 0) subs.push(m.sub); });
+  var subMeta = { zhsz:'综合素质 · 科目一', jyjs:'教育教学知识与能力 · 科目二', mock:'整卷模考', ms:'面试' };
+  subs.forEach(function(s){
+    var h = document.createElement('div');
+    h.className = 'frame-h'; h.style.marginTop = '18px';
+    h.innerHTML = '<span class="ft">' + (subMeta[s] || s) + '</span>';
+    box.appendChild(h);
+    idx.filter(function(m){ return m.sub === s; }).forEach(function(m){
+      var p = EDU.bankProgress(m.id, m.count);
+      var st = EDU.bankState(m.id);
+      var item = document.createElement('div');
+      item.className = 'bank-item';
+      var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答', mixed:'整卷'}[m.kind] || '';
+      item.innerHTML =
+        '<span class="be" style="background:linear-gradient(135deg,rgba(155,93,229,.15),rgba(255,157,226,.2))">' +
+          ({single:'✏️',short:'📝',material:'📄',writing:'🖋️',design:'📐',interview:'🎤',mixed:'🏆'}[m.kind] || '📘') + '</span>' +
+        '<div class="bi"><div class="bt">' + m.title + '</div>' +
+        '<div class="bd">' + kindName + ' · ' + m.count + '题 · 建议用时' + m.suggestMin + '分钟' +
+          (st.star.length ? ' · ⭐' + st.star.length : '') +
+          (m.kind === 'single' && st.wrong.length ? ' · 错题' + st.wrong.length : '') + '</div>' +
+        '<div class="bp"><i style="width:' + p[1] + '%"></i></div></div>' +
+        '<span class="bgo">' + (p[0] ? '继续 ' + Math.min(p[0]+1, m.count) : '开始') + '</span>';
+      item.addEventListener('click', function(){
+        go('quiz.html?bank=' + encodeURIComponent(m.id));
+      });
+      box.appendChild(item);
+    });
+  });
+}
+
+/* ===== 星标清单 ===== */
+function renderStar(){
+  document.getElementById('h1').textContent = '⭐ 星标清单';
+  document.getElementById('subline').textContent = '点 ⭐ 可取消收藏 · 答案直接显示';
+  var box = document.getElementById('main');
+  box.innerHTML = '<div class="filterbar" id="fbar"></div><div id="qlist"></div>';
+  var fbar = document.getElementById('fbar'), qlist = document.getElementById('qlist');
+  var banksWithStar = idx.filter(function(m){ return EDU.bankState(m.id).star.length; });
+  if (!banksWithStar.length){ qlist.innerHTML = '<div class="empty">还没有星标任何题目。做题时点 ⭐ 收藏，汇总页里也能收藏。</div>'; return; }
+  banksWithStar.forEach(function(m, i){
+    var c = document.createElement('button');
+    c.className = 'chip' + (i === 0 ? ' on' : '');
+    c.textContent = m.title + ' ' + EDU.bankState(m.id).star.length;
+    c.addEventListener('click', function(){
+      fbar.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+      showBank(m);
+    });
+    fbar.appendChild(c);
+  });
+  function showBank(m){
+    qlist.innerHTML = '<p class="muted" style="font-weight:700;padding:10px 4px">加载中…</p>';
+    EDU.loadBank(m.id).then(function(data){
+      qlist.innerHTML = '';
+      EDU.bankState(m.id).star.forEach(function(n){
+        var q = data.q.filter(function(x){ return x.n === n; })[0];
+        if (q) qlist.appendChild(buildQ(m, q, true));
+      });
+      if (!qlist.children.length) qlist.innerHTML = '<div class="empty">该题库暂无星标</div>';
+    });
+  }
+  showBank(banksWithStar[0]);
+}
+
+/* ===== 错题本 ===== */
+function renderWrong(){
+  document.getElementById('h1').textContent = '📕 错题本';
+  document.getElementById('subline').textContent = '交卷后做错的单选题自动收录 · 重做答对自动移出';
+  var box = document.getElementById('main');
+  box.innerHTML = '<div class="filterbar" id="fbar"></div><div id="qlist"></div>';
+  var fbar = document.getElementById('fbar'), qlist = document.getElementById('qlist');
+  var banksWithWrong = idx.filter(function(m){ return EDU.bankState(m.id).wrong.length; });
+  if (!banksWithWrong.length){ qlist.innerHTML = '<div class="empty">错题本是空的。去考试模式交卷，错题会自动进来。</div>'; return; }
+  var total = 0;
+  banksWithWrong.forEach(function(m){ total += EDU.bankState(m.id).wrong.length; });
+  var redo = document.createElement('button');
+  redo.className = 'btn sm';
+  redo.textContent = '▶ 全部重做（' + total + ' 题）';
+  redo.addEventListener('click', function(){
+    var ids = banksWithWrong.map(function(m){ return m.id; }).join(',');
+    go('quiz.html?wrong=1&banks=' + encodeURIComponent(ids));
+  });
+  fbar.appendChild(redo);
+  banksWithWrong.forEach(function(m, i){
+    var c = document.createElement('button');
+    c.className = 'chip' + (i === 0 ? ' on' : '');
+    c.textContent = m.title + ' ' + EDU.bankState(m.id).wrong.length;
+    c.addEventListener('click', function(){
+      fbar.querySelectorAll('.chip').forEach(function(x){ if (x !== redo) x.classList.remove('on'); });
+      c.classList.add('on');
+      showBank(m);
+    });
+    fbar.appendChild(c);
+  });
+  function showBank(m){
+    qlist.innerHTML = '<p class="muted" style="font-weight:700;padding:10px 4px">加载中…</p>';
+    EDU.loadBank(m.id).then(function(data){
+      qlist.innerHTML = '';
+      EDU.bankState(m.id).wrong.forEach(function(n){
+        var q = data.q.filter(function(x){ return x.n === n; })[0];
+        if (q) qlist.appendChild(buildQ(m, q, false));
+      });
+      if (!qlist.children.length) qlist.innerHTML = '<div class="empty">该题库暂无错题</div>';
+    });
+  }
+  showBank(banksWithWrong[0]);
+}
+
+/* ===== 构建一道带答案的题（星标/错题本用） ===== */
+function buildQ(m, q, starOn){
+  var el = document.createElement('div');
+  el.className = 'qcard';
+  el.style.marginTop = '14px';
+  var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答', mixed:''}[m.kind] || '';
+  var html = '<div class="qmeta"><span class="qno">第 ' + q.n + ' 题</span>' +
+    (kindName ? '<span class="qtag">' + kindName + '</span>' : '') +
+    '<span class="qtag">' + m.title + '</span>' +
+    '<button class="qstar' + (starOn ? ' on' : '') + '" title="星标">⭐</button></div>';
+  html += '<div class="qstem"></div>';
+  if (q.opts && q.opts.length){
+    html += '<div class="qopts">' + q.opts.map(function(o){
+      var mark = (q.ans && o[0] === q.ans) ? ' right' : '';
+      return '<div class="opt' + mark + '"><b>' + o[0] + '</b><span>' + o[1] + '</span></div>';
+    }).join('') + '</div>';
+  }
+  if (q.ans) html += '<div class="qsol"><div class="st"><span class="verdict ok">答案 ' + q.ans + '</span></div></div>';
+  if (q.sol) html += '<div class="qsol"><div class="st">解析</div><div class="sc"></div></div>';
+  if (q.tip) html += '<div class="qsol" style="background:rgba(155,93,229,.08);border-color:rgba(155,93,229,.3)"><div class="st">' +
+    (m.kind === 'interview' ? '答题思路' : '记忆提示') + '</div><div class="sc"></div></div>';
+  el.innerHTML = html;
+  el.querySelector('.qstem').textContent = q.stem + (q.ask ? '\n\n' + q.ask : '');
+  var scs = el.querySelectorAll('.sc');
+  if (q.sol && scs[0]) scs[0].textContent = q.sol;
+  if (q.tip && scs[1]) scs[1].textContent = q.tip;
+  var sbtn = el.querySelector('.qstar');
+  sbtn.addEventListener('click', function(){
+    var on = EDU.toggleStar(m.id, q.n);
+    sbtn.classList.toggle('on', on);
+    EDU.toast(on ? '已收藏 ⭐' : '已取消收藏');
+    if (!on && HASH === 'star') setTimeout(function(){ location.reload(); }, 600);
+  });
+  return el;
+}
+
+/* ===== 路由 ===== */
+EDU.loadProgress().then(function(){
+  if (HASH === 'star') renderStar();
+  else if (HASH === 'wrong') renderWrong();
+  else renderBanks();
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+</script>
+</body>
+</html>

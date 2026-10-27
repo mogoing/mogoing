@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>教资刷题 · 每日一题</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="教资刷题">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/edu.css">
+</head>
+<body>
+<div class="blob blob-a"></div><div class="blob blob-b"></div>
+
+<header class="topbar">
+  <a class="back" href="../main.html" title="返回首页">←</a>
+  <div class="tb-title">
+    <span class="em">🎓</span>
+    <div><h1>教资刷题</h1><small id="subline">小学教师资格证 · 笔试 + 面试</small></div>
+  </div>
+  <button class="theme-btn" title="切换深浅色">🌙</button>
+</header>
+
+<div class="wrap narrow">
+  <!-- 倒计时 + 打卡 -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px">
+    <span class="pill sun" id="cd">📅 考试倒计时</span>
+    <span class="pill mintp" id="streak">🔥 连续打卡 0 天</span>
+  </div>
+
+  <!-- 每日一题 -->
+  <section class="daily" id="dailySec">
+    <div class="daily-card">
+      <div class="daily-head">
+        <span class="dt">🎯 每日一题</span>
+        <span class="dd" id="dailyDate"></span>
+        <span class="streak flame" id="streakDots" title="最近 7 天"></span>
+      </div>
+      <div id="dailyBody"><p class="muted" style="font-weight:700">加载中…</p></div>
+    </div>
+  </section>
+
+  <!-- 框套框 -->
+  <div id="frames"></div>
+</div>
+
+<div class="toast"></div>
+<div class="syncbar"></div>
+
+<script src="js/common.js"></script>
+<script src="data/index.js"></script>
+<script>
+EDU.initTheme();
+var idx = window.EDU_INDEX || [];
+
+/* 倒计时 */
+(function(){
+  var d = EDU.examCountdown();
+  var el = document.getElementById('cd');
+  if (d === null) el.textContent = '📅 本轮考试已开考，关注下轮报名';
+  else if (d === 0) el.textContent = '📅 今天笔试！稳住，我们能赢';
+  else el.textContent = '📅 距笔试还有 ' + d + ' 天';
+})();
+
+/* 打卡展示 */
+function renderStreak(){
+  var s = EDU.streak();
+  document.getElementById('streak').textContent = '🔥 连续打卡 ' + s + ' 天';
+  var dots = '';
+  for (var i = 6; i >= 0; i--){
+    var d = new Date(); d.setDate(d.getDate() - i);
+    var key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+    dots += '<i class="' + (EDU.P.daily[key] ? 'on' : '') + '"></i>';
+  }
+  document.getElementById('streakDots').innerHTML = dots;
+}
+
+/* 每日一题 */
+function dateKey(){
+  var d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+function renderDaily(){
+  var body = document.getElementById('dailyBody');
+  document.getElementById('dailyDate').textContent = '今天 · ' + dateKey();
+  var pick = EDU.dailyPick(idx);
+  if (!pick){ body.innerHTML = '<p class="muted">题库为空</p>'; return; }
+  EDU.loadBank(pick.bank).then(function(data){
+    var q = data.q.filter(function(x){ return x.n === pick.n; })[0];
+    if (!q){ body.innerHTML = '<p class="muted">今日题目加载失败</p>'; return; }
+    var rec = EDU.dailyToday();
+    var el = document.createElement('div');
+    el.innerHTML = '<div class="daily-body"></div><div class="qopts"></div><div class="qsol" style="display:none"></div>';
+    el.querySelector('.daily-body').textContent = q.stem;
+    var opts = el.querySelector('.qopts');
+    var sol = el.querySelector('.qsol');
+    q.opts.forEach(function(o){
+      var b = document.createElement('button');
+      b.className = 'opt';
+      b.innerHTML = '<b>' + o[0] + '</b><span>' + o[1] + '</span>';
+      b.addEventListener('click', function(){
+        if (EDU.dailyToday()) return;
+        var right = o[0] === q.ans;
+        opts.querySelectorAll('.opt').forEach(function(x, i){
+          x.disabled = true;
+          if (q.opts[i][0] === q.ans) x.classList.add('right');
+          else if (x === b && !right) x.classList.add('wrong');
+        });
+        sol.style.display = '';
+        sol.innerHTML = '<div class="st">' + (right ? '答对了，漂亮 🎉' : '答错了，看解析 👇') +
+          '<span class="verdict ' + (right ? 'ok">正确答案 ' : 'ng">正确答案 ') + q.ans + '</span></div>' +
+          '<div>' + (q.sol || '') + '</div>';
+        EDU.dailyRecord(pick.dateKey, pick.bank, pick.n, o[0], right);
+        renderStreak();
+        EDU.toast(right ? '今日打卡完成 🔥' : '已打卡，记得看看解析');
+      });
+      opts.appendChild(b);
+    });
+    if (rec){
+      opts.querySelectorAll('.opt').forEach(function(x, i){
+        x.disabled = true;
+        if (q.opts[i][0] === q.ans) x.classList.add('right');
+        else if (q.opts[i][0] === rec.ans) x.classList.add('wrong');
+      });
+      sol.style.display = '';
+      sol.innerHTML = '<div class="st">今天已打卡 <span class="verdict ' + (rec.ok ? 'ok">答对' : 'ng">答错') +
+        '</span><span class="verdict ' + 'ok">正确答案 ' + q.ans + '</span></div>' +
+        '<div>' + (q.sol || '') + '</div>';
+    }
+    body.innerHTML = '';
+    body.appendChild(el);
+  }).catch(function(){
+    body.innerHTML = '<p class="muted">今日题目加载失败，请刷新重试</p>';
+  });
+}
+
+/* 框套框渲染 */
+function tile(m){
+  var p = EDU.bankProgress(m.id, m.count);
+  var kindName = {single:'单选', short:'简答', material:'材料', writing:'写作', design:'教学设计', interview:'问答', mixed:'整卷'}[m.kind] || '';
+  var em = {single:'✏️', short:'📝', material:'📄', writing:'🖋️', design:'📐', interview:'🎤', mixed:'🏆'}[m.kind] || '📘';
+  var color = {zhsz:'c-coral', jyjs:'c-mint', ms:'c-grape', mock:'c-sun'}[m.sub] || 'c-grape';
+  var t = document.createElement('button');
+  t.className = 'tile ' + color;
+  t.innerHTML = '<span class="te">' + em + '</span>' +
+    '<span class="tn">' + m.title + '</span>' +
+    '<span class="td">' + kindName + ' · ' + m.count + '题</span>' +
+    '<span class="bar"><i></i></span>' +
+    '<span class="tnum">' + (p[0] ? '已做 ' + p[0] + '/' + m.count : '未开始') + '</span>';
+  requestAnimationFrame(function(){ t.querySelector('.bar i').style.width = p[1] + '%'; });
+  t.addEventListener('click', function(){ location.href = 'quiz.html?bank=' + encodeURIComponent(m.id); });
+  return t;
+}
+function frame(title, desc, moreHref, moreText, tiles){
+  var sec = document.createElement('section');
+  sec.className = 'frame';
+  sec.innerHTML = '<div class="frame-h"><span class="ft">' + title + '</span><span class="fd">' + desc + '</span>' +
+    (moreHref ? '<a class="fmore" href="' + moreHref + '">' + moreText + ' →</a>' : '') + '</div>';
+  var g = document.createElement('div');
+  g.className = 'tiles';
+  tiles.forEach(function(x){ g.appendChild(x); });
+  sec.appendChild(g);
+  return sec;
+}
+function renderFrames(){
+  var box = document.getElementById('frames');
+  box.innerHTML = '';
+  var subs = [];
+  idx.forEach(function(m){ if (subs.indexOf(m.sub) < 0) subs.push(m.sub); });
+  var subMeta = { zhsz:'综合素质 · 科目一', jyjs:'教育教学知识与能力 · 科目二', mock:'整卷模考 · 120 分钟', ms:'结构化 + 答辩' };
+  subs.forEach(function(s){
+    var banks = idx.filter(function(m){ return m.sub === s; });
+    box.appendChild(frame(subMeta[s] || s, banks.length + ' 个题库', null, '', banks.map(tile)));
+  });
+  /* 我的框：汇总 / 星标 / 错题本 / 讲义 */
+  var tools = [
+    { t:'全部题目', d:'搜索 · 带答案', e:'🔎', h:'all.html' },
+    { t:'星标清单', d:'我收藏的题', e:'⭐', h:'list.html#star' },
+    { t:'错题本', d:'做错的题重做', e:'📕', h:'list.html#wrong' },
+    { t:'备考讲义', d:'58 份资料在线看', e:'📚', h:'doc.html' }
+  ];
+  var ft = tools.map(function(x){
+    var t = document.createElement('button');
+    t.className = 'tile c-grape';
+    t.innerHTML = '<span class="te">' + x.e + '</span><span class="tn">' + x.t + '</span><span class="td">' + x.d + '</span>';
+    t.addEventListener('click', function(){ location.href = x.h; });
+    return t;
+  });
+  box.appendChild(frame('我的', '汇总 · 收藏 · 错题 · 讲义', null, '', ft));
+}
+
+/* 启动 */
+EDU.loadProgress().then(function(synced){
+  if (!synced){
+    var u = EDU.user();
+    if (!u.ok) EDU.toast('未登录主站账号，进度不会保存', 3000);
+  }
+  renderStreak();
+  renderFrames();
+  renderDaily();
+});
+
+/* PWA 注册 */
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
