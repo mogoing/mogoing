@@ -58,7 +58,7 @@ video{width:100%;height:100%;object-fit:contain;background:#000}
 #slowTip .go{border:0;border-radius:9px;padding:5px 12px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
 #slowTip .go:active{transform:scale(.92)}
 #slowTip .x{border:0;background:transparent;color:#7d7aa8;font-size:14px;cursor:pointer;padding:2px}
-#toolRow{position:relative;z-index:30;display:flex;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+#toolRow{position:relative;z-index:30;display:none;align-items:center;gap:10px;padding:8px 12px;margin-top:8px;background:#0d1322;border-top:1px solid rgba(255,255,255,.06);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.35)} /* 省流按钮暂隐藏(换源后不用)，需要时改回 display:flex */
 @media (min-width:900px){#eps{justify-content:center;grid-template-columns:repeat(5,minmax(0,140px))}}
 </style></head><body>
 <div id="top"><button class="btn" id="btnBack">← 返回</button><div class="t">无可替代</div><button class="btn" id="btnHome">⌂ 主页</button></div>
@@ -319,7 +319,7 @@ function exitEco(keepPos){
   switchEp(cur,true);
 }
 function switchEp(n,fromEco){
-  if(n===cur&&v.src&&!fromEco)return;
+  if(n===cur&&!fromEco&&v.readyState>=2&&v.currentTime>0&&!v.paused)return;
   cur=n;
   if(played.indexOf(n)<0)played.push(n);
   var ep=EPS[n-1];
