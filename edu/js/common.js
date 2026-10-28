@@ -164,18 +164,16 @@ EDU.bankState = bankState;
 EDU.markDone = function(id, n, result, silent){ // result: 'right' | 'wrong' | 'done'；silent=true 时批量调用不逐题保存
   var s = bankState(id);
   s.done[n] = result;
-  var wi = s.wrong.indexOf(n);
   if (result === 'wrong'){
+    var wi = s.wrong.indexOf(n);
     if (wi < 0) s.wrong.push(n);
     var w = s.wrongStat[n] || { c: 0, t: 0, f: 0 };
     w.c = (w.c || 0) + 1;          // 累计做错次数
     w.t = Date.now();              // 最近一次做错时间
     if (!w.f) w.f = w.t;           // 首次做错时间
     s.wrongStat[n] = w;
-  } else {
-    if (wi >= 0) s.wrong.splice(wi, 1);
-    if (s.wrongStat[n]) delete s.wrongStat[n];  // 答对即移出错题本
   }
+  /* 答对不自动移出错题本：错过的题保留（次数/时间都在），由用户手动移出 */
   EDU.checkinToday();
   if (!silent) EDU.saveProgress(true);           // 每题立即落库（后端）
 };

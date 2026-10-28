@@ -249,6 +249,8 @@ function accCard(opts){
 function buildWrongCard(r, q){
   var m = r.bank;
   var key = m.id + ':' + r.n;
+  var doneMap = (EDU.P.banks[m.id] && EDU.P.banks[m.id].done) || {};
+  var mastered = doneMap[q.n] === 'right';
   var el = accCard({
     key: key,
     open: !!expanded[key],
@@ -256,6 +258,7 @@ function buildWrongCard(r, q){
     meta:
       '<span class="qno">第 ' + q.n + ' 题</span>' +
       '<span class="qtag wrongtag">错 ' + r.c + ' 次</span>' +
+      (mastered ? '<span class="qtag oktag">已答对</span>' : '<span class="qtag">待攻克</span>') +
       '<span class="qtag">' + fmtDate(r.t) + '</span>' +
       (editMode ? '<span class="seldot' + (selected[key] ? ' on' : '') + '"></span>'
                 : '<button class="qstar' + (EDU.isStar(m.id, q.n) ? ' on' : '') + '" title="星标">⭐</button>'),
