@@ -8,7 +8,7 @@ var CACHE_NAME = 'mogoing-pvz-v2';
  * 覆盖愤怒小鸟/割绳子/滑雪/登山赛车等 Ruffle 游戏的资源。
  * 命中 CacheStorage 直接返回（零网络、永不过期）；坏缓存/断流缓存自动删除重下。
  */
-var CACHE_AB = 'ab-v51';
+var CACHE_AB = 'ab-v52';
 var GZ_WASM = ['72a20ef1c0b8ceb37720.wasm', '826bb0938097485a2c9d.wasm'];
 var GZ_SIZE = { '72a20ef1c0b8ceb37720.wasm.gz': 4976993, '826bb0938097485a2c9d.wasm.gz': 4984326 };
 var FILE_SIZE = {
