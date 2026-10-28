@@ -97,8 +97,10 @@ EDU.loadProgress = function(){
     '&password=' + encodeURIComponent(u.pass) + '&game=' + GAME, { signal: AbortSignal.timeout(8000) })
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if (d && d.ok && d.save && d.save.data && typeof d.save.data === 'object'){
-        var data = d.save.data;
+      /* 后端把 POST 的 data 原样存在 save 上（save 就是数据本身）；
+         兼容旧写法 save.data，两种都认 */
+      if (d && d.ok && d.save && typeof d.save === 'object'){
+        var data = (d.save.data && typeof d.save.data === 'object') ? d.save.data : d.save;
         EDU.P = {
           banks: data.banks || {}, daily: data.daily || {},
           checkin: data.checkin || {}, mockHist: data.mockHist || []
