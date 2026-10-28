@@ -405,6 +405,12 @@
   #dlTotal i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FF6B6B,#FFD93D,#4ECDC4);border-radius:7px;transition:width .3s}
   #dlTotalT{font-size:13px;color:var(--muted);text-align:right;margin-top:2px;flex:none}
   #dlRows{overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1;padding-right:2px}
+  .dlctrls{display:flex;align-items:center;gap:10px;flex:none;font-size:12.5px;font-weight:700;color:var(--ink)}
+  .dlswitch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+  .dlswitch input{width:16px;height:16px;accent-color:#4CAF50;cursor:pointer}
+  .dlbtn{margin-left:auto;border:0;border-radius:999px;padding:7px 16px;font-size:12.5px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(135deg,#7ED957,#4CAF50);box-shadow:0 4px 12px rgba(76,175,80,.3)}
+  .dlbtn:disabled{opacity:.55;pointer-events:none}
+  .dlgchk{width:18px;height:18px;accent-color:#9B5DE5;flex:none;cursor:pointer}
   .dlrow{display:flex;align-items:center;gap:8px;background:#fff;border-radius:10px;padding:7px 10px;font-size:12px;color:var(--ink)}
   .dlrow .dn{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .dlrow .ds{min-width:50px;text-align:right;font-weight:800;color:var(--muted);font-size:12px}
@@ -515,6 +521,10 @@
       <h3>⬇️ 资源下载中心 <button id="dlClose">✕</button></h3>
       <div id="dlTotal"><i></i></div>
       <div id="dlTotalT">准备中…</div>
+      <div class="dlctrls">
+        <label class="dlswitch"><input type="checkbox" id="dlAuto"> 自动预下载</label>
+        <button class="dlbtn" id="dlStartBtn">开始下载</button>
+      </div>
       <div id="dlRows"></div>
     </div>
   </div>
@@ -1511,47 +1521,84 @@ var DL_LIST = [
   ['ab/wmw/media/wins.ogg',52632,'小鳄鱼 media/wins.ogg'],
   ['ab/wmw/media/winvoice.ogg',9748,'小鳄鱼 media/winvoice.ogg'],
 ];
-var dlTotalBytes = 0, dlGotBytes = 0, dlFailed = 0, dlBusy = false, dlAllDone = false;
+var dlTotalBytes = 0;
 DL_LIST.forEach(function(x){ dlTotalBytes += x[1]; });
 var goDl = document.getElementById('goDl');
 var dlMask = document.getElementById('dlMask');
 var dlRows = document.getElementById('dlRows');
 var dlTotalBar = document.querySelector('#dlTotal i');
 var dlTotalT = document.getElementById('dlTotalT');
+var dlAutoEl = document.getElementById('dlAuto');
+var dlStartBtn = document.getElementById('dlStartBtn');
 function fmtMB(n){ return (n/1048576).toFixed(1) + 'MB'; }
+
+/* ===== 增量记录：url -> 已下载的字节数。版本更新只补下变化/新增的文件 ===== */
+var DL_DONE_KEY = 'dl_done_map_v1';
+var DL_AUTO_KEY = 'dl_auto';
+var DL_PICK_KEY = 'dl_picked_v1';
+var dlDoneMap = {};
+try { dlDoneMap = JSON.parse(localStorage.getItem(DL_DONE_KEY) || '{}') || {}; } catch(e){ dlDoneMap = {}; }
+function dlSaveDone(){ try { localStorage.setItem(DL_DONE_KEY, JSON.stringify(dlDoneMap)); } catch(e){} }
+
+/* ===== 分组：自己选要下哪一组（勾选才下载） ===== */
+var DL_GROUP_NAMES = { flash:'Flash 游戏（Ruffle 模拟器）', ctr2:'割绳子', wmw:'小鳄鱼爱洗澡' };
+function dlGroupOf(x){
+  var p = x[0], nm = x[2];
+  if (/^ab\/wmw\//.test(p) || nm.indexOf('小鳄鱼') === 0) return 'wmw';
+  if (/^ab\/ctr2\//.test(p) || nm.indexOf('割绳子') === 0) return 'ctr2';
+  return 'flash';
+}
+var dlPicked = {};
+try { dlPicked = JSON.parse(localStorage.getItem(DL_PICK_KEY) || '{}') || {}; } catch(e){ dlPicked = {}; }
+['flash','ctr2','wmw'].forEach(function(g){ if (typeof dlPicked[g] !== 'boolean') dlPicked[g] = true; });
+function dlSavePicked(){ try { localStorage.setItem(DL_PICK_KEY, JSON.stringify(dlPicked)); } catch(e){} }
+
+var dlItems = [], dlGroups = {};
+var dlBusy = false, dlAllDone = false;
+function dlIsDone(it){ return dlDoneMap[it.url] === it.size; }
 function makeDlRow(name, size){
   var r = document.createElement('div');
   r.className = 'dlrow';
   r.innerHTML = '<span class="dn">' + name + '</span><span class="dbar"><i></i></span><span class="ds">' + fmtMB(size) + '</span>';
   return { el: r, bar: r.querySelector('.dbar i'), st: r.querySelector('.ds') };
 }
-var dlItems = [], dlGroups = {};
 DL_LIST.forEach(function(x){
-  var isCtr = x[2].indexOf('割绳子') === 0;
-  var isWmw = x[2].indexOf('小鳄鱼') === 0;
-  var isGrp = isCtr || isWmw;
-  var row = makeDlRow(isGrp ? x[2].replace(/^(割绳子|小鳄鱼) /, '') : x[2], x[1]);
+  var gid = dlGroupOf(x);
+  var g = dlGroups[gid] || (dlGroups[gid] = { id: gid, name: DL_GROUP_NAMES[gid], total: 0, done: 0, subs: [] });
+  var row = makeDlRow(x[2].replace(/^(割绳子|小鳄鱼) /, ''), x[1]);
+  row.el.classList.add('dlsub');
+  row.el.style.display = 'none';
   dlRows.appendChild(row.el);
-  var it = { name: x[2], url: x[0], size: x[1], el: row.el, bar: row.bar, st: row.st, done: false };
-  if (isGrp) {
-    it.el.classList.add('dlsub');
-    it.el.style.display = 'none';
-    var gname = isCtr ? '割绳子' : '小鳄鱼';
-    var g = dlGroups[gname] || (dlGroups[gname] = { name: gname, total: 0, done: 0, subs: [] });
-    it.g = g;
-    g.subs.push(it);
-    g.total++;
-  } else {
-    dlItems.push(it);
+  var it = { name: x[2], url: x[0], size: x[1], gid: gid, el: row.el, bar: row.bar, st: row.st, done: false };
+  it.done = dlIsDone(it);
+  g.subs.push(it); g.total++;
+  dlItems.push(it);
+  if (it.done){
+    it.el.className = 'dlrow dlsub ok';
+    it.st.textContent = '✅ 完整';
+    it.bar.style.width = '100%';
+    g.done++;
   }
 });
-/* 割绳子合并成一项：生成组行（显示 已下载/总数），点击展开/收起子项 */
-Object.keys(dlGroups).forEach(function(gname){
-  var g = dlGroups[gname];
-  var gr = makeDlRow(gname, 0);
+/* 每组一行：勾选框 + 组名 + 已下/总数，点组名展开子项 */
+Object.keys(dlGroups).forEach(function(gid){
+  var g = dlGroups[gid];
+  var gr = makeDlRow(g.name, 0);
   gr.el.classList.add('dlgroup');
   g.row = gr;
-  gr.st.textContent = '0/' + g.total;
+  var chk = document.createElement('input');
+  chk.type = 'checkbox';
+  chk.className = 'dlgchk';
+  chk.checked = !!dlPicked[gid];
+  chk.title = '勾选这一组才会下载';
+  chk.addEventListener('click', function(e){
+    e.stopPropagation();
+    dlPicked[gid] = chk.checked;
+    dlSavePicked();
+    dlRefresh();
+  });
+  gr.el.insertBefore(chk, gr.el.firstChild);
+  gr.st.textContent = g.done + '/' + g.total;
   var first = g.subs[0].el;
   dlRows.insertBefore(gr.el, first);
   gr.el.addEventListener('click', function(){
@@ -1561,80 +1608,81 @@ Object.keys(dlGroups).forEach(function(gname){
 });
 function dlRefreshGroup(g){
   if (!g || !g.row) return;
+  g.done = g.subs.filter(function(s){ return s.done; }).length;
   g.row.st.textContent = g.done + '/' + g.total;
   g.row.bar.style.width = (g.total ? Math.round(g.done / g.total * 100) : 0) + '%';
   g.row.el.title = g.name + ' ' + g.done + '/' + g.total;
 }
+/* 总进度只统计「勾选了的分组」。已下载过的文件不再重下。 */
 function dlRefresh(){
-  var pct = dlTotalBytes ? Math.round(dlGotBytes / dlTotalBytes * 100) : 0;
+  var tot = 0, got = 0;
+  dlItems.forEach(function(it){
+    if (!dlPicked[it.gid]) return;
+    tot += it.size;
+    if (it.done) got += it.size;
+  });
+  var pct = tot ? Math.round(got / tot * 100) : 100;
   dlTotalBar.style.width = pct + '%';
-  dlTotalT.textContent = fmtMB(dlGotBytes) + ' / ' + fmtMB(dlTotalBytes) + ' · ' + pct + '%';
-  if (dlBusy) { goDl.textContent = '⬇️ ' + pct + '%'; }
-  else if (dlAllDone && dlFailed === 0) { goDl.textContent = '✅ 已就绪'; goDl.classList.add('done'); }
-  else if (dlAllDone) { goDl.textContent = '⚠️ ' + dlFailed + '个失败'; }
+  dlTotalT.textContent = fmtMB(got) + ' / ' + fmtMB(tot) + ' · ' + pct + '%' + (tot ? '' : '（没有勾选任何分组）');
+  if (dlBusy){ goDl.textContent = '⬇️ ' + pct + '%'; goDl.classList.remove('done'); }
+  else if (tot && got < tot){ goDl.textContent = '⬇️ 按需下载'; goDl.classList.remove('done'); }
+  else if (tot){ goDl.textContent = '✅ 已就绪'; goDl.classList.add('done'); }
+  else { goDl.textContent = '⬇️ 下载中心'; goDl.classList.remove('done'); }
+  dlStartBtn.textContent = dlBusy ? '下载中…' : '开始下载';
+  dlStartBtn.disabled = dlBusy;
 }
 async function dlOne(it){
-  it.el.className = 'dlrow loading';
-  it.st.textContent = '下载中';
-  var got = null;
-  var cdn = 'https://cdn.jsdelivr.net/gh/mogoing/mogoing@main/';
-  for (var t = 0; t < 3 && got === null; t++){
-    var urls = [it.url, cdn + it.url];
-    for (var ui = 0; ui < urls.length && got === null; ui++){
-      try {
-        var r = await fetch(urls[ui], t > 0 ? { cache: 'reload' } : {});
-        if (!r.ok) continue;
-        var b = await r.arrayBuffer();
-        if (b.byteLength === it.size) got = b;
-      } catch(e){}
+  if (it.done) return;
+  it.el.className = 'dlrow dlsub loading';
+  it.st.textContent = '校验中';
+  var ok = false;
+  /* 1) 先查浏览器 / Service Worker 缓存：命中就不走网络（版本更新时大部分文件在这一步直接过） */
+  try {
+    if (window.caches && caches.match){
+      var hit = await caches.match(it.url);
+      if (hit){
+        var hb = await hit.arrayBuffer();
+        if (hb.byteLength === it.size) ok = true;
+      }
+    }
+  } catch(e){}
+  /* 2) 缓存没有才真正下载：原站 + jsDelivr 镜像，最多 3 轮 */
+  if (!ok){
+    it.st.textContent = '下载中';
+    var cdn = 'https://cdn.jsdelivr.net/gh/mogoing/mogoing@main/';
+    for (var t = 0; t < 3 && !ok; t++){
+      var urls = [it.url, cdn + it.url];
+      for (var ui = 0; ui < urls.length && !ok; ui++){
+        try {
+          var r = await fetch(urls[ui], t > 0 ? { cache: 'reload' } : {});
+          if (!r.ok) continue;
+          var b = await r.arrayBuffer();
+          if (b.byteLength === it.size) ok = true;
+        } catch(e){}
+      }
     }
   }
-  if (got) {
-    dlGotBytes += it.size;
+  if (ok){
     it.done = true;
-    it.el.className = 'dlrow ok';
+    dlDoneMap[it.url] = it.size;   // 记进增量清单，以后不再下
+    dlSaveDone();
+    it.el.className = 'dlrow dlsub ok';
     it.st.textContent = '✅ 完整';
     it.bar.style.width = '100%';
     it.el.title = '已下载完整 ' + fmtMB(it.size);
   } else {
-    dlFailed++;
-    it.el.className = 'dlrow fail';
+    it.el.className = 'dlrow dlsub fail';
     it.st.textContent = '失败';
   }
-  if (it.g) dlRefreshGroup(it.g);
+  if (dlGroups[it.gid]) dlRefreshGroup(dlGroups[it.gid]);
   dlRefresh();
 }
 async function dlStart(){
   if (dlBusy) return;
-  /* 本版本已下载完整过：直接标记就绪，不再重新下载 */
-  if (dlFailed === 0 && localStorage.getItem('dl_done') === DL_VER) {
-    dlGotBytes = dlTotalBytes;
-    dlAllDone = true;
-    dlItems.forEach(function(it){
-      it.done = true;
-      it.el.className = 'dlrow ok';
-      it.st.textContent = '✅ 完整';
-      it.bar.style.width = '100%';
-    });
-    Object.keys(dlGroups).forEach(function(gname){
-      var g = dlGroups[gname];
-      g.done = g.total;
-      g.subs.forEach(function(s){
-        s.done = true;
-        s.el.className = 'dlrow dlsub ok';
-        s.st.textContent = '✅ 完整';
-        s.bar.style.width = '100%';
-      });
-      dlRefreshGroup(g);
-    });
-    dlRefresh();
-    return;
-  }
-  dlBusy = true;
-  goDl.textContent = '⬇️ 开始…';
-  var allItems = dlItems.slice();
-  Object.keys(dlGroups).forEach(function(gname){ allItems = allItems.concat(dlGroups[gname].subs); });
-  var pend = allItems.filter(function(it){ return !it.done; });
+  /* 只下「勾选了的分组」里还没下过的文件（增量，不重下已完成） */
+  var pend = dlItems.filter(function(it){ return dlPicked[it.gid] && !it.done; });
+  if (!pend.length){ dlAllDone = true; dlRefresh(); return; }
+  dlBusy = true; dlRefresh();
   var CONC = 12, idx = 0;   /* 12 路并发下载，互不阻塞 */
   function dlWorker(){
     while (idx < pend.length) {
@@ -1649,18 +1697,24 @@ async function dlStart(){
   await Promise.all(wkers);
   dlBusy = false;
   dlAllDone = true;
-  if (dlFailed === 0) { try { localStorage.setItem('dl_done', DL_VER); } catch(e){} }
   dlRefresh();
 }
 goDl.addEventListener('click', function(){
   dlMask.classList.add('show');
-  if (!dlBusy && !dlAllDone) dlStart();
 });
 document.getElementById('dlClose').addEventListener('click', function(){ dlMask.classList.remove('show'); });
 dlMask.addEventListener('click', function(e){ if (e.target === dlMask) dlMask.classList.remove('show'); });
+dlStartBtn.addEventListener('click', function(){ if (!dlBusy) dlStart(); });
+/* 自动预下载开关：关掉后进页面不下载，只有点「开始下载」才按勾选的分组下载 */
+var dlAuto = true;
+try { dlAuto = localStorage.getItem(DL_AUTO_KEY) !== '0'; } catch(e){}
+dlAutoEl.checked = dlAuto;
+dlAutoEl.addEventListener('change', function(){
+  try { localStorage.setItem(DL_AUTO_KEY, dlAutoEl.checked ? '1' : '0'); } catch(e){}
+  if (dlAutoEl.checked) dlStart();
+});
 dlRefresh();
-/* 进页面自动开始预下载 */
-setTimeout(dlStart, 600);
+if (dlAuto) setTimeout(dlStart, 600);
 /* ===== 左上角 Logo 抽屉菜单 ===== */
 var _mu = document.getElementById('menuUser');
 if (_mu) { var _hl = document.getElementById('hello'); if (_hl) _mu.textContent = _hl.textContent; }
