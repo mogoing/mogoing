@@ -251,8 +251,8 @@ body{
 .bank-item .bi{flex:1;min-width:0}
 .bank-item .bt{font-size:15.5px;font-weight:800}
 .bank-item .bd{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
-.bank-item .bp{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:8px}
-.bank-item .bp i{display:block;height:100%;background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));border-radius:4px}
+.bank-item .bp{height:8px;border-radius:4px;background:var(--line);overflow:visible;margin-top:9px;position:relative}
+.bank-item .bp i{position:absolute;left:0;top:-2px;bottom:-2px;background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));border-radius:4px;transition:width .5s;min-width:0}
 .bank-item .bgo{flex:none;font-size:12.5px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--coral),var(--grape));padding:8px 16px;border-radius:999px}
 .filterbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 2px}
 .chip{
@@ -301,3 +301,38 @@ html[data-theme="dark"] .toast{background:rgba(240,235,250,.95);color:#332B48}
   .pos-tag{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ===== 刷题进度条（填充比轨道稍大） ===== */
+.pbar{height:9px;border-radius:999px;background:var(--line);overflow:visible;position:relative}
+.pbar i{position:absolute;left:0;top:-2px;bottom:-2px;border-radius:999px;background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));transition:width .35s;min-width:0}
+.pstat{text-align:center;font-size:12px;font-weight:800;color:var(--muted);margin-top:9px}
+
+/* ===== 错题本排序条 ===== */
+.sortbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 6px}
+.sortlab{font-size:12px;font-weight:800;color:var(--muted)}
+
+/* ===== 错题标记 / 多选 ===== */
+.qtag.wrongtag{background:rgba(229,72,77,.12);color:var(--ng);border-color:rgba(229,72,77,.35)}
+.seldot{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);margin-left:auto;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.seldot.on{background:linear-gradient(135deg,var(--grape),var(--pink));border-color:transparent}
+.seldot.on::after{content:"✓";color:#fff;font-size:13px;font-weight:800;line-height:1}
+.qcard.edit.sel{border:2px solid var(--grape);background:rgba(155,93,229,.05)}
+.qcard.edit{border:2px solid transparent}
+
+/* ===== 编辑模式底部操作栏 ===== */
+.editbar{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:120;
+  display:none;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+  border-radius:999px;padding:9px 16px;box-shadow:0 12px 30px rgba(155,93,229,.25);font-weight:800;font-size:13px;
+}
+.editbar.show{display:flex}
+
+/* ===== 居中二级确认弹窗 ===== */
+.modal{position:fixed;inset:0;z-index:300;background:rgba(20,15,35,.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:22px}
+.modal.show{display:flex}
+.modal-card{background:var(--card);border-radius:26px;box-shadow:0 24px 60px rgba(0,0,0,.32);padding:24px 20px 20px;width:min(100%,380px);text-align:center}
+.modal-card h3{font-size:17px;font-weight:800;margin-bottom:2px}
+.modal-actions{display:flex;gap:12px;margin-top:18px}
+.modal-actions .btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 10px;line-height:1.25;font-size:15px}
+.modal-actions .btn small{font-size:10.5px;font-weight:700;opacity:.9;display:block;line-height:1.35}
+.btn.ng{background:linear-gradient(135deg,var(--ng),#ff8a8d);box-shadow:0 8px 20px rgba(229,72,77,.3)}

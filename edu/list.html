@@ -23,6 +23,24 @@
 
 <div class="wrap narrow" id="main"></div>
 
+<!-- 编辑模式底部操作栏 -->
+<div class="editbar" id="editbar">
+  <span id="editCount">已选 0 题</span>
+  <button class="btn sm" id="doDelete">移出</button>
+  <button class="btn ghost sm" id="cancelEdit">取消</button>
+</div>
+
+<!-- 二级确认弹窗（屏幕中间） -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h3>确定移出错题本？</h3>
+    <div class="modal-actions">
+      <button class="btn ng" id="modalYes">移出<small>我会做下回肯定不会错啦！</small></button>
+      <button class="btn ghost" id="modalNo">取消<small>先留着，想再看看~</small></button>
+    </div>
+  </div>
+</div>
+
 <div class="toast"></div>
 <div class="syncbar"></div>
 
@@ -31,15 +49,29 @@
 <script>
 EDU.initTheme();
 var idx = window.EDU_INDEX || [];
-var QS = new URLSearchParams(location.search);
 var HASH = location.hash.replace('#','');
 
+var wrongSort = 'time';   // time 按时间 | count 按错误次数
+var editMode = false;
+var selected = {};        // "bankId:n" -> true
+var CUR_ROWS = [];        // 当前错题行（编辑删除用）
+
 function go(url){ location.href = url; }
+function setHead(t, s){
+  document.getElementById('h1').textContent = t;
+  document.getElementById('subline').textContent = s;
+}
+function p2(x){ return ('0' + x).slice(-2); }
+function fmtDate(ts){
+  if (!ts) return '较早';
+  var d = new Date(ts), now = new Date();
+  var sameYear = d.getFullYear() === now.getFullYear();
+  return (sameYear ? '' : d.getFullYear() + '-') + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+}
 
 /* ===== 默认视图：按科目分组列出题库 ===== */
 function renderBanks(){
-  document.getElementById('h1').textContent = '题库列表';
-  document.getElementById('subline').textContent = '点题库进考试模式 · 带答案浏览请进「全部题目」';
+  setHead('题库列表', '点题库进刷题 · 带答案浏览请进「资料」');
   var box = document.getElementById('main');
   box.innerHTML = '';
   var subs = [];
@@ -60,11 +92,11 @@ function renderBanks(){
         '<span class="be" style="background:linear-gradient(135deg,rgba(155,93,229,.15),rgba(255,157,226,.2))">' +
           ({single:'✏️',short:'📝',material:'📄',writing:'🖋️',design:'📐',interview:'🎤',mixed:'🏆'}[m.kind] || '📘') + '</span>' +
         '<div class="bi"><div class="bt">' + m.title + '</div>' +
-        '<div class="bd">' + kindName + ' · ' + m.count + '题 · 建议用时' + m.suggestMin + '分钟' +
+        '<div class="bd">' + kindName + ' · ' + m.count + '题 · 建议用时' + m.suggestMin + '分钟 · 已做 ' + p[0] + ' 题' +
           (st.star.length ? ' · ⭐' + st.star.length : '') +
           (m.kind === 'single' && st.wrong.length ? ' · 错题' + st.wrong.length : '') + '</div>' +
         '<div class="bp"><i style="width:' + p[1] + '%"></i></div></div>' +
-        '<span class="bgo">' + (p[0] ? '继续 ' + Math.min(p[0]+1, m.count) : '开始') + '</span>';
+        '<span class="bgo">' + (p[0] ? '继续' : '开始') + '</span>';
       item.addEventListener('click', function(){
         go('quiz.html?bank=' + encodeURIComponent(m.id));
       });
@@ -75,8 +107,7 @@ function renderBanks(){
 
 /* ===== 星标清单 ===== */
 function renderStar(){
-  document.getElementById('h1').textContent = '⭐ 星标清单';
-  document.getElementById('subline').textContent = '点 ⭐ 可取消收藏 · 答案直接显示';
+  setHead('⭐ 星标清单', '点 ⭐ 可取消收藏 · 答案直接显示');
   var box = document.getElementById('main');
   box.innerHTML = '<div class="filterbar" id="fbar"></div><div id="qlist"></div>';
   var fbar = document.getElementById('fbar'), qlist = document.getElementById('qlist');
@@ -97,7 +128,8 @@ function renderStar(){
     qlist.innerHTML = '<p class="muted" style="font-weight:700;padding:10px 4px">加载中…</p>';
     EDU.loadBank(m.id).then(function(data){
       qlist.innerHTML = '';
-      EDU.bankState(m.id).star.forEach(function(n){
+      var stars = EDU.bankState(m.id).star.slice();
+      stars.forEach(function(n){
         var q = data.q.filter(function(x){ return x.n === n; })[0];
         if (q) qlist.appendChild(buildQ(m, q, true));
       });
@@ -108,50 +140,147 @@ function renderStar(){
 }
 
 /* ===== 错题本 ===== */
-function renderWrong(){
-  document.getElementById('h1').textContent = '📕 错题本';
-  document.getElementById('subline').textContent = '交卷后做错的单选题自动收录 · 重做答对自动移出';
-  var box = document.getElementById('main');
-  box.innerHTML = '<div class="filterbar" id="fbar"></div><div id="qlist"></div>';
-  var fbar = document.getElementById('fbar'), qlist = document.getElementById('qlist');
-  var banksWithWrong = idx.filter(function(m){ return EDU.bankState(m.id).wrong.length; });
-  if (!banksWithWrong.length){ qlist.innerHTML = '<div class="empty">错题本是空的。去考试模式交卷，错题会自动进来。</div>'; return; }
-  var total = 0;
-  banksWithWrong.forEach(function(m){ total += EDU.bankState(m.id).wrong.length; });
-  var redo = document.createElement('button');
-  redo.className = 'btn sm';
-  redo.textContent = '▶ 全部重做（' + total + ' 题）';
-  redo.addEventListener('click', function(){
-    var ids = banksWithWrong.map(function(m){ return m.id; }).join(',');
-    go('quiz.html?wrong=1&banks=' + encodeURIComponent(ids));
-  });
-  fbar.appendChild(redo);
-  banksWithWrong.forEach(function(m, i){
-    var c = document.createElement('button');
-    c.className = 'chip' + (i === 0 ? ' on' : '');
-    c.textContent = m.title + ' ' + EDU.bankState(m.id).wrong.length;
-    c.addEventListener('click', function(){
-      fbar.querySelectorAll('.chip').forEach(function(x){ if (x !== redo) x.classList.remove('on'); });
-      c.classList.add('on');
-      showBank(m);
+function collectWrong(){
+  var rows = [];
+  idx.forEach(function(m){
+    var st = EDU.bankState(m.id);
+    st.wrong.forEach(function(n){
+      var info = EDU.wrongInfo(m.id, n);
+      rows.push({ bank: m, n: n, c: info.c, t: info.t });
     });
-    fbar.appendChild(c);
   });
-  function showBank(m){
-    qlist.innerHTML = '<p class="muted" style="font-weight:700;padding:10px 4px">加载中…</p>';
-    EDU.loadBank(m.id).then(function(data){
-      qlist.innerHTML = '';
-      EDU.bankState(m.id).wrong.forEach(function(n){
-        var q = data.q.filter(function(x){ return x.n === n; })[0];
-        if (q) qlist.appendChild(buildQ(m, q, false));
-      });
-      if (!qlist.children.length) qlist.innerHTML = '<div class="empty">该题库暂无错题</div>';
-    });
-  }
-  showBank(banksWithWrong[0]);
+  rows.sort(function(a, b){
+    if (wrongSort === 'count'){
+      return (b.c - a.c) || (b.t - a.t) || (a.bank.title < b.bank.title ? -1 : 1) || (a.n - b.n);
+    }
+    return (b.t - a.t) || (b.c - a.c) || (a.bank.title < b.bank.title ? -1 : 1) || (a.n - b.n);
+  });
+  return rows;
 }
 
-/* ===== 构建一道带答案的题（星标/错题本用） ===== */
+function renderWrong(){
+  setHead('📕 错题本', wrongSort === 'time' ? '按时间倒序 · 可切「按次数」· 可编辑删除' : '按做错次数排序 · 可切「按时间」· 可编辑删除');
+  var box = document.getElementById('main');
+  box.innerHTML =
+    '<div class="filterbar" id="fbar"></div>' +
+    '<div class="sortbar" id="sortbar"></div>' +
+    '<div id="qlist"></div>';
+  var fbar = document.getElementById('fbar'), sortbar = document.getElementById('sortbar'), qlist = document.getElementById('qlist');
+  var rows = collectWrong();
+  if (!rows.length){
+    qlist.innerHTML = '<div class="empty">错题本是空的。去刷题，答错的单选会自动进来。</div>';
+    updateEditbar();
+    return;
+  }
+  CUR_ROWS = rows;
+
+  var redo = document.createElement('button');
+  redo.className = 'btn sm';
+  redo.textContent = '▶ 全部重做（' + rows.length + ' 题）';
+  redo.addEventListener('click', function(){
+    var ids = [];
+    rows.forEach(function(r){ if (ids.indexOf(r.bank.id) < 0) ids.push(r.bank.id); });
+    go('quiz.html?wrong=1&banks=' + encodeURIComponent(ids.join(',')));
+  });
+  fbar.appendChild(redo);
+  var eb = document.createElement('button');
+  eb.className = 'btn ghost sm';
+  eb.textContent = editMode ? '✕ 退出编辑' : '✎ 编辑';
+  eb.addEventListener('click', function(){
+    editMode = !editMode; selected = {}; renderWrong();
+  });
+  fbar.appendChild(eb);
+
+  sortbar.innerHTML =
+    '<span class="sortlab">排序：</span>' +
+    '<button class="chip' + (wrongSort === 'time' ? ' on' : '') + '" data-s="time">🕒 按时间</button>' +
+    '<button class="chip' + (wrongSort === 'count' ? ' on' : '') + '" data-s="count">🔥 按次数</button>' +
+    (editMode ? '<span class="sortlab" style="margin-left:auto">点题目多选</span>' : '');
+  sortbar.querySelectorAll('.chip').forEach(function(b){
+    b.addEventListener('click', function(){
+      wrongSort = b.getAttribute('data-s');
+      renderWrong();
+    });
+  });
+
+  var ids = [];
+  rows.forEach(function(r){ if (ids.indexOf(r.bank.id) < 0) ids.push(r.bank.id); });
+  qlist.innerHTML = '<p class="muted" style="font-weight:700;padding:10px 4px">加载中…</p>';
+  Promise.all(ids.map(function(id){ return EDU.loadBank(id); })).then(function(datas){
+    var map = {};
+    ids.forEach(function(id, i){ map[id] = datas[i]; });
+    qlist.innerHTML = '';
+    var lastBank = null;
+    rows.forEach(function(r){
+      if (r.bank.id !== lastBank){
+        lastBank = r.bank.id;
+        var cnt = rows.filter(function(x){ return x.bank.id === r.bank.id; }).length;
+        qlist.insertAdjacentHTML('beforeend',
+          '<div class="frame-h" style="margin-top:16px"><span class="ft">' + r.bank.title + '</span><span class="fd">' + cnt + ' 题</span></div>');
+      }
+      var q = map[r.bank.id].q.filter(function(x){ return x.n === r.n; })[0];
+      if (q) qlist.appendChild(buildWrongCard(r, q));
+    });
+    updateEditbar();
+  });
+  updateEditbar();
+  if (editMode) document.getElementById('editbar').classList.add('show');
+  else document.getElementById('editbar').classList.remove('show');
+}
+
+function updateEditbar(){
+  var bar = document.getElementById('editbar');
+  var n = Object.keys(selected).length;
+  document.getElementById('editCount').textContent = '已选 ' + n + ' 题';
+  bar.classList.toggle('show', editMode);
+}
+
+function buildWrongCard(r, q){
+  var m = r.bank;
+  var key = m.id + ':' + r.n;
+  var el = document.createElement('div');
+  el.className = 'qcard' + (editMode ? ' edit' : '') + (selected[key] ? ' sel' : '');
+  el.style.marginTop = '14px';
+  if (editMode) el.style.cursor = 'pointer';
+  var html = '<div class="qmeta">' +
+    '<span class="qno">第 ' + q.n + ' 题</span>' +
+    '<span class="qtag wrongtag">错 ' + r.c + ' 次</span>' +
+    '<span class="qtag">' + fmtDate(r.t) + '</span>' +
+    (editMode ? '<span class="seldot' + (selected[key] ? ' on' : '') + '"></span>' : '<button class="qstar' + (EDU.isStar(m.id, q.n) ? ' on' : '') + '">⭐</button>') +
+  '</div>';
+  html += '<div class="qstem"></div>';
+  if (q.opts && q.opts.length){
+    html += '<div class="qopts">' + q.opts.map(function(o){
+      var mark = (q.ans && o[0] === q.ans) ? ' right' : '';
+      return '<div class="opt' + mark + '"><b>' + o[0] + '</b><span>' + (o[1] || '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+  if (q.ans) html += '<div class="qsol"><div class="st"><span class="verdict ok">答案 ' + q.ans + '</span></div></div>';
+  if (q.sol) html += '<div class="qsol"><div class="st">解析</div><div class="sc"></div></div>';
+  el.innerHTML = html;
+  el.querySelector('.qstem').textContent = (q.stem || '') + (q.ask ? '\n\n' + q.ask : '');
+  var scs = el.querySelectorAll('.sc');
+  if (q.sol && scs[0]) scs[0].textContent = q.sol;
+  var sb = el.querySelector('.qstar');
+  if (sb) sb.addEventListener('click', function(e){
+    e.stopPropagation();
+    var on = EDU.toggleStar(m.id, q.n);
+    sb.classList.toggle('on', on);
+    EDU.toast(on ? '已收藏 ⭐' : '已取消收藏');
+  });
+  if (editMode){
+    el.addEventListener('click', function(){
+      if (selected[key]) delete selected[key]; else selected[key] = { id: m.id, n: q.n };
+      el.classList.toggle('sel', !!selected[key]);
+      var dot = el.querySelector('.seldot');
+      if (dot) dot.classList.toggle('on', !!selected[key]);
+      updateEditbar();
+    });
+  }
+  return el;
+}
+
+/* ===== 构建一道带答案的题（星标用） ===== */
 function buildQ(m, q, starOn){
   var el = document.createElement('div');
   el.className = 'qcard';
@@ -182,14 +311,49 @@ function buildQ(m, q, starOn){
     var on = EDU.toggleStar(m.id, q.n);
     sbtn.classList.toggle('on', on);
     EDU.toast(on ? '已收藏 ⭐' : '已取消收藏');
-    if (!on && HASH === 'star') setTimeout(function(){ location.reload(); }, 600);
+    if (!on && HASH === 'star'){
+      // 取消后从清单移除
+      el.style.transition = 'opacity .25s';
+      el.style.opacity = '0';
+      setTimeout(function(){ el.remove(); }, 250);
+    }
   });
   return el;
 }
 
+/* ===== 编辑删除 ===== */
+document.getElementById('doDelete').addEventListener('click', function(){
+  var keys = Object.keys(selected);
+  if (!keys.length){ EDU.toast('先点题目选几道再删'); return; }
+  document.getElementById('modal').classList.add('show');
+});
+document.getElementById('cancelEdit').addEventListener('click', function(){
+  editMode = false; selected = {};
+  document.getElementById('editbar').classList.remove('show');
+  renderWrong();
+});
+document.getElementById('modalNo').addEventListener('click', function(){
+  document.getElementById('modal').classList.remove('show');
+});
+document.getElementById('modal').addEventListener('click', function(e){
+  if (e.target === this) this.classList.remove('show');
+});
+document.getElementById('modalYes').addEventListener('click', function(){
+  var keys = Object.keys(selected);
+  keys.forEach(function(k){
+    var v = selected[k];
+    EDU.removeWrong(v.id, v.n);
+  });
+  document.getElementById('modal').classList.remove('show');
+  EDU.toast('已移出 ' + keys.length + ' 道错题');
+  selected = {};
+  renderWrong();
+});
+
 /* ===== 路由 ===== */
-if (!HASH){ location.replace('zuoti.html'); } // 默认视图已由做题页承担
-EDU.loadProgress().then(function(){
+if (!HASH){ location.replace('zuoti.html'); }
+EDU.loadProgress().then(function(synced){
+  if (!synced) EDU.toast('未登录主站账号，进度不会保存', 3200);
   if (!HASH) return;
   if (HASH === 'star') renderStar();
   else if (HASH === 'wrong') renderWrong();

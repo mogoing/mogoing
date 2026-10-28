@@ -15,7 +15,7 @@
   <a class="back" href="index.html" title="返回模块首页" aria-label="返回模块首页"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><path d="M19 12H5" stroke="var(--ink)"/><path d="M11 18l-6-6 6-6" stroke="var(--ink)"/></svg></a>
   <div class="tb-title">
     <span class="em">✏️</span>
-    <div><h1>做题</h1><small>分科目章节练 · 做到哪了接着刷</small></div>
+    <div><h1>刷题</h1><small>随机出题 · 答对不再出现 · 答错反复刷</small></div>
   </div>
   <button class="theme-btn" title="切换深浅色">🌙</button>
 </header>
@@ -54,11 +54,11 @@ function renderBanks(){
         '<span class="be" style="background:linear-gradient(135deg,rgba(155,93,229,.15),rgba(255,157,226,.2))">' +
           ({single:'✏️',short:'📝',material:'📄',writing:'🖋️',design:'📐',interview:'🎤'}[m.kind] || '📘') + '</span>' +
         '<div class="bi"><div class="bt">' + m.title + '</div>' +
-        '<div class="bd">' + kindName + ' · ' + m.count + '题 · 建议用时' + m.suggestMin + '分钟' +
+        '<div class="bd">' + kindName + ' · ' + m.count + '题 · 建议用时' + m.suggestMin + '分钟 · 已做 ' + p[0] + ' 题' +
           (st.star.length ? ' · ⭐' + st.star.length : '') +
           (st.wrong.length ? ' · 错题' + st.wrong.length : '') + '</div>' +
-        '<div style="height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:8px"><i style="display:block;height:100%;width:' + p[1] + '%;background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));border-radius:4px"></i></div></div>' +
-        '<span class="bgo">' + (p[0] ? '继续 ' + Math.min(p[0]+1, m.count) : '开始') + '</span>';
+        '<div class="bp"><i style="width:' + p[1] + '%"></i></div></div>' +
+        '<span class="bgo">' + (p[0] ? '继续' : '开始') + '</span>';
       item.addEventListener('click', function(){
         location.href = 'quiz.html?bank=' + encodeURIComponent(m.id);
       });

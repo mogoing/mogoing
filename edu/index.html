@@ -36,8 +36,8 @@
   <div class="big3">
     <button class="big-card zzt" id="cardZuo">
       <span class="be">✏️</span>
-      <span class="bt">做题</span>
-      <span class="bd">分科目章节练<br>做到哪了接着刷</span>
+      <span class="bt">刷题</span>
+      <span class="bd">随机出题<br>答对不再出现 · 答错反复刷</span>
     </button>
     <button class="big-card kaos" id="cardKao">
       <span class="be">🏆</span>
@@ -94,7 +94,7 @@ function renderStreak(){
   for (var i = 6; i >= 0; i--){
     var d = new Date(); d.setDate(d.getDate() - i);
     var key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    dots += '<i class="' + (EDU.P.daily[key] ? 'on' : '') + '"></i>';
+    dots += '<i class="' + (EDU.isCheckin(key) ? 'on' : '') + '"></i>';
   }
   document.getElementById('streakDots').innerHTML = dots;
   var sn = 0, wn = 0;

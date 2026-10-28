@@ -39,7 +39,7 @@ EDU.toast = function(msg, ms){
 /* ===== 后端同步（进度只存后端，不做本地兜底） ===== */
 var API = 'https://api.mogoing.xyz';
 var GAME = 'edu_v1';
-var _saveTimer = null, _saving = false, _dirty = false;
+var _saveTimer = null, _saving = false, _dirty = false, _pending = false;
 
 function syncbar(show, text){
   var el = document.querySelector('.syncbar');
@@ -58,10 +58,37 @@ EDU.user = function(){
   return { name: u, pass: p, offline: off, ok: !!(u && p) && !off };
 };
 
-/* 进度数据：{ banks:{id:{done:{n:'right|wrong|done'},wrong:[n],star:[n],draft:{...}}}, daily:{date:{n,bank,ans,ok}}, mockHist:[] } */
-EDU.P = { banks: {}, daily: {}, mockHist: [] };
+/* 进度数据：{ banks:{id:{done:{n:'right|wrong|done'},wrong:[n],wrongStat:{n:{c:次数,t:最近错误时间,f:首次}},star:[n],draft:{...}}}, daily:{date:{n,bank,ans,ok}}, checkin:{date:ts}, mockHist:[] } */
+EDU.P = { banks: {}, daily: {}, checkin: {}, mockHist: [] };
 EDU.loaded = false;     // 后端进度是否已拉取
 EDU.readonly = true;    // true=游客/离线，只可看不可记
+
+/* 老数据迁移：wrong 是老版数字数组，补上错误次数/时间；checkin 缺失则补空 */
+function migrate(){
+  if (!EDU.P.checkin || typeof EDU.P.checkin !== 'object') EDU.P.checkin = {};
+  var banks = EDU.P.banks || {};
+  Object.keys(banks).forEach(function(id){
+    var s = banks[id];
+    if (!s || typeof s !== 'object') return;
+    if (!Array.isArray(s.wrong)) s.wrong = [];
+    if (!Array.isArray(s.star)) s.star = [];
+    if (!s.done || typeof s.done !== 'object') s.done = {};
+    if (!s.wrongStat || typeof s.wrongStat !== 'object') s.wrongStat = {};
+    // 老错题：没有次数/时间，补 c=1, t=0（表示时间未知）
+    s.wrong.forEach(function(n){
+      if (!s.wrongStat[n]) s.wrongStat[n] = { c: 1, t: 0, f: 0 };
+    });
+    // 已不在 wrong 里的残留记录清掉
+    Object.keys(s.wrongStat).forEach(function(k){
+      if (s.wrong.indexOf(Number(k)) < 0) delete s.wrongStat[k];
+    });
+  });
+  // 有每日一题记录的日子也算打卡（老数据兼容）
+  Object.keys(EDU.P.daily || {}).forEach(function(k){
+    if (!EDU.P.checkin[k]) EDU.P.checkin[k] = 1;
+  });
+}
+EDU.migrate = migrate;
 
 EDU.loadProgress = function(){
   var u = EDU.user();
@@ -74,9 +101,10 @@ EDU.loadProgress = function(){
         var data = d.save.data;
         EDU.P = {
           banks: data.banks || {}, daily: data.daily || {},
-          mockHist: data.mockHist || []
+          checkin: data.checkin || {}, mockHist: data.mockHist || []
         };
       }
+      migrate();
       EDU.loaded = true; EDU.readonly = false;
       return true;
     })
@@ -88,9 +116,12 @@ EDU.saveProgress = function(immediate){
   if (EDU.readonly) return;
   _dirty = true;
   if (_saveTimer && !immediate) return;
+  if (immediate && _saveTimer){ clearTimeout(_saveTimer); _saveTimer = null; }
   var doSave = function(){
     _saveTimer = null;
-    if (!_dirty || _saving) return;
+    if (!_dirty) return;
+    // 正在保存时不丢改动：标记 pending，等这次保存结束后再补一次
+    if (_saving){ _pending = true; return; }
     _saving = true; _dirty = false;
     syncbar(true);
     var u = EDU.user();
@@ -98,51 +129,81 @@ EDU.saveProgress = function(immediate){
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: u.name, password: u.pass, game: GAME, data: EDU.P }),
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(10000)
     }).then(function(r){ return r.json(); }).then(function(d){
       _saving = false;
-      if (d && d.ok) syncbar(false);
-      else { syncbar(true, '⚠️ 同步失败，稍后重试'); setTimeout(function(){ syncbar(false); }, 3000); EDU.saveProgress(); }
+      if (d && d.ok){ syncbar(false); }
+      else { syncbar(true, '⚠️ 同步失败，稍后重试'); setTimeout(function(){ syncbar(false); }, 3000); _dirty = true; EDU.saveProgress(); }
     }).catch(function(){
       _saving = false; syncbar(true, '⚠️ 网络不稳，稍后重试');
       setTimeout(function(){ syncbar(false); }, 3000);
+      _dirty = true;
       EDU.saveProgress(); // 重试一次
+    }).then(function(){
+      if (_pending){ _pending = false; if (_dirty) EDU.saveProgress(true); }
     });
   };
   if (immediate) doSave();
-  else _saveTimer = setTimeout(doSave, 2000);
+  else _saveTimer = setTimeout(doSave, 800);
 };
 
 /* ===== 题库进度操作 ===== */
 function bankState(id){
-  if (!EDU.P.banks[id]) EDU.P.banks[id] = { done: {}, wrong: [], star: [], draft: null };
+  if (!EDU.P.banks[id]) EDU.P.banks[id] = { done: {}, wrong: [], wrongStat: {}, star: [], draft: null };
   var s = EDU.P.banks[id];
   if (!s.done) s.done = {};
   if (!s.wrong) s.wrong = [];
+  if (!s.wrongStat) s.wrongStat = {};
   if (!s.star) s.star = [];
   return s;
 }
 EDU.bankState = bankState;
 
-EDU.markDone = function(id, n, result){ // result: 'right' | 'wrong' | 'done'
+EDU.markDone = function(id, n, result, silent){ // result: 'right' | 'wrong' | 'done'；silent=true 时批量调用不逐题保存
   var s = bankState(id);
   s.done[n] = result;
   var wi = s.wrong.indexOf(n);
-  if (result === 'wrong'){ if (wi < 0) s.wrong.push(n); }
-  else if (wi >= 0) s.wrong.splice(wi, 1);
-  EDU.saveProgress();
+  if (result === 'wrong'){
+    if (wi < 0) s.wrong.push(n);
+    var w = s.wrongStat[n] || { c: 0, t: 0, f: 0 };
+    w.c = (w.c || 0) + 1;          // 累计做错次数
+    w.t = Date.now();              // 最近一次做错时间
+    if (!w.f) w.f = w.t;           // 首次做错时间
+    s.wrongStat[n] = w;
+  } else {
+    if (wi >= 0) s.wrong.splice(wi, 1);
+    if (s.wrongStat[n]) delete s.wrongStat[n];  // 答对即移出错题本
+  }
+  EDU.checkinToday();
+  if (!silent) EDU.saveProgress(true);           // 每题立即落库（后端）
 };
 EDU.markWrongResolved = function(id, n){
   var s = bankState(id);
   var wi = s.wrong.indexOf(n);
   if (wi >= 0) s.wrong.splice(wi, 1);
-  EDU.saveProgress();
+  if (s.wrongStat[n]) delete s.wrongStat[n];
+  EDU.saveProgress(true);
+};
+/* 移出错题本（手动编辑删除用），保留 done 不变 */
+EDU.removeWrong = function(id, n){
+  var s = bankState(id);
+  var wi = s.wrong.indexOf(n);
+  if (wi >= 0) s.wrong.splice(wi, 1);
+  if (s.wrongStat[n]) delete s.wrongStat[n];
+  EDU.saveProgress(true);
+};
+/* 某题的错误信息 {c:次数, t:最近时间, f:首次时间} */
+EDU.wrongInfo = function(id, n){
+  var s = EDU.P.banks[id];
+  var w = s && s.wrongStat && s.wrongStat[n];
+  return w ? { c: w.c || 1, t: w.t || 0, f: w.f || 0 } : { c: 1, t: 0, f: 0 };
 };
 EDU.toggleStar = function(id, n){
   var s = bankState(id);
   var i = s.star.indexOf(n);
   if (i >= 0) s.star.splice(i, 1); else s.star.push(n);
-  EDU.saveProgress();
+  EDU.checkinToday();
+  EDU.saveProgress(true);           // 星标改动立即落库
   return i < 0; // 返回是否已 star
 };
 EDU.isStar = function(id, n){
@@ -190,19 +251,42 @@ EDU.dailyToday = function(){ // 今日是否已答
   var key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
   return EDU.P.daily[key] || null;
 };
+function dayKey(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+EDU.dayKey = dayKey;
+function stampOf(k){
+  var p = String(k).split('-');
+  return new Date(+p[0], +p[1] - 1, +p[2]).getTime();
+}
+EDU.checkinToday = function(){ // 今天打卡（做题/星标/每日一题都会触发，后端保存）
+  if (!EDU.P.checkin) EDU.P.checkin = {};
+  var k = dayKey();
+  if (!EDU.P.checkin[k]) EDU.P.checkin[k] = Date.now();
+  var ks = Object.keys(EDU.P.checkin);
+  if (ks.length > 400){
+    ks.sort(function(a, b){ return stampOf(a) - stampOf(b); });
+    while (ks.length > 400) delete EDU.P.checkin[ks.shift()];
+  }
+};
+EDU.isCheckin = function(k){
+  return !!((EDU.P.checkin && EDU.P.checkin[k]) || (EDU.P.daily && EDU.P.daily[k]));
+};
 EDU.dailyRecord = function(key, bank, n, ans, ok){
   EDU.P.daily[key] = { n: n, bank: bank, ans: ans, ok: ok };
   // 保留最近 120 天
-  var keys = Object.keys(EDU.P.daily).sort();
+  var keys = Object.keys(EDU.P.daily).sort(function(a, b){ return stampOf(a) - stampOf(b); });
   while (keys.length > 120){ delete EDU.P.daily[keys.shift()]; }
-  EDU.saveProgress();
+  EDU.checkinToday();
+  EDU.saveProgress(true);
 };
-EDU.streak = function(){ // 连续打卡天数
+EDU.streak = function(){ // 连续打卡天数（今天没打卡则从昨天数起）
   var s = 0, d = new Date();
-  if (!EDU.dailyToday()){ d.setDate(d.getDate() - 1); }
+  if (!EDU.isCheckin(dayKey(d))) d.setDate(d.getDate() - 1);
   for(;;){
-    var key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    if (EDU.P.daily[key]){ s++; d.setDate(d.getDate() - 1); }
+    var key = dayKey(d);
+    if (EDU.isCheckin(key)){ s++; d.setDate(d.getDate() - 1); }
     else break;
   }
   return s;
