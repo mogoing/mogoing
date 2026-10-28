@@ -1866,7 +1866,6 @@ function dlRefreshTotal(){
   dlTotalBar.style.width = pct + '%';
   dlTotalT.textContent = fmtMB(got) + ' / ' + fmtMB(tot) + ' · ' + pct + '%';
   if (tot && got >= tot){ goDl.textContent = '✅ 已就绪'; goDl.classList.add('done'); }
-  else if (got > 0){ goDl.textContent = '⬇️ ' + pct + '%'; goDl.classList.remove('done'); }
   else { goDl.textContent = '⬇️ 下载中心'; goDl.classList.remove('done'); }
 }
 

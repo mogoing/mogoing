@@ -3,7 +3,7 @@
  * 之后进入直接读缓存（秒开、离线可玩）；
  * 版本更新（version.json 变化 -> pvz.html 带参重载 -> 注册 sw.js?v=N）时自动清旧缓存重新缓存。
  */
-var CACHE_NAME = 'mogoing-pvz';
+var CACHE_NAME = 'mogoing-pvz-v2';
 /* ---- ab/（Flash 游戏）持久缓存：字节校验 + gz 解压 + 独立缓存 ----
  * 覆盖愤怒小鸟/割绳子/滑雪/登山赛车等 Ruffle 游戏的资源。
  * 命中 CacheStorage 直接返回（零网络、永不过期）；坏缓存/断流缓存自动删除重下。
@@ -679,16 +679,20 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
+  /* ---- 其它资源：网络优先（拿到的永远是完整的），离线才用缓存 ----
+     之前是「缓存优先」，一旦某次网络中断把半截响应缓存进去，游戏就会一直卡 0%，
+     所以这里改成网络优先，成功响应覆盖缓存，坏缓存不再长期生效。 */
   e.respondWith(
-    caches.match(req).then(function(hit) {
-      if (hit) return hit;                       // 命中缓存：不再下载
-      return fetch(req).then(function(res) {     // 首次：下载并缓存
-        if (res && res.status === 200) {
-          var copy = res.clone();
-          caches.open(CACHE_NAME).then(function(c) { c.put(req, copy); });
-        }
-        return res;
-      }).catch(function() { return hit; });
+    fetch(req).then(function(res) {
+      if (res && res.status === 200) {
+        var copy = res.clone();
+        caches.open(CACHE_NAME).then(function(c) { c.put(req, copy); }).catch(function(){});
+      }
+      return res;
+    }).catch(function() {
+      return caches.match(req).then(function(hit) {
+        return hit || new Response('', { status: 504, statusText: 'offline' });
+      });
     })
   );
 
