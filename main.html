@@ -1664,7 +1664,7 @@ var DL_LIST = [
   ['kagit-kart/docs/shots/podium.jpg',189192,'纸卡丁车 podium.jpg'],
   ['kagit-kart/docs/shots/title.jpg',131918,'纸卡丁车 title.jpg'],
   ['kagit-kart/docs/shots/track-select.jpg',178612,'纸卡丁车 track-select.jpg'],
-  ['kagit-kart/index.html',1620,'纸卡丁车 index.html'],
+  ['kagit-kart/index.html',1997,'纸卡丁车 index.html'],
   ['kagit-kart/lib/three/addons/utils/BufferGeometryUtils.js',37712,'纸卡丁车 BufferGeometryUtils.js'],
   ['kagit-kart/lib/three/three.core.js',1458113,'纸卡丁车 three.core.js'],
   ['kagit-kart/lib/three/three.module.js',662772,'纸卡丁车 three.module.js'],
@@ -1791,7 +1791,7 @@ var DL_LIST = [
   ['ab/ctr2/crawl.py',2995,'割绳子 crawl.py'],
   ['ab/ctr2/crawl2.py',1835,'割绳子 crawl2.py'],
   ['ab/ctr2/crawl3.py',1908,'割绳子 crawl3.py'],
-  ['ab/ctr2/ctrr.js',374328,'割绳子 ctrr.js'],
+  ['ab/ctr2/ctrr.js',374324,'割绳子 ctrr.js'],
   ['ab/ctr2/game.html',10166,'割绳子 game.html'],
   ['ab/ctr2/html5games/gameapi/detection.js',2305,'割绳子 detection.js'],
   ['ab/ctr2/html5games/gameapi/famobi_analytics_v1.js',10320,'割绳子 famobi_analytics_v1.js'],
@@ -2042,46 +2042,51 @@ var DL_SOURCES = [
   function(u){ return u; }   /* 最后才回源站（github.io） */
 ];
 function dlFetchUrl(url, size){
-  return fetch(url, { cache: 'no-store' }).then(function(r){
+  var ctl = new AbortController();
+  var timer = setTimeout(function(){ try { ctl.abort(); } catch(e){} }, 45000);  /* 45 秒超时，防止某个源卡住 */
+  return fetch(url, { cache: 'no-store', signal: ctl.signal }).then(function(r){
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.arrayBuffer().then(function(b){
-      if (b.byteLength !== size) throw new Error('size ' + b.byteLength);
-      return true;
+      clearTimeout(timer);
+      if (!b.byteLength) throw new Error('empty');
+      /* 大小和清单不一致也接受：说明仓库里的文件更新过，由调用方更新记录（自愈，不会再卡死） */
+      return b.byteLength;
     });
-  });
+  }, function(e){ clearTimeout(timer); throw e; });
 }
 function dlRace(urls, size){
   return new Promise(function(resolve){
     var done = false, fails = 0;
     urls.forEach(function(u){
-      dlFetchUrl(u, size).then(function(){
-        if (!done){ done = true; resolve(true); }
+      dlFetchUrl(u, size).then(function(n){
+        if (!done){ done = true; resolve(n); }
       }, function(){
         fails++;
-        if (!done && fails === urls.length){ done = true; resolve(false); }
+        if (!done && fails === urls.length){ done = true; resolve(0); }
       });
     });
   });
 }
 async function dlFetchOne(it){
-  if (dlDoneMap[it.url] === it.size) return true;
+  if (dlDoneMap[it.url] === it.size) return it.size;   /* 已下载 */
   try {
     if (window.caches && caches.match){
       var hit = await caches.match(it.url);
       if (hit){
         var hb = await hit.arrayBuffer();
-        if (hb.byteLength === it.size) return true;
+        if (hb.byteLength === it.size) return it.size;  /* 缓存命中且大小一致 */
       }
     }
   } catch(err){}
   var urls = DL_SOURCES.map(function(f){ return f(it.url); });
   /* 1) 最快的两个源同时竞速 */
-  if (await dlRace(urls.slice(0, 2), it.size)) return true;
+  var n = await dlRace(urls.slice(0, 2), it.size);
+  if (n) return n;
   /* 2) 剩下的依次尝试 */
   for (var i = 2; i < urls.length; i++){
-    try { if (await dlFetchUrl(urls[i], it.size)) return true; } catch(err){}
+    try { var m = await dlFetchUrl(urls[i], it.size); if (m) return m; } catch(err){}
   }
-  return false;
+  return 0;   /* 失败 */
 }
 async function dlStartGroup(g){
   if (g.busy) return;
@@ -2093,8 +2098,14 @@ async function dlStartGroup(g){
   async function worker(){
     while (idx < pend.length){
       var it = pend[idx++];
-      var ok = await dlFetchOne(it);
-      if (ok){ dlDoneMap[it.url] = it.size; okN++; } else failN++;
+      var n = await dlFetchOne(it);
+      if (n){
+        if (n !== it.size){          /* 仓库里文件更新过：按实际大小更新记录，避免永远卡在某个百分比 */
+          it.size = n;
+          g.total = g.items.reduce(function(a, x){ return a + x.size; }, 0);
+        }
+        dlDoneMap[it.url] = it.size; okN++;
+      } else failN++;
       dlRefreshGroup(g);                              /* 每个文件都刷新进度 */
       if ((okN + failN) % 20 === 0) dlSaveDone();     /* 每 20 个存一次盘 */
     }
@@ -2103,8 +2114,10 @@ async function dlStartGroup(g){
   for (var w = 0; w < Math.min(CONC, pend.length); w++) wk.push(worker());
   await Promise.all(wk);
   dlSaveDone();
+  dlStartTs = 0; dlStartGot = 0;                      /* 下载结束：速度归零，不再显示残留网速 */
   g.busy = false;
   dlRefreshGroup(g);
+  dlRefreshTotal();
   if (failN) toast('「' + g.name + '」有 ' + failN + ' 个文件失败，再点一次下载会重试');
   else toast('「' + g.name + '」下载完成 ✅');
 }
