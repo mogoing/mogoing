@@ -462,6 +462,89 @@
   .menu-btn.coral{background:linear-gradient(135deg,#FF6B6B,#FF4D6D)}
   .menu-btn.red{background:linear-gradient(135deg,#E53935,#C62828)}
   .menu-btn .badge{margin-left:auto;background:#fff;color:#E53935;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:800}
+
+  /* ===== 新版游戏墙（v4）：觉醒射手座 · 食梦紫罗 · 安琪拉试验机 ===== */
+  #app .stage{display:block;padding:0}
+  .wall{display:flex;flex-direction:column;gap:26px}
+  .sec-frame{background:#FCEFD4;border-radius:12px;padding:14px 10px 7px;
+    box-shadow:0 10px 22px rgba(155,93,229,.08),inset 0 0 0 1px rgba(201,160,96,.16)}
+  .sec-head{margin:0 8px 12px}
+  .sec-head b{font-size:clamp(17px,2.2vw,20px);font-weight:900;color:var(--ink);letter-spacing:1px}
+
+  /* 觉醒射手座：3 张主推大卡（外框小圆角 + 内嵌大圆角） */
+  .hero-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .hero-card{position:relative;display:flex;padding:4px;min-width:0;border-radius:12px;cursor:pointer;
+    background:#FFDCE9;box-shadow:0 12px 26px rgba(229,120,160,.18);
+    transition:transform .18s,box-shadow .25s}
+  .hero-card:hover{transform:translateY(-4px);box-shadow:0 20px 36px rgba(155,93,229,.24)}
+  .hero-card:active{transform:scale(.97)}
+  .h-in{position:relative;flex:1 1 auto;border-radius:20px;padding:14px 10px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+    text-align:center;overflow:hidden}
+  .h-in::after{content:"";position:absolute;right:-34px;top:-38px;width:104px;height:104px;border-radius:50%;
+    background:rgba(255,255,255,.42);pointer-events:none}
+  .hero-card.h1 .h-in{background:linear-gradient(140deg,#E6DCFF,#C4AEFF)}
+  .hero-card.h2 .h-in{background:linear-gradient(140deg,#FFDFEF,#FFBFDC)}
+  .hero-card.h3 .h-in{background:linear-gradient(140deg,#FFE8C8,#FFCB8F)}
+  .h-ic{position:relative;z-index:1;width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.78);box-shadow:inset 0 -3px 8px rgba(0,0,0,.06)}
+  .h-ic > span[style]{font-size:29px !important;line-height:1}
+  .h-ic .ic{height:auto}
+  .h-ic .ic > span{transform:scale(1.08)}
+  .h-txt{position:relative;z-index:1;display:flex;flex-direction:column;gap:3px;min-width:0;width:100%}
+  .h-txt b{font-size:clamp(13.5px,3.4vw,16px);font-weight:900;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .h-txt em{font-style:normal;font-size:9.5px;font-weight:700;color:rgba(74,63,92,.6);line-height:1.25;
+    text-wrap:balance;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  /* 食梦紫罗：3 张横向 4:3 卡片（外框小圆角 + 内嵌大圆角） */
+  .mid-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .mid-card{position:relative;display:flex;min-width:0;aspect-ratio:4/3;padding:4px;border-radius:12px;cursor:pointer;
+    background:#FFDCE9;box-shadow:0 10px 22px rgba(229,120,160,.16);
+    transition:transform .18s,box-shadow .25s}
+  .mid-card:hover{transform:translateY(-3px);box-shadow:0 16px 30px rgba(155,93,229,.2)}
+  .mid-card:active{transform:scale(.96)}
+  .m-in{position:relative;flex:1 1 auto;border-radius:16px;padding:6px 8px;
+    display:flex;align-items:center;gap:7px;overflow:hidden;
+    background:linear-gradient(150deg,#FFFFFF,#F7F3FF)}
+  .m-in::before{content:"";position:absolute;inset:0;opacity:.6;pointer-events:none;
+    background:linear-gradient(150deg,var(--c1,#EFE7FF),transparent 72%)}
+  .mid-card.c1{--c1:#D6F5EF}.mid-card.c2{--c1:#FFE8F4}.mid-card.c3{--c1:#FFF4D2}
+  .mi-ic{position:relative;flex:0 0 auto;width:27px;height:27px;display:flex;align-items:center;justify-content:center}
+  .mi-ic > span[style]{font-size:20px !important;line-height:1}
+  .mi-ic .ic{height:auto}
+  .mi-ic .ic > span{transform:scale(.7)}
+  .mi-main{position:relative;display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+  .mi-name{font-size:clamp(11px,2.6vw,12.5px);font-weight:900;color:var(--ink);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mi-desc{font-size:8.5px;font-weight:700;color:rgba(74,63,92,.55);line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* 安琪拉试验机：4 列小卡（外框小圆角 + 内嵌大圆角） */
+  .more-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+  .mini-card{position:relative;display:flex;min-width:0;aspect-ratio:1/1;padding:3px;border-radius:12px;cursor:pointer;
+    background:#FFDCE9;box-shadow:0 8px 16px rgba(229,120,160,.14);
+    transition:transform .16s,box-shadow .22s}
+  .mini-card:hover{transform:translateY(-3px);box-shadow:0 14px 24px rgba(155,93,229,.19)}
+  .mini-card:active{transform:scale(.95)}
+  .mn-in{position:relative;flex:1 1 auto;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    overflow:hidden;background:rgba(255,255,255,.9)}
+  .mn-in::before{content:"";position:absolute;inset:0;opacity:.85;pointer-events:none;
+    background:linear-gradient(160deg,var(--c1,#FFE0B2),rgba(255,255,255,0) 68%)}
+  .mini-card.m1{--c1:#FFB199}.mini-card.m2{--c1:#BFF0E8}.mini-card.m3{--c1:#E9C9FF}
+  .mini-card.m4{--c1:#FFF3C4}.mini-card.m5{--c1:#FFD3EE}.mini-card.m6{--c1:#D4F5F0}
+  .m-ic{position:relative;height:30px;display:flex;align-items:center;justify-content:center}
+  .m-ic > span[style]{font-size:23px !important;line-height:1}
+  .m-ic .ic{height:auto}
+  .m-name{position:relative;font-size:10px;font-weight:800;color:var(--ink);text-align:center;line-height:1.2;padding:0 2px;max-width:100%;overflow-wrap:break-word}
+  .hero-card.enter,.mid-card.enter,.mini-card.enter{animation:boxIn .42s cubic-bezier(.2,.9,.3,1.25) both}
+  @media (max-width:760px){
+    .hero-card{padding:3px}
+    .h-in{padding:12px 8px;gap:8px;border-radius:18px}
+    .h-ic{width:46px;height:46px;border-radius:14px}
+    .mid-card{padding:3px}
+    .m-in{padding:6px 7px;gap:6px;border-radius:15px}
+    .mini-card{padding:2px}
+    .mn-in{border-radius:12px;gap:5px}
+    .m-name{font-size:9.5px}
+  }
 </style>
 <!-- 热更新：内容版本变化自动带参重载，绕过缓存（无需重装 APK） -->
 <script>
@@ -641,29 +724,98 @@
   }
   loadBoardBadge();
 
-  // ===== 渲染游戏墙（直显宫格：一排4个 · 纵向无限 · 点一下直接进） =====
+  // ===== 渲染游戏墙（v4：觉醒射手座 · 食梦紫罗 · 安琪拉试验机） =====
   const stage = document.getElementById('stage');
+  const FEATURED = ['教资刷题', '割绳子1', '纸卡丁车'];
+  const TREASURE = ['种豆', '沙威玛', '追剧'];
 
   function render(){
     stage.innerHTML = '';
-    GAMES.forEach((g, idx) => {
-      const slot = idx % 6 + 1;
-      const box = document.createElement('div');
-      box.className = 'box b' + slot + ' enter';
-      box.style.animationDelay = (idx*0.05) + 's';
-      box.innerHTML =
-        '<span class="ribbon"></span>' +
-        '<div class="reveal">' +
-          '<span class="ic">' + (ICONS[g.icon] || '') + '</span>' +
-          '<span class="r-name">' + g.name + '</span>' +
-          (g.target ? '<span class="r-go">进入</span>' : '<span class="soon">敬请期待</span>') +
+    const wall = document.createElement('div');
+    wall.className = 'wall';
+
+    // ---- 觉醒射手座：3 张主推大卡，始终横排 3 个 ----
+    const heroSec = document.createElement('div');
+    heroSec.className = 'sec';
+    heroSec.innerHTML = '<div class="sec-head"><b>觉醒射手宫</b></div>';
+    const heroRow = document.createElement('div');
+    heroRow.className = 'hero-row';
+    FEATURED.forEach((name, i) => {
+      const g = GAMES.filter(x => x.name === name)[0];
+      if (!g) return;
+      const el = document.createElement('div');
+      el.className = 'hero-card h' + (i + 1) + ' enter';
+      el.style.animationDelay = (i * 0.06) + 's';
+      el.innerHTML =
+        '<div class="h-in">' +
+          '<span class="h-ic">' + (ICONS[g.icon] || '') + '</span>' +
+          '<span class="h-txt"><b>' + g.name + '</b><em>' + (g.desc || '') + '</em></span>' +
         '</div>';
-      box.addEventListener('click', () => {
+      el.addEventListener('click', () => location.href = g.target);
+      heroRow.appendChild(el);
+    });
+    const heroFrame = document.createElement('div');
+    heroFrame.className = 'sec-frame';
+    heroFrame.appendChild(heroRow);
+    heroSec.appendChild(heroFrame);
+    wall.appendChild(heroSec);
+
+    // ---- 食梦紫罗：中间 3 个，横向 4:3 ----
+    const treasureSec = document.createElement('div');
+    treasureSec.className = 'sec';
+    treasureSec.innerHTML = '<div class="sec-head"><b>食梦紫罗</b></div>';
+    const midRow = document.createElement('div');
+    midRow.className = 'mid-row';
+    TREASURE.forEach((name, i) => {
+      const g = GAMES.filter(x => x.name === name)[0];
+      if (!g) return;
+      const el = document.createElement('div');
+      el.className = 'mid-card c' + (i + 1) + ' enter';
+      el.style.animationDelay = (i * 0.06) + 's';
+      el.innerHTML =
+        '<div class="m-in">' +
+          '<span class="mi-ic">' + (ICONS[g.icon] || '') + '</span>' +
+          '<span class="mi-main"><span class="mi-name">' + g.name + '</span>' +
+          '<span class="mi-desc">' + (g.desc || '') + '</span></span>' +
+        '</div>';
+      el.addEventListener('click', () => location.href = g.target);
+      midRow.appendChild(el);
+    });
+    const midFrame = document.createElement('div');
+    midFrame.className = 'sec-frame';
+    midFrame.appendChild(midRow);
+    treasureSec.appendChild(midFrame);
+    wall.appendChild(treasureSec);
+
+    // ---- 安琪拉试验机：其余游戏小卡 ----
+    const rest = GAMES.filter(g => FEATURED.indexOf(g.name) < 0 && TREASURE.indexOf(g.name) < 0);
+    const moreSec = document.createElement('div');
+    moreSec.className = 'sec';
+    moreSec.innerHTML = '<div class="sec-head"><b>安琪拉试验机</b></div>';
+    const moreGrid = document.createElement('div');
+    moreGrid.className = 'more-grid';
+    rest.forEach((g, idx) => {
+      const el = document.createElement('div');
+      el.className = 'mini-card m' + (idx % 6 + 1) + ' enter';
+      el.style.animationDelay = (idx * 0.03) + 's';
+      el.innerHTML =
+        '<div class="mn-in">' +
+          '<span class="m-ic">' + (ICONS[g.icon] || '') + '</span>' +
+          '<span class="m-name">' + g.name + '</span>' +
+        '</div>';
+      el.addEventListener('click', () => {
         if (g.target) location.href = g.target;
         else toast('敬请期待 · 即将上线');
       });
-      stage.appendChild(box);
+      moreGrid.appendChild(el);
     });
+    const moreFrame = document.createElement('div');
+    moreFrame.className = 'sec-frame';
+    moreFrame.appendChild(moreGrid);
+    moreSec.appendChild(moreFrame);
+    wall.appendChild(moreSec);
+
+    stage.appendChild(wall);
   }
 
   document.getElementById('logout').addEventListener('click', () => {
