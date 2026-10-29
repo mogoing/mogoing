@@ -2015,17 +2015,54 @@ function dlRefreshGroup(g){
   }
   dlRefreshTotal();
 }
+var dlStartTs = 0, dlStartGot = 0;
 function dlRefreshTotal(){
   var tot = 0, got = 0;
   Object.keys(dlGroups).forEach(function(gid){ tot += dlGroups[gid].total; got += dlGroups[gid].got; });
   var pct = tot ? Math.round(got / tot * 100) : 100;
   dlTotalBar.style.width = pct + '%';
-  dlTotalT.textContent = fmtMB(got) + ' / ' + fmtMB(tot) + ' · ' + pct + '%';
+  var sp = '';
+  if (dlStartTs && got > dlStartGot){
+    var kb = (got - dlStartGot) / 1024 / Math.max((Date.now() - dlStartTs) / 1000, 0.5);
+    sp = ' · ' + Math.round(kb) + ' KB/s';
+  }
+  dlTotalT.textContent = fmtMB(got) + ' / ' + fmtMB(tot) + ' · ' + pct + '%' + sp;
   if (tot && got >= tot){ goDl.textContent = '✅ 已就绪'; goDl.classList.add('done'); }
   else { goDl.textContent = '⬇️ 下载中心'; goDl.classList.remove('done'); }
 }
 
-/* 下载单个文件：先看缓存，没有才走网络（原站 + jsDelivr 镜像，最多 3 轮） */
+/* 下载单个文件：先看缓存，没有才走网络。
+ * 多源策略：CDN / 加速源优先（国内比 github.io 快 10~30 倍），源站只做最后兜底。
+ * 前两个源同时竞速，谁先完整拿到用谁；都失败再依次试剩下的。 */
+var DL_SOURCES = [
+  function(u){ return 'https://cdn.jsdelivr.net/gh/mogoing/mogoing@main/' + u; },
+  function(u){ return 'https://gh-proxy.com/https://raw.githubusercontent.com/mogoing/mogoing/main/' + u; },
+  function(u){ return 'https://ghproxy.net/https://raw.githubusercontent.com/mogoing/mogoing/main/' + u; },
+  function(u){ return 'https://raw.githubusercontent.com/mogoing/mogoing/main/' + u; },
+  function(u){ return u; }   /* 最后才回源站（github.io） */
+];
+function dlFetchUrl(url, size){
+  return fetch(url, { cache: 'no-store' }).then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.arrayBuffer().then(function(b){
+      if (b.byteLength !== size) throw new Error('size ' + b.byteLength);
+      return true;
+    });
+  });
+}
+function dlRace(urls, size){
+  return new Promise(function(resolve){
+    var done = false, fails = 0;
+    urls.forEach(function(u){
+      dlFetchUrl(u, size).then(function(){
+        if (!done){ done = true; resolve(true); }
+      }, function(){
+        fails++;
+        if (!done && fails === urls.length){ done = true; resolve(false); }
+      });
+    });
+  });
+}
 async function dlFetchOne(it){
   if (dlDoneMap[it.url] === it.size) return true;
   try {
@@ -2037,17 +2074,12 @@ async function dlFetchOne(it){
       }
     }
   } catch(err){}
-  var cdn = 'https://cdn.jsdelivr.net/gh/mogoing/mogoing@main/';
-  for (var t = 0; t < 3; t++){
-    var urls = [it.url, cdn + it.url];
-    for (var ui = 0; ui < urls.length; ui++){
-      try {
-        var r = await fetch(urls[ui], t > 0 ? { cache: 'reload' } : {});
-        if (!r.ok) continue;
-        var b = await r.arrayBuffer();
-        if (b.byteLength === it.size) return true;
-      } catch(err){}
-    }
+  var urls = DL_SOURCES.map(function(f){ return f(it.url); });
+  /* 1) 最快的两个源同时竞速 */
+  if (await dlRace(urls.slice(0, 2), it.size)) return true;
+  /* 2) 剩下的依次尝试 */
+  for (var i = 2; i < urls.length; i++){
+    try { if (await dlFetchUrl(urls[i], it.size)) return true; } catch(err){}
   }
   return false;
 }
@@ -2056,13 +2088,15 @@ async function dlStartGroup(g){
   var pend = g.items.filter(function(it){ return dlDoneMap[it.url] !== it.size; });
   if (!pend.length){ dlRefreshGroup(g); return; }
   g.busy = true; dlRefreshGroup(g);
-  var CONC = 12, idx = 0, okN = 0, failN = 0;
+  dlStartTs = Date.now(); dlStartGot = g.got;
+  var CONC = 8, idx = 0, okN = 0, failN = 0;
   async function worker(){
     while (idx < pend.length){
       var it = pend[idx++];
       var ok = await dlFetchOne(it);
       if (ok){ dlDoneMap[it.url] = it.size; okN++; } else failN++;
-      if ((okN + failN) % 20 === 0){ dlSaveDone(); dlRefreshGroup(g); }
+      dlRefreshGroup(g);                              /* 每个文件都刷新进度 */
+      if ((okN + failN) % 20 === 0) dlSaveDone();     /* 每 20 个存一次盘 */
     }
   }
   var wk = [];
