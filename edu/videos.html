@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<!-- 禁止双击放大：iOS Safari 从 iOS 10 起忽略 user-scalable=no，真正生效的是 touch-action:manipulation（上下滚动、双指缩放照常可用） -->
+<style>html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}</style>
 <title>视频课 · 教资刷题</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

@@ -3,7 +3,9 @@
 	<head>
 	  <meta charset="UTF-8">
 	  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-	  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<!-- 禁止双击放大：iOS Safari 从 iOS 10 起忽略 user-scalable=no，真正生效的是 touch-action:manipulation（上下滚动、双指缩放照常可用） -->
+<style>html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}</style>
 	  <link rel="shortcut icon" href="./images/favicon.ico" type="image/x-icon"><!--网页名称图片-->
 	  <title>星空 | 宣传电影</title>
 	  <link rel="stylesheet" href="./reset.css">
