@@ -3,7 +3,7 @@
   "name": "烩菜",
   "short_name": "烩菜",
   "description": "烩菜 · 游戏小世界",
-  "start_url": "./main.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
