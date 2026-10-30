@@ -165,11 +165,28 @@
     background:rgba(255,255,255,.45);
     padding:clamp(16px,2.4vw,26px);
   }
+  /* 页面最底部的条：更新日志（窄条，点了进 changelog.html） */
+  .bottom-bar{
+    width:auto;min-width:132px;align-self:center;
+    margin-top:14px;
+    padding:7px 20px;
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:999px;
+    box-shadow:0 6px 16px rgba(155,93,229,.14);
+    cursor:pointer;
+    transition:box-shadow .2s,background .2s,transform .15s;
+  }
+  .bottom-bar:active{transform:scale(.96);box-shadow:0 10px 22px rgba(155,93,229,.24);background:rgba(255,255,255,.72)}
+  .update-log{
+    font-size:12px;font-weight:800;letter-spacing:1.5px;
+    color:var(--muted);
+    user-select:none;white-space:nowrap;
+  }
+  .bottom-bar:hover .update-log{color:var(--ink)}
   .stage{
     width:100%;
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:calc(var(--gap) + 4px) var(--gap);
+    grid-template-columns:repeat(4,1fr);    gap:calc(var(--gap) + 4px) var(--gap);
   }
   .box{
     position:relative;aspect-ratio:3/4;border-radius:22px;cursor:pointer;
@@ -621,8 +638,8 @@
       <div id="dlRows"></div>
     </div>
   </div>
-  <div class="stage-shell">
-    <section class="stage" id="stage"></section>
+  <div class="stage-shell bottom-bar" id="goChangelog">
+    <span class="update-log">更新日志</span>
   </div>
   <div class="toast" id="toast"></div>
   <div class="screw" id="screw" title="?"><img src="assets/screw_user.png" alt=""></div>
@@ -835,6 +852,8 @@
   // 活动 / 邮件
   document.getElementById('goNews').addEventListener('click', () => location.href = 'news.html');
   document.getElementById('goEmails').addEventListener('click', () => location.href = 'email.html');
+  // 底部更新日志
+  document.getElementById('goChangelog').addEventListener('click', () => location.href = 'changelog.html');
   // 管理员专属：显示管理后台入口，隐藏"我的日记"（管理员界面不要我的日记）
   if (manager) {
     const adminBtn = document.getElementById('goAdmin');

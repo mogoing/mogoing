@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- 禁止双击放大：iOS Safari 从 iOS 10 起忽略 user-scalable=no，真正生效的是 touch-action:manipulation（上下滚动、双指缩放照常可用） -->
+<style>html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}</style>
+<title>更新日志 · 烩菜</title>
+<meta name="apple-mobile-web-app-title" content="烩菜">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root{
+    --coral:#FF6B6B; --sunny:#FFD93D; --mint:#4ECDC4; --grape:#9B5DE5; --pink:#FF9DE2;
+    --ink:#4A3F5C; --muted:#9A8FB5;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    background:linear-gradient(165deg,#FFF6E9,#FFE8D6);
+    color:var(--ink);
+    display:flex;flex-direction:column;
+    padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+    overflow:hidden;
+  }
+  .blob{position:fixed;border-radius:50%;filter:blur(56px);opacity:.45;z-index:0;pointer-events:none}
+  .blob-a{width:34vmax;height:34vmax;background:var(--pink);top:-12vmax;left:-10vmax}
+  .blob-b{width:26vmax;height:26vmax;background:var(--mint);bottom:-10vmax;right:-8vmax;opacity:.4}
+
+  /* 顶部：返回胶囊 */
+  .top{position:relative;z-index:2;display:flex;align-items:center;gap:10px;flex:none;margin-bottom:12px}
+  .back{
+    display:inline-flex;align-items:center;gap:6px;
+    height:38px;padding:0 18px 0 14px;
+    border:0;border-radius:999px;cursor:pointer;
+    font-size:14px;font-weight:800;color:#fff;
+    background:linear-gradient(135deg,var(--grape),#7C3AED);
+    box-shadow:0 8px 18px rgba(155,93,229,.32);
+    transition:transform .15s;
+    -webkit-appearance:none;appearance:none;
+  }
+  .back:active{transform:scale(.95)}
+  .back svg{width:15px;height:15px;flex:none}
+  .title{font-size:17px;font-weight:900;letter-spacing:1px}
+
+  /* 可滚动内容容器 */
+  .scroll{
+    position:relative;z-index:1;flex:1 1 auto;min-height:0;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:rgba(255,255,255,.55);
+    border-radius:20px;
+    padding:6px 6px 14px;
+    box-shadow:0 14px 34px rgba(155,93,229,.12),inset 0 0 0 1px rgba(201,160,96,.14);
+    overscroll-behavior:contain;
+  }
+
+  /* 一条日志 */
+  .item{
+    position:relative;
+    background:linear-gradient(150deg,#FFFFFF,#FFF9F0);
+    border-radius:14px;
+    padding:13px 14px;
+    margin:8px;
+    box-shadow:0 6px 16px rgba(155,93,229,.09),inset 0 0 0 1px rgba(255,140,170,.1);
+  }
+  .item::before{
+    content:'';position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:4px;
+    background:linear-gradient(180deg,var(--coral),var(--grape));
+  }
+  .time{
+    display:inline-block;
+    font-size:11px;font-weight:800;letter-spacing:.5px;
+    color:#B86A8E;background:rgba(255,157,226,.22);
+    padding:2px 9px;border-radius:999px;
+    margin-bottom:8px;
+  }
+  .item h3{font-size:13.5px;font-weight:900;margin-bottom:7px;letter-spacing:.3px}
+  .item ul{list-style:none;display:flex;flex-direction:column;gap:5px}
+  .item li{
+    position:relative;padding-left:13px;
+    font-size:12.5px;line-height:1.55;color:#5C5170;font-weight:600;
+  }
+  .item li::before{
+    content:'';position:absolute;left:2px;top:7px;
+    width:5px;height:5px;border-radius:50%;
+    background:var(--grape);opacity:.55;
+  }
+  .item .tag{
+    display:inline-block;font-size:10px;font-weight:800;
+    padding:1px 6px;border-radius:6px;margin-right:4px;vertical-align:1px;
+    color:#fff;
+  }
+  .tag.new{background:linear-gradient(135deg,#FF6B6B,#FF4D6D)}
+  .tag.fix{background:linear-gradient(135deg,#F59E0B,#EA580C)}
+  .tag.perf{background:linear-gradient(135deg,#4ECDC4,#2FBFB5)}
+  .tag.ui{background:linear-gradient(135deg,#9B5DE5,#7C3AED)}
+
+  .empty{padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="blob blob-a"></div>
+  <div class="blob blob-b"></div>
+
+  <div class="top">
+    <button class="back" id="backBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      返回
+    </button>
+    <span class="title">更新日志</span>
+  </div>
+
+  <div class="scroll" id="scroll"></div>
+
+<script>
+  /* ===== 更新日志数据：新的一条加到数组最前面（时间从新到旧） ===== */
+  var LOGS = [
+    {
+      time: '2026/10/30 8:43',
+      title: '新增更新日志',
+      items: [
+        { tag:'new', text:'主页最底部新增「更新日志」入口，点进去可以查看每一条改动' },
+        { tag:'ui',  text:'底部条改窄收小，不再空占一大块位置' },
+        { tag:'fix', text:'修好了 iOS 安装到主屏后双击会放大的问题' },
+        { tag:'new', text:'主屏图标改成烩菜，名字显示「烩菜」，状态栏正常显示不遮内容' },
+        { tag:'ui',  text:'主页游戏区重新排版：觉醒射手宫 / 食梦紫罗 / 安琪拉试验机三个分区' },
+        { tag:'new', text:'下载中心支持暂停 / 继续，点暂停立刻中断不会卡住' },
+        { tag:'perf',text:'下载走 CDN 多源加速，比原来快十几倍；卡住 10 秒自动换源' },
+        { tag:'fix', text:'修正下载清单里两个文件的大小，割绳子不再永远卡在 96%' },
+        { tag:'new', text:'登录页记住账号后自动登录，退出登录不会被自动带回去' }
+      ]
+    }
+  ];
+
+  var box = document.getElementById('scroll');
+
+  function render(){
+    if (!LOGS.length || !LOGS[0]) {
+      box.innerHTML = '<div class="empty">暂无更新</div>';
+      return;
+    }
+    LOGS.forEach(function(group){
+      var el = document.createElement('div');
+      el.className = 'item';
+      var h = '<span class="time">' + group.time + '</span>' +
+              '<h3>' + group.title + '</h3><ul>';
+      group.items.forEach(function(it){
+        h += '<li><span class="tag ' + it.tag + '">' +
+             ({new:'新增', fix:'修复', perf:'优化', ui:'界面'})[it.tag] +
+             '</span>' + it.text + '</li>';
+      });
+      h += '</ul>';
+      el.innerHTML = h;
+      box.appendChild(el);
+    });
+  }
+  render();
+
+  /* 返回：优先用 Android 桥，其次 history，最后回主页 */
+  document.getElementById('backBtn').addEventListener('click', function(){
+    if (history.length > 1 && document.referrer) { history.back(); }
+    else { location.href = 'main.html'; }
+  });
+
+  /* 安卓物理返回键 */
+  window.addEventListener('androidback', function(){
+    location.href = 'main.html';
+  });
+</script>
+<script>
+  window.addEventListener('androidback', function(){ location.href = 'main.html'; });
+</script>
+</body>
+</html>
