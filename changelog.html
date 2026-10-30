@@ -116,6 +116,24 @@
   /* ===== 更新日志数据：新的一条加到数组最前面（时间从新到旧） ===== */
   var LOGS = [
     {
+      time: '2026/10/30 9:09',
+      title: '修复主屏 App 打开仍显示浏览器地址栏',
+      items: [
+        { tag:'fix', text:'新增 manifest.json（display:standalone），iOS 才会把主屏图标当作独立 App 打开' },
+        { tag:'new', text:'补充 192 / 512 两套图标，主屏与启动页图标更清晰' },
+        { tag:'new', text:'页面接入 manifest 与主题色，状态栏配色跟随页面' },
+        { tag:'fix', text:'页面版本号 +1，手机端会自动拉取最新版本' }
+      ]
+    },
+    {
+      time: '2026/10/30 9:05',
+      title: '底部更新日志入口收窄',
+      items: [
+        { tag:'ui',  text:'底部「更新日志」条压缩上下高度，字号改为 10px 灰色，与上方小卡文字一致' },
+        { tag:'new', text:'新增 changelog.html：顶部返回胶囊 + 可滚动内容容器' }
+      ]
+    },
+    {
       time: '2026/10/30 8:43',
       title: '新增更新日志',
       items: [

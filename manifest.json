@@ -1,0 +1,21 @@
+{
+  "id": "/mogoing/",
+  "name": "烩菜",
+  "short_name": "烩菜",
+  "description": "烩菜 · 游戏小世界",
+  "start_url": "./main.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#FFF6E9",
+  "theme_color": "#FFE8D6",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
