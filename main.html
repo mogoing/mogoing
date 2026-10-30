@@ -824,6 +824,7 @@
     localStorage.removeItem('blindbox_manager');
     localStorage.removeItem('blindbox_coins');
     localStorage.removeItem('blindbox_offline');
+    localStorage.setItem('blindbox_logout', '1');   /* 刚退出：登录页这次不要自动登录，避免被带回主页 */
     location.href = 'index.html';
   });
 

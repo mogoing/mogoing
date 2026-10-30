@@ -286,6 +286,9 @@
   const hasSaved = !!(savedUser && savedPass);
   const LAST_USER = savedUser || '';
   const LAST_PASS = savedPass || '';
+  /* 刚点过「退出登录」的这一次不自动登录（否则退出等于没退） */
+  const JUST_LOGGED_OUT = localStorage.getItem('blindbox_logout') === '1';
+  let _autoCancel = false;                  /* 用户中途想换账号就取消自动跳转 */
 
   if (hasSaved) {
     lastUserEl.textContent = LAST_USER;
@@ -325,6 +328,7 @@
 
   // ===== 登录其他账号：展开表单 =====
   switchLink.addEventListener('click', () => {
+    _autoCancel = true;                     /* 用户想换账号：取消这次自动登录跳转 */
     fullForm.classList.toggle('show');
     switchLink.textContent = fullForm.classList.contains('show') ? '返回上次登录' : '登录其他账号';
   });
@@ -337,10 +341,27 @@
       switchLink.textContent = '收起';
       return;
     }
+    localStorage.removeItem('blindbox_logout');   /* 手动点了开始：清除退出标记 */
     startBtn.disabled = true;
     startBtn.textContent = '进 入 中…';
     doLogin(LAST_USER, LAST_PASS);
   });
+
+  // ===== 自动登录：记住过账号时，打开登录页直接进主页，不用再点「开始」 =====
+  (function autoLogin(){
+    if (!hasSaved || JUST_LOGGED_OUT) return;   /* 没记住账号 / 刚退出登录：不自动登录 */
+    startBtn.disabled = true;
+    startBtn.textContent = '自 动 登 录 中…';
+    /* 等页面渲染一帧再走网络，避免白屏闪烁 */
+    setTimeout(() => {
+      if (_autoCancel || fullForm.classList.contains('show')) {   /* 用户已展开表单：不自动进 */
+        startBtn.disabled = false;
+        startBtn.textContent = '开 始';
+        return;
+      }
+      doLogin(LAST_USER, LAST_PASS);
+    }, 120);
+  })();
 
   eye.addEventListener('click', () => {
     eye.classList.toggle('off');
@@ -365,6 +386,7 @@
     localStorage.setItem('blindbox_manager', manager ? '1' : '0');
     localStorage.setItem('blindbox_coins', String(coins || 0));
     localStorage.setItem('blindbox_offline', '0');
+    localStorage.removeItem('blindbox_logout');   /* 登录成功：清除退出标记 */
     location.href = 'main.html';
   }
 
@@ -404,6 +426,7 @@
         localStorage.setItem('blindbox_manager', u === 'admin' ? '1' : '0');
         localStorage.setItem('blindbox_coins', '0');
         localStorage.setItem('blindbox_offline', '1');
+        localStorage.removeItem('blindbox_logout');   /* 离线登录成功：清除退出标记 */
         location.href = 'main.html';
       } else {
         if (startBtn.disabled) {
@@ -412,6 +435,8 @@
           fullForm.classList.add('show');
           switchLink.textContent = '返回上次登录';
           showErr('上次登录账号验证失败，请登录其他账号');
+          /* 自动登录失败：置上退出标记，避免用户再打开页面时又自动尝试、来回跳 */
+          try { localStorage.setItem('blindbox_logout', '1'); } catch(e2){}
         } else {
           showErr('无法连接服务器，且本地账号验证失败');
           btn.disabled = false;
