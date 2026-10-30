@@ -2010,8 +2010,15 @@ function dlRefreshGroup(g){
   if (g.pct) g.pct.textContent = pct + '%';
   if (g.bar) g.bar.style.width = pct + '%';
   if (g.btn){
-    g.btn.disabled = g.busy;
-    g.btn.textContent = g.busy ? '下载中…' : (g.got >= g.total ? '✅ 已下载' : (g.got ? '继续下载' : '下载'));
+    if (g.total && g.got >= g.total){
+      g.btn.textContent = '✅ 已下载'; g.btn.disabled = true;      /* 全下完：灰掉不可点 */
+    } else if (g.paused){
+      g.btn.textContent = '继续'; g.btn.disabled = false;          /* 暂停中：点它继续 */
+    } else if (g.busy){
+      g.btn.textContent = '暂停'; g.btn.disabled = false;          /* 下载中：点它暂停 */
+    } else {
+      g.btn.textContent = g.got ? '继续下载' : '下载'; g.btn.disabled = false;
+    }
   }
   dlRefreshTotal();
 }
@@ -2042,17 +2049,38 @@ var DL_SOURCES = [
   function(u){ return u; }   /* 最后才回源站（github.io） */
 ];
 function dlFetchUrl(url, size){
+  /* 10 秒「无响应超时」：连上后只要还在持续收到数据就继续等；
+     连续 10 秒一个字节都没收到（这个源卡住了）才断开换源。
+     这样大文件慢慢下不会被误杀，卡死的源也能在 10 秒内被换掉。 */
   var ctl = new AbortController();
-  var timer = setTimeout(function(){ try { ctl.abort(); } catch(e){} }, 45000);  /* 45 秒超时，防止某个源卡住 */
+  var timer = 0;
+  function arm(){ clearTimeout(timer); timer = setTimeout(function(){ try { ctl.abort(); } catch(e){} }, 10000); }
+  function dis(){ clearTimeout(timer); }
+  arm();
   return fetch(url, { cache: 'no-store', signal: ctl.signal }).then(function(r){
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.arrayBuffer().then(function(b){
-      clearTimeout(timer);
-      if (!b.byteLength) throw new Error('empty');
-      /* 大小和清单不一致也接受：说明仓库里的文件更新过，由调用方更新记录（自愈，不会再卡死） */
-      return b.byteLength;
-    });
-  }, function(e){ clearTimeout(timer); throw e; });
+    if (!r.ok){ dis(); throw new Error('HTTP ' + r.status); }
+    if (!r.body || !r.body.getReader){
+      return r.arrayBuffer().then(function(b){
+        dis();
+        if (!b.byteLength) throw new Error('empty');
+        return b.byteLength;
+      }, function(e){ dis(); throw e; });
+    }
+    var reader = r.body.getReader(), total = 0;
+    function pump(){
+      return reader.read().then(function(res){
+        if (res.done){
+          dis();
+          if (!total) throw new Error('empty');
+          return total;
+        }
+        arm();                    /* 收到数据 → 重新计时 */
+        total += res.value.length;
+        return pump();
+      }, function(e){ dis(); throw e; });
+    }
+    return pump();
+  }, function(e){ dis(); throw e; });
 }
 function dlRace(urls, size){
   return new Promise(function(resolve){
@@ -2089,14 +2117,20 @@ async function dlFetchOne(it){
   return 0;   /* 失败 */
 }
 async function dlStartGroup(g){
-  if (g.busy) return;
+  /* 正在下载时点这个按钮 = 暂停 */
+  if (g.busy){
+    g.paused = true;
+    dlRefreshGroup(g);
+    return;
+  }
   var pend = g.items.filter(function(it){ return dlDoneMap[it.url] !== it.size; });
-  if (!pend.length){ dlRefreshGroup(g); return; }
-  g.busy = true; dlRefreshGroup(g);
+  if (!pend.length){ g.paused = false; dlRefreshGroup(g); return; }
+  g.busy = true; g.paused = false; dlRefreshGroup(g);
   dlStartTs = Date.now(); dlStartGot = g.got;
   var CONC = 8, idx = 0, okN = 0, failN = 0;
   async function worker(){
     while (idx < pend.length){
+      if (g.paused) return;                  /* 暂停：不再领新文件 */
       var it = pend[idx++];
       var n = await dlFetchOne(it);
       if (n){
@@ -2114,12 +2148,16 @@ async function dlStartGroup(g){
   for (var w = 0; w < Math.min(CONC, pend.length); w++) wk.push(worker());
   await Promise.all(wk);
   dlSaveDone();
-  dlStartTs = 0; dlStartGot = 0;                      /* 下载结束：速度归零，不再显示残留网速 */
   g.busy = false;
+  dlStartTs = 0; dlStartGot = 0;                      /* 停止/结束：速度归零，不再显示残留网速 */
   dlRefreshGroup(g);
-  dlRefreshTotal();
-  if (failN) toast('「' + g.name + '」有 ' + failN + ' 个文件失败，再点一次下载会重试');
-  else toast('「' + g.name + '」下载完成 ✅');
+  if (g.paused){
+    toast('「' + g.name + '」已暂停，点「继续」接着下');
+  } else {
+    dlRefreshTotal();
+    if (failN) toast('「' + g.name + '」有 ' + failN + ' 个文件失败，再点一次下载会重试');
+    else toast('「' + g.name + '」下载完成 ✅');
+  }
 }
 
 goDl.addEventListener('click', function(){ dlMask.classList.add('show'); });
