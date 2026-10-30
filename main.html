@@ -2048,14 +2048,20 @@ var DL_SOURCES = [
   function(u){ return 'https://raw.githubusercontent.com/mogoing/mogoing/main/' + u; },
   function(u){ return u; }   /* 最后才回源站（github.io） */
 ];
-function dlFetchUrl(url, size){
-  /* 10 秒「无响应超时」：连上后只要还在持续收到数据就继续等；
-     连续 10 秒一个字节都没收到（这个源卡住了）才断开换源。
-     这样大文件慢慢下不会被误杀，卡死的源也能在 10 秒内被换掉。 */
+function dlFetchUrl(url, size, groupCtl){
+  /* 两重中断机制：
+     1) 10 秒「无响应超时」：连上后只要还在持续收到数据就继续等；连续 10 秒没收到数据
+        （这个源卡住了）才断开换源，不会误杀正在慢慢下的大文件。
+     2) 组级中断：用户点「暂停」时，立刻断掉所有正在下载的请求。 */
   var ctl = new AbortController();
   var timer = 0;
   function arm(){ clearTimeout(timer); timer = setTimeout(function(){ try { ctl.abort(); } catch(e){} }, 10000); }
   function dis(){ clearTimeout(timer); }
+  function kill(){ try { ctl.abort(); } catch(e){} }
+  if (groupCtl){
+    if (groupCtl.signal.aborted) kill();
+    else groupCtl.signal.addEventListener('abort', kill, { once: true });
+  }
   arm();
   return fetch(url, { cache: 'no-store', signal: ctl.signal }).then(function(r){
     if (!r.ok){ dis(); throw new Error('HTTP ' + r.status); }
@@ -2082,11 +2088,11 @@ function dlFetchUrl(url, size){
     return pump();
   }, function(e){ dis(); throw e; });
 }
-function dlRace(urls, size){
+function dlRace(urls, size, groupCtl){
   return new Promise(function(resolve){
     var done = false, fails = 0;
     urls.forEach(function(u){
-      dlFetchUrl(u, size).then(function(n){
+      dlFetchUrl(u, size, groupCtl).then(function(n){
         if (!done){ done = true; resolve(n); }
       }, function(){
         fails++;
@@ -2095,8 +2101,10 @@ function dlRace(urls, size){
     });
   });
 }
-async function dlFetchOne(it){
-  if (dlDoneMap[it.url] === it.size) return it.size;   /* 已下载 */
+async function dlFetchOne(it, groupCtl){
+  function aborted(){ return !!(groupCtl && groupCtl.signal.aborted); }
+  if (aborted()) return -1;                           /* 已暂停：放弃，不算完成也不算失败 */
+  if (dlDoneMap[it.url] === it.size) return it.size;  /* 已下载 */
   try {
     if (window.caches && caches.match){
       var hit = await caches.match(it.url);
@@ -2106,33 +2114,42 @@ async function dlFetchOne(it){
       }
     }
   } catch(err){}
+  if (aborted()) return -1;
   var urls = DL_SOURCES.map(function(f){ return f(it.url); });
   /* 1) 最快的两个源同时竞速 */
-  var n = await dlRace(urls.slice(0, 2), it.size);
+  var n = await dlRace(urls.slice(0, 2), it.size, groupCtl);
   if (n) return n;
+  if (aborted()) return -1;
   /* 2) 剩下的依次尝试 */
   for (var i = 2; i < urls.length; i++){
-    try { var m = await dlFetchUrl(urls[i], it.size); if (m) return m; } catch(err){}
+    if (aborted()) return -1;
+    try { var m = await dlFetchUrl(urls[i], it.size, groupCtl); if (m) return m; } catch(err){}
   }
-  return 0;   /* 失败 */
+  return aborted() ? -1 : 0;   /* -1 = 暂停中断，0 = 失败 */
 }
 async function dlStartGroup(g){
-  /* 正在下载时点这个按钮 = 暂停 */
+  /* 正在下载时点这个按钮 = 暂停：立即中断在途请求；点「继续」会重新下没下完的那个文件 */
   if (g.busy){
     g.paused = true;
+    if (g.ctl){ try { g.ctl.abort(); } catch(e){} }   /* 立刻断掉正在下的请求，不等它超时 */
+    g.busy = false;                                   /* 立刻可以点「继续」 */
+    dlStartTs = 0; dlStartGot = 0;                    /* 速度归零 */
     dlRefreshGroup(g);
+    toast('「' + g.name + '」已暂停');
     return;
   }
   var pend = g.items.filter(function(it){ return dlDoneMap[it.url] !== it.size; });
   if (!pend.length){ g.paused = false; dlRefreshGroup(g); return; }
-  g.busy = true; g.paused = false; dlRefreshGroup(g);
+  g.busy = true; g.paused = false; g.ctl = new AbortController();
+  var myRun = g.runId = (g.runId || 0) + 1;   /* 本轮令牌：暂停/重启后旧循环自动作废 */
   dlStartTs = Date.now(); dlStartGot = g.got;
   var CONC = 8, idx = 0, okN = 0, failN = 0;
   async function worker(){
     while (idx < pend.length){
-      if (g.paused) return;                  /* 暂停：不再领新文件 */
+      if (g.paused || g.runId !== myRun) return;    /* 暂停或已被新一轮接管：退出 */
       var it = pend[idx++];
-      var n = await dlFetchOne(it);
+      var n = await dlFetchOne(it, g.ctl);
+      if (n === -1) return;                         /* 被暂停中断：不记完成也不记失败，下次继续会重下 */
       if (n){
         if (n !== it.size){          /* 仓库里文件更新过：按实际大小更新记录，避免永远卡在某个百分比 */
           it.size = n;
@@ -2147,17 +2164,15 @@ async function dlStartGroup(g){
   var wk = [];
   for (var w = 0; w < Math.min(CONC, pend.length); w++) wk.push(worker());
   await Promise.all(wk);
+  if (g.runId !== myRun) return;                      /* 已被新一轮接管，不要动状态 */
   dlSaveDone();
   g.busy = false;
   dlStartTs = 0; dlStartGot = 0;                      /* 停止/结束：速度归零，不再显示残留网速 */
   dlRefreshGroup(g);
-  if (g.paused){
-    toast('「' + g.name + '」已暂停，点「继续」接着下');
-  } else {
-    dlRefreshTotal();
-    if (failN) toast('「' + g.name + '」有 ' + failN + ' 个文件失败，再点一次下载会重试');
-    else toast('「' + g.name + '」下载完成 ✅');
-  }
+  if (g.paused) return;                               /* 暂停的提示在暂停那一刻已经给过 */
+  dlRefreshTotal();
+  if (failN) toast('「' + g.name + '」有 ' + failN + ' 个文件失败，再点一次下载会重试');
+  else toast('「' + g.name + '」下载完成 ✅');
 }
 
 goDl.addEventListener('click', function(){ dlMask.classList.add('show'); });
