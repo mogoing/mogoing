@@ -351,7 +351,7 @@
   (function autoLogin(){
     if (!hasSaved || JUST_LOGGED_OUT) return;   /* 没记住账号 / 刚退出登录：不自动登录 */
     startBtn.disabled = true;
-    startBtn.textContent = '自 动 登 录 中…';
+    startBtn.textContent = '登 陆 中…';
     /* 等页面渲染一帧再走网络，避免白屏闪烁 */
     setTimeout(() => {
       if (_autoCancel || fullForm.classList.contains('show')) {   /* 用户已展开表单：不自动进 */
