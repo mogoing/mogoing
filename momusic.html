@@ -24,7 +24,7 @@
     min-height:100vh;color:var(--ink);
     background:linear-gradient(165deg,#FFF6E9,#FFE8D6);
     display:flex;flex-direction:column;align-items:center;
-    padding:calc(16px + env(safe-area-inset-top)) clamp(12px,3vw,32px) calc(216px + env(safe-area-inset-bottom));
+    padding:calc(16px + env(safe-area-inset-top)) clamp(12px,3vw,32px) calc(230px + env(safe-area-inset-bottom));
     overflow-x:hidden;
   }
   /* ===== 背景装饰：与主页一致的多巴胺光斑 ===== */
@@ -154,6 +154,7 @@
     background:rgba(255,255,255,.62);
     box-shadow:0 6px 18px rgba(155,93,229,.12);
     overflow:hidden;
+    scroll-margin-bottom:230px;
   }
   .mu-favhead{
     display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;
@@ -1401,7 +1402,19 @@
   });
   // 收藏卡片展开/收起
   $('favHead').addEventListener('click', () => {
-    $('favCard').classList.toggle('open');
+    const card = $('favCard');
+    const willOpen = !card.classList.contains('open');
+    card.classList.toggle('open');
+    if (willOpen) {
+      // 展开后滚动到能看见的位置，避免被底部播放器挡住
+      setTimeout(() => {
+        const pl = $('player');
+        const pr = pl.getBoundingClientRect();
+        const cr = card.getBoundingClientRect();
+        const need = cr.bottom - (pr.top - 12);
+        if (need > 0) window.scrollBy({ top: need + 16, behavior: 'smooth' });
+      }, 360);
+    }
   });
 
   // ============================================================
