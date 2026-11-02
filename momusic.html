@@ -935,21 +935,16 @@
         return s;
       };
       const ranked = exactMatch.concat(looseMatch).sort((x, y) => scoreOf(y) - scoreOf(x));
-      const origTop = ranked.slice(0, 2);
+      // 首选：分数最高的那条；再保留最多 3 条其他同名正常版本
+      const origTop = ranked.slice(0, 3);
       // 先出主结果（同名正常版本），立刻渲染，不等歌手补充（这是搜索慢的主因）
       const mainItems = origTop;
 
       if (replace) {
-        const keepCur = !!(cur && audio && !audio.paused);
-        queue = mainItems.slice(); qi = 0;
-        if (keepCur) {
-          const idx = queue.findIndex(x => x.id === cur.id);
-          qi = idx >= 0 ? idx : 0;
-          // 保留当前播放的曲目在队列首位，避免它被替换掉
-          if (idx < 0) { queue.unshift(cur); qi = 0; }
-        } else {
-          cur = queue.length ? queue[0] : null;
-        }
+        // 新搜索一律重置列表（不把正在播放的旧歌塞到首位，否则会挤掉原唱）
+        queue = mainItems.slice();
+        qi = 0;
+        cur = queue.length ? queue[0] : null;
       } else queue = queue.concat(mainItems);
       saveQueue();
       $('listTitle').textContent = replace ? '搜索结果' : '播放队列';
@@ -966,7 +961,7 @@
       if (mainArtist && replace) {
         searchArtistMore(mainArtist.split('/')[0], lastKw).then((m) => {
           if (token !== lastSearchToken) return;
-          const extra = m.filter(t => { const k = trackKey(t); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
+          const extra = m.filter(t => { const k = trackKey(t); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 14);
           if (!extra.length) return;
           queue = queue.concat(extra);
           saveQueue();
