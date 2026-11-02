@@ -787,9 +787,12 @@
     return plain(t.name) + '|' + plain(t.artist).replace(/[\/、,&]/g, '');
   }
   // 判断是否为"原唱"：歌名不含翻唱标记，且歌手不是纯翻唱号
-  const COVER_RE = /翻唱|cover|翻自|原唱|钢琴版|吉他版|女声版|男声版|DJ版|伴奏|纯音乐|remix|live|现场|翻唱版|改编|对唱|清唱|消音|和声版|加速版|慢速版|烟嗓|3D|环绕|史诗版|古风版|说唱版|戏腔|情感版|治愈版|深情版|温柔版|氛围版|串烧|合辑|片段|试听|铃声|彩铃/i;
-  const COVER_ARTIST_RE = /翻唱|cover|音乐|工作室|乐队|翻|版|official|channel|music/i;
+  const COVER_RE = /翻唱|cover|翻自|原唱|钢琴版|钢琴曲|吉他版|女声版|女生版|男声版|DJ版|伴奏|纯音乐|remix|live|现场|改编|对唱|清唱|消音|和声版|加速版|慢速版|烟嗓|3D|环绕|史诗版|史詩版|epic|古风版|说唱版|戏腔|情感版|治愈版|深情版|温柔版|氛围版|伤感版|萨克斯|串烧|合辑|片段|试听|铃声|彩铃|故事的小黄花|remake|ver\.?|版本/i;
   function isCover(t) { return COVER_RE.test(String(t.name || '')); }
+  // 判断是否像"翻唱号/工作室"（非知名歌手）
+  const FAKE_ARTIST_RE = /epx\s*music|prodreversed|studio|工作室|音乐台|电台|合辑|歌单|翻唱|cover|dj|remix|伴奏|纯音乐|网络歌手|佚名|群星/i;
+  // 判断艺人是否为知名原唱歌手（白名单 + 常见特征）
+  const FAMOUS_RE = /周杰伦|周杰倫|jay|陈奕迅|陳奕迅|eason|林俊杰|林俊傑|jj|薛之谦|薛之謙|邓紫棋|鄧紫棋|gem|李荣浩|李榮浩|毛不易|华晨宇|華晨宇|张杰|張傑|王菲|那英|孙燕姿|孫燕姿|梁静茹|梁靜茹|五月天|陈绮贞|陳綺貞|田馥甄|hebe|张惠妹|張惠妹|a-mei|蔡依林|jolin|王力宏|陶喆|陶吉吉|汪苏泷|汪蘇瀧|许嵩|許嵩|周深|张学友|張學友|刘德华|劉德華|beyond|beyond|信乐团|苏打绿|蘇打綠|朴树|樸樹|赵雷|趙雷|g.e.m|杨千嬅|楊千嬅|容祖儿|容祖兒|twins|she|s\.h\.e/i;
 
   // 引擎1：GD（曲库大、网易云轨，可无损）
   async function searchGD(kw, pg) {
@@ -807,16 +810,22 @@
       }));
     } catch (e) { return []; }
   }
-  // 引擎2：同歌手其他歌曲（用歌手名再搜一次，低优先级）
+  // 引擎2：同歌手其他歌曲（用歌手名再搜一次，只收确实是该歌手的）
   async function searchArtistMore(artist, kw) {
     if (!artist) return [];
     try {
       const r = await fetch(GD + '?types=search&source=netease&name=' + encodeURIComponent(artist) +
-        '&count=12&pages=1&_=' + Date.now());
+        '&count=24&pages=1&_=' + Date.now());
       if (!r.ok) return [];
       const arr = await r.json();
       if (!Array.isArray(arr)) return [];
-      return arr.filter(t => !isCover(t)).map(t => ({
+      const want = plain(artist);
+      return arr.filter(t => {
+        const ar = Array.isArray(t.artist) ? t.artist.join('/') : String(t.artist || '');
+        if (!plain(ar).includes(want)) return false;   // 必须是这位歌手的
+        if (isCover(t)) return false;                  // 不要翻唱
+        return true;
+      }).map(t => ({
         id: String(t.id), uid: String(t.url_id || t.id),
         name: String(t.name || '未知歌曲'),
         artist: Array.isArray(t.artist) ? t.artist.join('/') : String(t.artist || '未知歌手'),
@@ -897,33 +906,38 @@
       }
       if (!all.length && !replace) { searching = false; go.disabled = false; go.textContent = '搜索'; return; }
 
-      // ---- 结果组装：原唱优先 → 最多 2 个翻唱 → 歌手其他歌曲 ----
+      // ---- 结果组装：只要原唱/同名正常版本，彻底剔除翻唱 → 其余补该歌手其他歌曲 ----
       // 搜索词拆分：第一个词当歌名，其余当歌手提示（"晴天 周杰伦" → 晴天 / 周杰伦）
       const kwParts = lastKw.trim().split(/\s+/);
       const songKw = plain(kwParts[0]);
       const artistHint = kwParts.length > 1 ? plain(kwParts.slice(1).join('')) : '';
 
       const seen = new Set();
-      const exactMatch = [], looseMatch = [], covers = [];
+      const exactMatch = [], looseMatch = [];
       for (const t of all) {
         const k = trackKey(t);
         if (seen.has(k)) continue;
         const pn = plain(t.name);
-        if (!pn.includes(songKw)) continue;      // 歌名都不含关键词的直接丢弃
+        if (!pn.includes(songKw)) continue;      // 歌名不含关键词直接丢弃
+        if (isCover(t)) continue;                // 翻唱一律不要
         seen.add(k);
-        if (isCover(t)) { covers.push(t); continue; }
-        // 歌名就是关键词（去掉括号修饰后完全相等）→ 真原唱
-        if (pn === songKw) exactMatch.push(t);
+        if (pn === songKw) exactMatch.push(t);   // 歌名干净（无括号修饰）
         else looseMatch.push(t);
       }
-      // 歌手提示能匹配的排最前
-      const byArtist = (arr) => artistHint
-        ? arr.slice().sort((x, y) => (plain(y.artist).includes(artistHint) ? 1 : 0) - (plain(x.artist).includes(artistHint) ? 1 : 0))
-        : arr;
-      const origTop = byArtist(exactMatch).concat(byArtist(looseMatch)).slice(0, 2);
-      const coverTop = covers.slice(0, 2);
-      // 先出主结果（原唱+翻唱），立刻渲染，不等歌手补充（这是搜索慢的主因）
-      const mainItems = origTop.concat(coverTop);
+      // 评分排序：用户点名歌手 > 知名歌手 > 普通歌手 > 翻唱号
+      const scoreOf = (t) => {
+        let s = 0;
+        const ar = String(t.artist || '');
+        if (artistHint && plain(ar).includes(artistHint)) s += 100;
+        if (FAMOUS_RE.test(ar)) s += 50;
+        if (FAKE_ARTIST_RE.test(ar)) s -= 40;
+        if (plain(t.name) === songKw) s += 20;
+        return s;
+      };
+      const ranked = exactMatch.concat(looseMatch).sort((x, y) => scoreOf(y) - scoreOf(x));
+      const origTop = ranked.slice(0, 2);
+      // 先出主结果（同名正常版本），立刻渲染，不等歌手补充（这是搜索慢的主因）
+      const mainItems = origTop;
 
       if (replace) {
         const keepCur = !!(cur && audio && !audio.paused);
@@ -941,18 +955,18 @@
       $('listTitle').textContent = replace ? '搜索结果' : '播放队列';
       $('listSub').textContent = queue.length ? queue.length + ' 首' : '';
       $('qClear').style.display = queue.length ? '' : 'none';
-      $('qMore').style.display = (replace && a.length >= 30) ? '' : 'none';
+      $('qMore').style.display = (replace && a.length > 0) ? '' : 'none';
       renderList();
       if (replace && cur && S && String(S.id) === String(cur.id)) renderPlayerInfo();
       if (replace && !queue.length) {
         $('list').innerHTML = '<div class="mu-empty">没找到「' + esc(lastKw) + '」<br>换个关键词试试，或加上歌手名</div>';
       }
-      // ---- 异步补充：该歌手的其他歌曲（不阻塞首屏）----
-      const mainArtist = (origTop[0] && origTop[0].artist) || (coverTop[0] && coverTop[0].artist) || '';
+      // ---- 异步补充：该知名歌手的其他歌曲（不阻塞首屏）----
+      const mainArtist = (origTop[0] && origTop[0].artist) || '';
       if (mainArtist && replace) {
         searchArtistMore(mainArtist.split('/')[0], lastKw).then((m) => {
           if (token !== lastSearchToken) return;
-          const extra = m.filter(t => { const k = trackKey(t); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 8);
+          const extra = m.filter(t => { const k = trackKey(t); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 12);
           if (!extra.length) return;
           queue = queue.concat(extra);
           saveQueue();
@@ -969,7 +983,46 @@
   }
   $('qGo').addEventListener('click', () => doSearch($('q').value));
   $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch($('q').value); } });
-  $('qMore').addEventListener('click', () => { page++; loadPage(false); });
+  $('qMore').addEventListener('click', async () => {
+    if (searching || !lastKw) return;
+    searching = true;
+    const token = ++lastSearchToken;
+    const btn = $('qMore');
+    btn.disabled = true; btn.textContent = '加载中…';
+    try {
+      // 拉第 2、3... 页，继续按"无翻唱"规则补充
+      page++;
+      const more = await searchGD(lastKw, page);
+      if (token !== lastSearchToken) return;
+      const songKw = plain(lastKw.trim().split(/\s+/)[0]);
+      const exist = new Set(queue.map(t => trackKey(t)));
+      const added = [];
+      for (const t of more) {
+        const k = trackKey(t);
+        if (exist.has(k)) continue;
+        if (isCover(t)) continue;                          // 翻唱一律不要
+        if (!plain(t.name).includes(songKw)) continue;      // 歌名不含关键词丢弃
+        exist.add(k);
+        added.push(t);
+        if (added.length >= 10) break;
+      }
+      if (added.length) {
+        queue = queue.concat(added);
+        saveQueue();
+        $('listSub').textContent = queue.length + ' 首';
+        renderList();
+        toast('又来了 ' + added.length + ' 首');
+      } else {
+        btn.textContent = '没有更多了';
+        toast('已经到底了');
+        setTimeout(() => { btn.textContent = '加载更多'; }, 2000);
+        page--;   // 回退，避免重复请求同一页
+      }
+    } catch (e) { toast('加载失败，稍后再试'); }
+    searching = false;
+    btn.disabled = false;
+    if (btn.textContent === '加载中…') btn.textContent = '加载更多';
+  });
   $('qClear').addEventListener('click', () => {
     queue = []; qi = 0; cur = null; saveQueue();
     if (audio) { silent = true; audio.pause(); audio.removeAttribute('src'); silent = false; }
