@@ -618,6 +618,14 @@
   // ===== 音频 =====
   const SVG_PLAY  = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
   const SVG_PAUSE = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/></svg>';
+  // 通知原生壳（APK）：播放时保持后台服务存活，暂停/结束时也告知
+  function nativeMedia(on) {
+    try {
+      if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
+      if (on) { if (AndroidBridge.mediaStart) AndroidBridge.mediaStart(); }
+      else { if (AndroidBridge.mediaStop) AndroidBridge.mediaStop(); }
+    } catch (e) {}
+  }
   function ensureAudio() {
     if (audio) return audio;
     audio = new Audio();
@@ -625,11 +633,13 @@
     audio.setAttribute('playsinline', '');
     audio.addEventListener('play', () => {
       renderPlayBtn();
+      nativeMedia(true);
       if (cur) saveState({ playing: true, pos: audio.currentTime || 0 });
       renderRowsState();
     });
     audio.addEventListener('pause', () => {
       renderPlayBtn();
+      nativeMedia(false);
       if (silent) return;
       if (cur) saveState({ playing: false, pos: audio.currentTime || 0 });
       renderRowsState();
