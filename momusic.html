@@ -924,14 +924,24 @@
         if (pn === songKw) exactMatch.push(t);   // 歌名干净（无括号修饰）
         else looseMatch.push(t);
       }
-      // 评分排序：用户点名歌手 > 知名歌手 > 普通歌手 > 翻唱号
+      // 评分排序：用户点名歌手 > 知名歌手 > 正常歌手 > 疑似翻唱号
+      // 注意：GD 的网易云源常有把周杰伦等写成 "Jay"/拼音赚流量的翻唱号，这类要识别并降权
+      const SUSPECT_ARTIST_RE = /^(jay|jj|gem|eason|jolin|hebe|a-mei|jay\s*chou)$/i;
+      const DUR_OK = (t) => (t.dur && t.dur > 0 ? t.dur : 0);
       const scoreOf = (t) => {
         let s = 0;
         const ar = String(t.artist || '');
-        if (artistHint && plain(ar).includes(artistHint)) s += 100;
+        const pArt = plain(ar);
+        // 用户点名的歌手（周杰伦等中文全名）直接最高
+        if (artistHint && pArt.includes(artistHint)) s += 120;
+        // 艺人名是纯英文缩写/假名（Jay、JJ 之类）且用户点名的是中文全名 → 高度可疑翻唱号
+        if (artistHint && SUSPECT_ARTIST_RE.test(ar.trim()) && !pArt.includes(artistHint)) s -= 60;
         if (FAMOUS_RE.test(ar)) s += 50;
         if (FAKE_ARTIST_RE.test(ar)) s -= 40;
         if (plain(t.name) === songKw) s += 20;
+        // 时长明显偏短（<2分钟）多半是片段/翻唱剪短版
+        const d = DUR_OK(t);
+        if (d && d < 120) s -= 35;
         return s;
       };
       const ranked = exactMatch.concat(looseMatch).sort((x, y) => scoreOf(y) - scoreOf(x));
