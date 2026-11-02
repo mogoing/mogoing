@@ -981,12 +981,21 @@
     if (e.key !== MC_KEY || !e.newValue) return;
     try { mcAdopt(JSON.parse(e.newValue)); } catch (err) {}
   });
+  // 通知原生壳（APK）：保持后台播放服务存活
+  function mcNativeMedia(on) {
+    try {
+      if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
+      if (on) { if (AndroidBridge.mediaStart) AndroidBridge.mediaStart(); }
+      else { if (AndroidBridge.mediaStop) AndroidBridge.mediaStop(); }
+    } catch (e) {}
+  }
   function mcEnsureAudio() {
     if (mcAudio) return mcAudio;
     mcAudio = new Audio();
     mcAudio.preload = 'auto';
-    mcAudio.addEventListener('play', () => { mcSave({ playing: true }); mpPlay.innerHTML = MC_SVG_PAUSE; });
+    mcAudio.addEventListener('play', () => { mcNativeMedia(true); mcSave({ playing: true }); mpPlay.innerHTML = MC_SVG_PAUSE; });
     mcAudio.addEventListener('pause', () => {
+      mcNativeMedia(false);
       if (mcSilent) return;
       mcSave({ playing: false, pos: mcAudio.currentTime || 0 });
       mpPlay.innerHTML = MC_SVG_PLAY;
