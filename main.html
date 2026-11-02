@@ -1055,9 +1055,33 @@
     } catch (e) {}
     return '';
   }
+  // 从本地收藏里取第一首（主页直接点播放时用）
+  function mcFirstFav() {
+    try {
+      const fav = JSON.parse(localStorage.getItem('momusic_fav_local') || '[]');
+      if (Array.isArray(fav) && fav.length) return fav[0];
+    } catch (e) {}
+    return null;
+  }
   async function mcStart() {
-    const st = mcState;
-    if (!st || !st.id) { location.href = 'momusic.html'; return; }
+    let st = mcState;
+    // 没有正在播的歌 → 直接播收藏里的第一首
+    if (!st || !st.id || !st.name) {
+      const fav = mcFirstFav();
+      if (fav && fav.id) {
+        st = {
+          id: fav.id, uid: fav.uid || fav.id, name: fav.name, artist: fav.artist,
+          album: fav.album || '', pic: fav.pic || '', cover: fav.cover || '', source: fav.source || '',
+          kgHashes: fav.kgHashes || null, qqMid: fav.qqMid || null,
+          playing: true, pos: 0
+        };
+        mcState = st;
+      } else {
+        toast('还没有收藏的歌，去音乐页搜一首吧');
+        location.href = 'momusic.html';
+        return;
+      }
+    }
     if (mcBusy) return;
     mcBusy = true;
     const a = mcEnsureAudio();
