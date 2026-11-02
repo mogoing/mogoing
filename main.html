@@ -94,7 +94,41 @@
   }
   .brand{display:flex;flex-direction:column;align-items:center;gap:4px}
   .user{font-size:14px;color:var(--muted)}
-  .top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;align-self:flex-start}
+  .top-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;align-self:flex-start}
+  .tr-row{display:flex;align-items:center;gap:10px}
+  /* ===== 音乐胶囊（新闻/邮件图标正下方）：点胶囊进音乐页，圆点控制播放/暂停，歌名太长滚动 ===== */
+  .music-pill{
+    flex:none;display:flex;align-items:center;gap:9px;width:150px;
+    min-height:40px;padding:5px 5px 5px 14px;
+    border:none;border-radius:999px;cursor:pointer;
+    background:rgba(255,255,255,.85);backdrop-filter:blur(8px);
+    box-shadow:0 6px 16px rgba(155,93,229,.14);
+    transition:transform .15s,box-shadow .2s;
+  }
+  .music-pill:hover{transform:translateY(-2px)}
+  .music-pill:active{transform:scale(.95)}
+  .mp-name{
+    flex:1;min-width:0;overflow:hidden;white-space:nowrap;
+    font-size:13px;font-weight:800;color:var(--ink);
+    user-select:none;-webkit-user-select:none;
+  }
+  .mp-in{display:inline-block;white-space:nowrap}
+  .music-pill.scrolling .mp-in{animation:mpScroll var(--mp-dur,9s) linear infinite}
+  @keyframes mpScroll{
+    0%,10%{transform:translateX(0)}
+    45%,55%{transform:translateX(calc(-1 * var(--mp-over,0px)))}
+    90%,100%{transform:translateX(0)}
+  }
+  .mp-play{
+    flex:none;width:30px;height:30px;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;background:linear-gradient(135deg,var(--coral),var(--grape));
+    box-shadow:0 4px 10px rgba(255,107,107,.35);
+    transition:transform .15s;
+  }
+  .mp-play:active{transform:scale(.9)}
+  .music-pill.busy .mp-play{animation:mpPulse 1s ease-in-out infinite}
+  @keyframes mpPulse{50%{opacity:.45;transform:scale(.86)}}
   .top-icon{
     flex:none;width:69px;height:69px;padding:2px;border:none;border-radius:18px;cursor:pointer;
     background:rgba(255,255,255,.85);backdrop-filter:blur(8px);
@@ -373,12 +407,19 @@
     header{justify-content:space-between;gap:8px}
     .brand-logo{height:63px}
     .top-right{gap:8px}
+    .tr-row{gap:8px}
     .top-icon{width:63px;height:63px;border-radius:16px}
     .stage-shell{border-radius:20px;padding:12px}
     .stage{gap:14px 12px}
     .box{border-radius:18px;gap:6px}
     .reveal .ic{height:40px}
     .reveal .ic > span[style]{font-size:34px !important;line-height:1}
+  }
+  @media (max-width:360px){
+    .music-pill{width:132px}
+  }
+  @media (min-width:761px){
+    .music-pill{width:200px}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
@@ -625,8 +666,14 @@
         </div>
       </div>
       <div class="top-right">
-        <button class="top-icon" id="goNews" title="活动"><img src="assets/news.png" alt="活动"></button>
-        <button class="top-icon" id="goEmails" title="邮件"><img src="assets/emails.png" alt="邮件"></button>
+        <div class="tr-row">
+          <button class="top-icon" id="goNews" title="活动"><img src="assets/news.png" alt="活动"></button>
+          <button class="top-icon" id="goEmails" title="邮件"><img src="assets/emails.png" alt="邮件"></button>
+        </div>
+        <button class="music-pill" id="musicPill" title="音乐">
+          <span class="mp-name" id="mpName"><span class="mp-in" id="mpIn">音乐</span></span>
+          <span class="mp-play" id="mpPlay" role="button" aria-label="播放/暂停"></span>
+        </button>
       </div>
     </header>
     <p class="hint" id="hint"></p>
@@ -875,6 +922,164 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
   }
+
+  // ===== 音乐胶囊：右上角迷你播放器（与 momusic.html 通过 localStorage + BroadcastChannel 同步） =====
+  const MC_KEY = 'momusic_state_v1';
+  const MC_PID = 'main-' + Math.random().toString(36).slice(2, 9);
+  const MC_API = 'https://music-api.gdstudio.xyz/api.php';
+  const MC_VKEYS = 'https://api.vkeys.cn/v2/music/netease';
+  const MC_VKEYS_QQ = 'https://api.vkeys.cn/v2/music/tencent';
+  const MC_METING = 'https://api.qijieya.cn/meting/';
+  const musicPill = document.getElementById('musicPill');
+  const mpName = document.getElementById('mpName');
+  const mpIn = document.getElementById('mpIn');
+  const mpPlay = document.getElementById('mpPlay');
+  const MC_SVG_PLAY  = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+  const MC_SVG_PAUSE = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/></svg>';
+  let mcState = null;
+  try { mcState = JSON.parse(localStorage.getItem(MC_KEY) || 'null'); } catch (e) { mcState = null; }
+  let mcAudio = null, mcSilent = false, mcBusy = false;
+  const mcBus = ('BroadcastChannel' in window) ? new BroadcastChannel('momusic') : null;
+
+  function mcSave(patch) {
+    if (!mcState) mcState = {};
+    Object.assign(mcState, patch || {}, { ts: Date.now(), from: MC_PID });
+    try { localStorage.setItem(MC_KEY, JSON.stringify(mcState)); } catch (e) {}
+    if (mcBus) { try { mcBus.postMessage({ type: 'state', state: mcState, from: MC_PID }); } catch (e) {} }
+  }
+  function mcRender() {
+    const st = mcState || {};
+    mpIn.textContent = st.name || '音乐';
+    mpPlay.innerHTML = st.playing ? MC_SVG_PAUSE : MC_SVG_PLAY;
+    musicPill.classList.remove('scrolling');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const over = mpIn.scrollWidth - mpName.clientWidth;
+      if (over > 4) {
+        mpIn.style.setProperty('--mp-over', (over + 10) + 'px');
+        mpIn.style.setProperty('--mp-dur', Math.max(6, Math.min(18, Math.round(mpIn.scrollWidth / 20))) + 's');
+        musicPill.classList.add('scrolling');
+      }
+    }));
+  }
+  function mcAdopt(st) {
+    if (!st || st.from === MC_PID) return;
+    mcState = st;
+    // 别的页面接管了播放：本地正在播的话静音停下，交给它播
+    if (mcAudio && !mcAudio.ended && !mcAudio.paused) {
+      mcSilent = true; mcAudio.pause(); mcSilent = false;
+    }
+    mcRender();
+  }
+  if (mcBus) mcBus.onmessage = (ev) => { const m = ev.data || {}; if (m.type === 'state' && m.state) mcAdopt(m.state); };
+  window.addEventListener('storage', (e) => {
+    if (e.key !== MC_KEY || !e.newValue) return;
+    try { mcAdopt(JSON.parse(e.newValue)); } catch (err) {}
+  });
+  function mcEnsureAudio() {
+    if (mcAudio) return mcAudio;
+    mcAudio = new Audio();
+    mcAudio.preload = 'auto';
+    mcAudio.addEventListener('play', () => { mcSave({ playing: true }); mpPlay.innerHTML = MC_SVG_PAUSE; });
+    mcAudio.addEventListener('pause', () => {
+      if (mcSilent) return;
+      mcSave({ playing: false, pos: mcAudio.currentTime || 0 });
+      mpPlay.innerHTML = MC_SVG_PLAY;
+    });
+    mcAudio.addEventListener('timeupdate', () => {
+      if (mcAudio.paused) return;
+      const now = Date.now();
+      if (!mcState || now - (mcState._st || 0) < 3000) return;
+      mcState._st = now;
+      mcSave({ pos: mcAudio.currentTime || 0 });
+    });
+    mcAudio.addEventListener('ended', () => { mcSave({ playing: false, pos: 0 }); });
+    mcAudio.addEventListener('error', () => { musicPill.classList.remove('busy'); });
+    return mcAudio;
+  }
+  async function mcResolveUrl(st) {
+    // 酷狗轨：多 hash 变体 → meting 端点
+    if (st.kgHashes && st.kgHashes.length) {
+      for (let i = 0; i < st.kgHashes.length; i++) {
+        try {
+          const u = MC_METING + '?server=kugou&type=url&id=' + encodeURIComponent(st.kgHashes[i]);
+          const r = await fetch(u, { headers: { Range: 'bytes=0-15' } });
+          const ct = r.headers.get('content-type') || '';
+          if (r.ok && /audio|mpeg|octet-stream/i.test(ct)) return u;
+        } catch (e) {}
+      }
+    }
+    // QQ 轨：songmid → vkeys（拒绝试听）
+    if (st.qqMid) {
+      const qs = st.quality === 'loss' ? [6, 5, 4] : [5, 4, 3];
+      for (let i = 0; i < qs.length; i++) {
+        try {
+          const r = await fetch(MC_VKEYS_QQ + '?mid=' + encodeURIComponent(st.qqMid) + '&quality=' + qs[i] + '&_=' + Date.now());
+          if (!r.ok) continue;
+          const j = await r.json();
+          const d = j && j.data;
+          if (!d || !d.url) continue;
+          if (/试听/i.test(d.quality || '')) continue;
+          return String(d.url).replace(/^http:/i, 'https:');
+        } catch (e) {}
+      }
+    }
+    // 网易云轨：GD → vkeys
+    const uid = st.uid || st.id;
+    if (!uid) return '';
+    const brs = st.quality === 'loss' ? [999, 740, 320, 128] : [320, 192, 128];
+    for (let i = 0; i < brs.length; i++) {
+      for (let tryN = 0; tryN < 2; tryN++) {
+        try {
+          const r = await fetch(MC_API + '?types=url&source=' + encodeURIComponent(st.source || 'netease') +
+            '&id=' + encodeURIComponent(uid) + '&br=' + brs[i] + '&_=' + Date.now());
+          if (!r.ok) continue;
+          const j = await r.json();
+          if (j && j.url) return j.url.replace(/^http:/i, 'https:');
+        } catch (e) {}
+      }
+    }
+    // vkeys 兜底（有 CORS 的第三方解析，320k）
+    try {
+      const r = await fetch(MC_VKEYS + '?id=' + encodeURIComponent(uid) + '&quality=4&_=' + Date.now());
+      if (r.ok) {
+        const j = await r.json();
+        const u = j && j.data && j.data.url;
+        if (u) return String(u).replace(/^http:/i, 'https:');
+      }
+    } catch (e) {}
+    return '';
+  }
+  async function mcStart() {
+    const st = mcState;
+    if (!st || !st.id) { location.href = 'momusic.html'; return; }
+    if (mcBusy) return;
+    mcBusy = true;
+    const a = mcEnsureAudio();
+    musicPill.classList.add('busy');
+    try {
+      const url = await mcResolveUrl(st);
+      if (!url) { toast('这首歌暂时解析不到，去音乐页换一首吧'); mcSave({ playing: false }); mcRender(); return; }
+      a.src = url;
+      try { a.currentTime = Math.max(0, Number(st.pos) || 0); } catch (e) {}
+      try { await a.play(); } catch (e) { mcSave({ playing: false }); }
+      mcRender();
+    } finally {
+      mcBusy = false;
+      musicPill.classList.remove('busy');
+    }
+  }
+  function mcToggle() {
+    const st = mcState;
+    if (!st || !st.id) { location.href = 'momusic.html'; return; }
+    const a = mcEnsureAudio();
+    if (!a.paused && !a.ended) { a.pause(); return; }
+    if (a.src && a.paused && a.readyState >= 2 && !a.ended) { a.play().catch(() => {}); return; }
+    mcStart();
+  }
+  musicPill.addEventListener('click', () => location.href = 'momusic.html');
+  mpPlay.addEventListener('click', (e) => { e.stopPropagation(); mcToggle(); });
+  mcRender();
+  if (mcState && mcState.playing && mcState.id) mcStart();
 
   // 预览用：main.html?open=1 自动打开第一个盲盒
   if (new URLSearchParams(location.search).get('open') === '1') {
