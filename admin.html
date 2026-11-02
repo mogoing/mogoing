@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<!-- 禁止双击放大：iOS Safari 从 iOS 10 起忽略 user-scalable=no，真正生效的是 touch-action:manipulation（上下滚动、双指缩放照常可用） -->
 <style>html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}</style>
-<title>管理后台 · 莫古游戏</title>
+<title>管理后台 · 丰稔季</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23FF6B6B'/%3E%3Cstop offset='1' stop-color='%23FFD93D'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='45' font-size='38' font-weight='800' text-anchor='middle' fill='%23fff'%3E%3F%3C/text%3E%3C/svg%3E">
 <style>
   :root{
     --coral:#FF6B6B; --sunny:#FFD93D; --mint:#4ECDC4; --grape:#9B5DE5; --pink:#FF9DE2;
-    --ink:#4A3F5C; --muted:#9A8FB5;
+    --ink:#4A3F5C; --muted:#9A8FB5; --line:#EEE6F6; --ok:#2FBFB5; --bad:#FF4D6D;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{
@@ -23,9 +22,9 @@
   .b2{width:28vmax;height:28vmax;background:var(--mint);bottom:-8vmax;right:-6vmax;animation-delay:-4s}
   .b3{width:20vmax;height:20vmax;background:var(--sunny);top:40vh;left:-6vmax;opacity:.3;animation-delay:-8s}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(2.5vmax)}}
-  .wrap{position:relative;z-index:1;max-width:860px;margin:0 auto}
+  .wrap{position:relative;z-index:1;max-width:960px;margin:0 auto}
 
-  /* ===== 顶栏 + 数据看板（同一横排，高度一致） ===== */
+  /* ===== 顶栏 + 数据看板 ===== */
   .toprow{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
     background:rgba(255,255,255,.88);backdrop-filter:blur(14px);
@@ -33,7 +32,7 @@
     box-shadow:0 10px 30px rgba(155,93,229,.13);
     flex-wrap:wrap;
   }
-  .brand{display:flex;align-items:center;gap:10px}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0}
   .logo{
     width:40px;height:40px;border-radius:12px;flex:none;
     background:linear-gradient(135deg,var(--coral),var(--sunny));
@@ -46,9 +45,9 @@
   .stat{
     background:linear-gradient(135deg,#FFF, #FFF6E9);
     border:1.5px solid #F3E8FB;border-radius:12px;
-    padding:7px 14px;text-align:center;white-space:nowrap;
+    padding:7px 12px;text-align:center;white-space:nowrap;
   }
-  .stat b{display:inline-block;font-size:18px;background:linear-gradient(135deg,var(--coral),var(--grape));-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:4px}
+  .stat b{display:inline-block;font-size:17px;background:linear-gradient(135deg,var(--coral),var(--grape));-webkit-background-clip:text;background-clip:text;color:transparent;margin-right:4px}
   .stat span{font-size:12px;color:var(--muted);font-weight:600}
   .btn{
     border:none;border-radius:11px;padding:9px 16px;cursor:pointer;
@@ -59,9 +58,23 @@
   }
   .btn:hover{transform:translateY(-2px);filter:brightness(1.06)}
   .btn:active{transform:translateY(0) scale(.97)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
   .btn.ghost{background:linear-gradient(135deg,var(--mint),#2EB5A9);box-shadow:0 5px 14px rgba(78,205,196,.3)}
-  .btn.small{padding:5px 11px;font-size:12px;border-radius:9px}
+  .btn.grape{background:linear-gradient(135deg,var(--grape),#7C3AED);box-shadow:0 5px 14px rgba(155,93,229,.3)}
   .btn.danger{background:linear-gradient(135deg,#FF6B6B,#FF4D6D);box-shadow:0 5px 14px rgba(255,77,109,.3)}
+  .btn.small{padding:5px 11px;font-size:12px;border-radius:9px}
+  .btn.tiny{padding:3px 9px;font-size:11px;border-radius:8px}
+
+  /* ===== 标签页 ===== */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{
+    border:1.5px solid #F3E8FB;background:rgba(255,255,255,.85);border-radius:14px;
+    padding:9px 14px;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;
+    display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(155,93,229,.07);transition:.15s;
+  }
+  .tab:hover{transform:translateY(-2px)}
+  .tab.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--coral),var(--grape));box-shadow:0 8px 20px rgba(155,93,229,.32)}
+  .tab i{font-style:normal;font-size:15px}
 
   /* ===== 面板 ===== */
   .panel{
@@ -69,24 +82,30 @@
     border-radius:18px;padding:14px;margin-bottom:14px;
     box-shadow:0 10px 30px rgba(155,93,229,.11);
   }
-  .panel h2{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .panel h2{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .panel h2::before{content:"";width:7px;height:18px;border-radius:4px;background:linear-gradient(180deg,var(--coral),var(--sunny))}
+  .panel h2 .sub{font-size:11px;color:var(--muted);font-weight:400}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .row input{
-    flex:1;min-width:110px;height:40px;border:2px solid #EEE6F6;border-radius:11px;padding:0 12px;
-    font-size:14px;color:var(--ink);background:#fff;outline:none;
-    transition:border-color .2s,box-shadow .2s;
-  }
-  .row input:focus{border-color:var(--grape);box-shadow:0 0 0 4px rgba(155,93,229,.12)}
   .hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}
+  .notice{background:rgba(255,217,61,.18);border:1.5px dashed rgba(245,158,11,.5);color:#8A6A00;border-radius:12px;padding:9px 12px;font-size:12.5px;line-height:1.7;margin-top:8px}
+  input,select,textarea{
+    font-family:inherit;font-size:13px;color:var(--ink);background:#fff;outline:none;
+    border:2px solid var(--line);border-radius:11px;transition:border-color .2s,box-shadow .2s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--grape);box-shadow:0 0 0 4px rgba(155,93,229,.12)}
+  input[type=text],input[type=password],input[type=number],input[type=date],input[type=datetime-local],select{height:40px;padding:0 12px}
+  textarea{padding:10px 12px;line-height:1.6;resize:vertical;width:100%}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field span{font-weight:700;font-size:11.5px;color:var(--muted)}
 
-  /* ===== 用户列表（金币 +/- 按钮） ===== */
-  .table-wrap{overflow-x:auto}
+  /* ===== 表格 ===== */
+  .table-wrap{overflow-x:auto;border-radius:12px}
   table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
-  th{font-size:11px;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:2px solid #F0E8F7;font-weight:700}
+  th{font-size:11px;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:2px solid #F0E8F7;font-weight:700;white-space:nowrap}
   td{padding:7px 8px;border-bottom:1px solid #F7F1FB;vertical-align:middle}
   tr:last-child td{border-bottom:none}
   .u-admin{display:inline-block;background:linear-gradient(135deg,var(--coral),var(--grape));color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px}
+  .u-me{display:inline-block;background:linear-gradient(135deg,var(--mint),#2FB5AC);color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px}
   .coin-cell{display:flex;align-items:center;gap:6px}
   .coin-num{display:inline-block;background:rgba(255,217,61,.25);color:#B8860B;font-weight:700;border-radius:999px;padding:2px 10px;font-size:12px;min-width:52px;text-align:center}
   .pm-btn{
@@ -99,12 +118,10 @@
   .pm-btn:hover{transform:scale(1.1)}
   .pm-btn:active{transform:scale(.92)}
   .pm-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
-  .del{background:linear-gradient(135deg,#FF6B6B,#FF4D6D);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer;transition:.15s}
-  .del:hover{filter:brightness(1.1)}
-  .del:disabled{opacity:.4;cursor:not-allowed}
   .empty{text-align:center;color:var(--muted);padding:18px;font-size:13px}
+  .loading{text-align:center;color:var(--muted);font-size:12.5px;padding:14px}
 
-  /* ===== 日记：按用户分组 ===== */
+  /* ===== 用户组 / 日记 ===== */
   .user-group{border:1px solid #F0E8F7;border-radius:14px;margin-bottom:10px;overflow:hidden}
   .ug-head{
     display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -116,15 +133,15 @@
   .user-group.open .ug-arrow{transform:rotate(180deg)}
   .ug-body{display:none;padding:6px 10px 10px}
   .user-group.open .ug-body{display:block}
-  .d-item{
-    background:#FFFDF7;border:1px solid #F5EDE3;border-radius:11px;
-    padding:9px 11px;margin-top:7px;
-  }
+  .d-item{background:#FFFDF7;border:1px solid #F5EDE3;border-radius:11px;padding:9px 11px;margin-top:7px}
   .d-item .d-head{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:5px;flex-wrap:wrap}
   .d-item .d-head time{color:var(--muted)}
   .d-item .d-ops{display:flex;gap:5px}
   .d-item p{font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
   .d-item .d-content{margin-bottom:6px}
+  .diary-list{max-height:560px;overflow-y:auto;padding-right:2px}
+
+  /* ===== 编辑框（留言 / 日记通用） ===== */
   .edit-box{display:none;flex-direction:column;gap:7px;margin-bottom:6px}
   .edit-box.show{display:flex}
   .edit-box textarea{
@@ -133,27 +150,64 @@
     font-family:inherit;line-height:1.6;
   }
   .edit-box textarea:focus{border-color:var(--grape);box-shadow:0 0 0 4px rgba(155,93,229,.12)}
-  .edit-box input{
-    width:100%;height:34px;border:2px solid #EEE6F6;border-radius:9px;padding:0 9px;
-    font-size:12px;color:var(--ink);background:#fff;outline:none;
-  }
-  .edit-box input:focus{border-color:var(--grape)}
+  .edit-box input{width:100%;height:36px;border:2px solid #EEE6F6;border-radius:9px;padding:0 9px;font-size:12px}
   .edit-box .eb-row{display:flex;gap:7px;justify-content:flex-end}
-  .diary-list{max-height:520px;overflow-y:auto}
+
+  /* ===== 留言条目 ===== */
+  .m-item{background:#FFFDF8;border:1.5px solid #F3EADF;border-radius:12px;padding:9px 11px;margin-top:8px}
+  .m-item .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+  .m-item .m-who{font-size:12.5px;font-weight:800;color:var(--grape)}
+  .m-item .m-meta{font-size:11px;color:var(--muted)}
+  .m-item p{font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  .scroll-box{max-height:560px;overflow-y:auto;padding-right:2px}
+
+  /* ===== 种菜 ===== */
+  .picker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .picker select{min-width:150px}
+  .plots{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px;margin-top:12px}
+  .plot{background:linear-gradient(150deg,#FFFBEF,#FFF3DC);border:1.5px solid #EFDFBE;border-radius:13px;padding:9px 10px;font-size:12px}
+  .plot .phead{display:flex;justify-content:space-between;align-items:center;gap:6px;font-weight:800;color:#8A6A2E;margin-bottom:6px}
+  .plot .phead span{font-size:11px;color:#B49A5E;font-weight:700}
+  .plot .prow{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+  .plot .prow label{font-size:11px;color:#A08A62;width:46px;flex:none}
+  .plot select,.plot input{height:30px;font-size:12px;border-radius:8px;border-width:1.5px;min-width:0;flex:1;padding:0 6px}
+  .plot input[type=range]{height:auto;padding:0;border:none;box-shadow:none;background:transparent}
+  .plot .pfoot{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:4px}
+  .inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px;margin-top:10px}
+  .inv-item{display:flex;align-items:center;gap:7px;background:#FBF7FF;border:1.5px solid #F0E8FB;border-radius:10px;padding:6px 8px}
+  .inv-item span{font-size:11.5px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .inv-item input{width:58px;height:30px;font-size:12px;border-radius:8px;border-width:1.5px;padding:0 6px;flex:none}
+
+  /* ===== 教资 ===== */
+  .edu-sum{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;margin-bottom:12px}
+  .edu-sum .s{background:linear-gradient(150deg,#FFF,#F7F2FF);border:1.5px solid #EFE6FB;border-radius:12px;padding:8px 10px}
+  .edu-sum .s b{display:block;font-size:18px;background:linear-gradient(135deg,var(--grape),var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .edu-sum .s span{font-size:11px;color:var(--muted);font-weight:700}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:#F4ECFF;color:#6D4BA8;border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:700;margin:3px 4px 0 0}
+  .chip button{border:none;background:transparent;color:#B18AD8;font-size:14px;line-height:1;cursor:pointer;padding:0 1px}
+  .chip button:hover{color:var(--bad)}
+  .chip.ok{background:rgba(78,205,196,.2);color:#127F78}
+  .chip.bad{background:rgba(255,77,109,.14);color:#B3243F}
+  .chip.star{background:rgba(255,217,61,.28);color:#8A6A00}
 
   .msg{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
     background:rgba(74,63,92,.92);color:#fff;padding:10px 20px;border-radius:999px;
-    font-size:13px;opacity:0;transition:.3s;z-index:9;pointer-events:none;white-space:nowrap}
+    font-size:13px;font-weight:700;opacity:0;transition:.3s;z-index:9;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
   .msg.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .msg.bad{background:linear-gradient(135deg,#FF4D6D,#C81E3C)}
+  .msg.ok{background:linear-gradient(135deg,#2FB5AC,#1B8F86)}
 
   @media (max-width:600px){
     .toprow{justify-content:center;text-align:center}
     .stat b{font-size:16px}
     .stat{padding:6px 10px}
+    .tab{padding:8px 11px;font-size:12px}
+    .plots{grid-template-columns:1fr 1fr}
+    table{min-width:0}
   }
-  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
-<!-- 热更新：内容版本变化自动带参重载，绕过缓存（无需重装 APK） -->
+<!-- 热更新：内容版本变化自动带参重载，绕过缓存 -->
 <script>
 (function(){
   var VER_URL = 'https://mogoing.github.io/mogoing/version.json';
@@ -173,324 +227,1344 @@
   }).catch(function(){});
 })();
 </script>
-
 </head>
 <body>
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
   <div class="wrap">
-    <!-- 顶栏 + 数据看板（同一横排） -->
     <div class="toprow">
       <div class="brand">
         <div class="logo">⭐</div>
         <h1>管理后台<small id="who"></small></h1>
       </div>
       <div class="stats">
-        <div class="stat"><b id="sUsers">-</b><span>用户总数</span></div>
-        <div class="stat"><b id="sCoins">-</b><span>金币总数</span></div>
-        <div class="stat"><b id="sDiary">-</b><span>日记条数</span></div>
+        <div class="stat"><b id="sUsers">-</b><span>用户</span></div>
+        <div class="stat"><b id="sCoins">-</b><span>金币</span></div>
+        <div class="stat"><b id="sMsg">-</b><span>留言</span></div>
+        <div class="stat"><b id="sDiary">-</b><span>日记</span></div>
       </div>
-      <button class="btn ghost" onclick="goHome()">返回主页</button>
+      <button class="btn ghost small" onclick="goHome()">返回主页</button>
     </div>
 
-    <!-- 发放金币 -->
-    <div class="panel">
-      <h2>发放金币</h2>
-      <div class="row">
-        <input type="text" id="addUser" placeholder="用户名">
-        <input type="number" id="addAmount" placeholder="数量" style="max-width:130px">
-        <button class="btn" onclick="addCoins()">发放</button>
-      </div>
-      <div class="hint">正数 = 加金币（充值到账）· 负数 = 扣金币（违规收回）· 也可在下方用户列表点 +/- 逐个调整</div>
+    <div class="tabs">
+      <button class="tab active" id="tab-users" onclick="switchTab('users')"><i>👤</i>账号</button>
+      <button class="tab" id="tab-farm" onclick="switchTab('farm')"><i>🌱</i>种菜</button>
+      <button class="tab" id="tab-msg" onclick="switchTab('msg')"><i>💬</i>留言</button>
+      <button class="tab" id="tab-diary" onclick="switchTab('diary')"><i>📖</i>日记</button>
+      <button class="tab" id="tab-edu" onclick="switchTab('edu')"><i>📚</i>教资刷题</button>
+      <button class="tab" id="tab-mail" onclick="switchTab('mail')"><i>📮</i>邮件</button>
     </div>
 
-    <!-- 用户列表 -->
-    <div class="panel">
-      <h2>用户列表</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>ID</th><th>账号</th><th>金币</th><th>注册时间</th><th>操作</th></tr></thead>
-          <tbody id="userRows"></tbody>
-        </table>
+    <!-- ================= 账号 ================= -->
+    <div id="pane-users">
+      <div class="panel">
+        <h2>发放金币</h2>
+        <div class="row">
+          <input type="text" id="addUser" placeholder="用户名" style="flex:1;min-width:110px;max-width:200px">
+          <input type="number" id="addAmount" placeholder="数量" style="max-width:130px">
+          <button class="btn" onclick="addCoins()">发放</button>
+        </div>
+        <div class="hint">正数 = 加金币（充值到账）· 负数 = 扣金币（违规收回）· 也可在下方用户列表点 +/- 逐个调整</div>
+      </div>
+
+      <div class="panel">
+        <h2>新建账号 <span class="sub">（注册普通用户 · 可设初始金币）</span></h2>
+        <div class="row">
+          <input type="text" id="nuName" placeholder="用户名（≥2字）" style="flex:1;min-width:140px;max-width:220px">
+          <input type="text" id="nuPass" placeholder="密码" style="flex:1;min-width:120px;max-width:200px">
+          <input type="number" id="nuCoins" placeholder="初始金币" value="0" style="width:120px">
+          <button class="btn ghost" onclick="createUser()">＋ 新建</button>
+        </div>
+        <div class="notice" id="userApiNotice" style="display:none"></div>
+      </div>
+
+      <div class="panel">
+        <h2>用户列表 <span class="sub" id="usersCount"></span></h2>
+        <div class="row" style="margin-bottom:9px">
+          <input type="text" id="userSearch" placeholder="搜索账号 / ID" oninput="renderUsers()" style="flex:1;min-width:140px;max-width:240px">
+          <button class="btn small ghost" onclick="loadUsers()">刷新</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>账号</th><th>金币</th><th>注册时间</th><th>操作</th></tr></thead>
+            <tbody id="userRows"><tr><td colspan="5" class="loading">加载中…</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- 发布邮件 -->
-    <div class="panel">
-      <h2>发布邮件 <span style="font-size:11px;color:var(--muted);font-weight:400">（发送给所有用户 · 可附金币奖励）</span></h2>
-      <div class="row" style="margin-bottom:8px">
-        <input type="text" id="mailTitle" placeholder="邮件标题">
+    <!-- ================= 种菜 ================= -->
+    <div id="pane-farm" style="display:none">
+      <div class="panel">
+        <h2>种菜存档 <span class="sub">（game=bean · 地块 / 金币 / 背包）</span></h2>
+        <div class="picker">
+          <span class="field"><span>选择用户</span><select id="farmUser" onchange="loadFarm()"><option value="">— 选择 —</option></select></span>
+          <button class="btn small ghost" onclick="loadFarm()">读取</button>
+          <button class="btn small" onclick="saveFarm()">保存存档</button>
+          <button class="btn small danger" onclick="resetFarm()">重置</button>
+        </div>
+        <div id="farmNotice"></div>
+        <div id="farmBody" style="display:none">
+          <div class="row" style="margin-bottom:10px">
+            <span class="field"><span>金币</span><input type="number" id="farmCoins" value="0" style="width:120px"></span>
+            <button class="btn small ghost" onclick="openAllPlots()">全部开垦</button>
+            <button class="btn small danger" onclick="clearAllPlots()">一键清空菜地</button>
+          </div>
+          <div class="plots" id="farmPlots"></div>
+          <h2 style="margin-top:16px">背包 / 库存</h2>
+          <div class="inv" id="farmInv"></div>
+          <div class="row" style="margin-top:10px">
+            <input type="text" id="invKey" placeholder="物品名（apple / apple_crop）" style="flex:1;max-width:250px">
+            <input type="number" id="invVal" placeholder="数量" value="0" style="width:110px">
+            <button class="btn small" onclick="addInvKey()">＋ 添加物品</button>
+          </div>
+          <div class="hint">地块：{o:开垦, crop:作物, grow:0-5, plantedAt:毫秒, watered, fertilized}。改完点「保存存档」写回后端。</div>
+        </div>
       </div>
-      <div class="row" style="margin-bottom:8px">
-        <textarea id="mailBody" style="width:100%;min-height:80px;border:2px solid #EEE6F6;border-radius:11px;padding:10px 12px;font-size:13px;color:var(--ink);background:#fff;outline:none;resize:vertical;font-family:inherit;line-height:1.6" placeholder="邮件正文（前几个字会显示在列表摘要）"></textarea>
-      </div>
-      <div class="row">
-        <input type="number" id="mailReward" placeholder="奖励金币（0=无奖励）" style="max-width:180px" min="0">
-        <button class="btn" onclick="publishMail()">📮 发布邮件</button>
-      </div>
-      <div class="hint">发布后所有用户都可在「邮件中心」看到；带奖励的邮件用户点击「立即领取」金币实时到账</div>
     </div>
 
-    <!-- 全部日记（按用户分组） -->
-    <div class="panel">
-      <h2>全部日记 <span style="font-size:11px;color:var(--muted);font-weight:400">（按用户分组 · 可编辑/删除/新增）</span></h2>
-      <div class="diary-list" id="diaryList"></div>
+    <!-- ================= 留言 ================= -->
+    <div id="pane-msg" style="display:none">
+      <div class="panel">
+        <h2>留言管理 <span class="sub">（公开留言 · 可新增 / 编辑 / 删除）</span></h2>
+        <div class="row" style="margin-bottom:9px">
+          <textarea id="msgNew" placeholder="以管理员身份发布一条留言…" style="min-height:62px"></textarea>
+        </div>
+        <div class="row" style="margin-bottom:9px">
+          <button class="btn" onclick="addMsg()">📮 发布留言</button>
+          <input type="text" id="msgSearch" placeholder="搜索账号 / 内容" oninput="renderMsgs()" style="flex:1;min-width:140px;max-width:240px">
+          <button class="btn small ghost" onclick="loadMsgs()">刷新</button>
+        </div>
+        <div id="msgNotice"></div>
+        <div class="scroll-box" id="msgList"></div>
+      </div>
+    </div>
+
+    <!-- ================= 日记 ================= -->
+    <div id="pane-diary" style="display:none">
+      <div class="panel">
+        <h2>全部日记 <span class="sub">（按用户分组 · 可编辑/删除/新增）</span></h2>
+        <div class="picker">
+          <span class="field"><span>为谁新增</span><select id="diaryUser"></select></span>
+          <input type="text" id="diaryNew" placeholder="日记内容" style="flex:1;min-width:170px;max-width:320px">
+          <button class="btn small" onclick="addDiary()">＋ 新增</button>
+          <input type="text" id="diarySearch" placeholder="搜索用户 / 内容" oninput="renderDiary()" style="min-width:150px;max-width:220px">
+          <button class="btn small ghost" onclick="loadDiary()">刷新</button>
+        </div>
+        <div class="row" style="margin-bottom:8px"><span class="field" id="diaryCount"></span></div>
+        <div class="diary-list" id="diaryList"></div>
+      </div>
+    </div>
+
+    <!-- ================= 教资刷题 ================= -->
+    <div id="pane-edu" style="display:none">
+      <div class="panel">
+        <h2>教资刷题进度 <span class="sub">（game=edu_v1 · 题库/错题/星标/打卡/模拟考）</span></h2>
+        <div class="picker">
+          <span class="field"><span>选择用户</span><select id="eduUser" onchange="loadEdu()"><option value="">— 选择 —</option></select></span>
+          <button class="btn small ghost" onclick="loadEdu()">读取</button>
+          <button class="btn small" onclick="saveEdu()">保存进度</button>
+          <button class="btn small danger" onclick="resetEdu()">清空全部</button>
+        </div>
+        <div id="eduNotice"></div>
+        <div id="eduBody" style="display:none">
+          <div class="edu-sum" id="eduSum"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>题库</th><th>已做/总数</th><th>对</th><th>错</th><th>错题本</th><th>星标</th><th>操作</th></tr></thead>
+              <tbody id="eduRows"></tbody>
+            </table>
+          </div>
+          <div id="eduEditor" style="margin-top:14px"></div>
+          <h2 style="margin-top:16px">打卡记录</h2>
+          <div class="row" style="margin-bottom:6px">
+            <input type="date" id="chkDate" style="width:160px">
+            <button class="btn small ghost" onclick="addCheckin()">＋ 新增打卡</button>
+            <button class="btn small danger" onclick="clearCheckin()">清空打卡</button>
+          </div>
+          <div id="eduCheckin"></div>
+          <h2 style="margin-top:16px">模拟考成绩</h2>
+          <div class="row" style="margin-bottom:6px">
+            <select id="mockBank" style="min-width:200px"></select>
+            <input type="number" id="mockScore" placeholder="分数" style="width:110px">
+            <input type="date" id="mockDate" style="width:160px">
+            <button class="btn small ghost" onclick="addMock()">＋ 新增成绩</button>
+          </div>
+          <div id="eduMock"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 邮件 ================= -->
+    <div id="pane-mail" style="display:none">
+      <div class="panel">
+        <h2>发布邮件 <span class="sub">（发送给所有用户 · 可附金币奖励）</span></h2>
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="mailTitle" placeholder="邮件标题" style="flex:1;min-width:200px">
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <textarea id="mailBody" style="min-height:90px" placeholder="邮件正文（前几个字会显示在列表摘要）"></textarea>
+        </div>
+        <div class="row">
+          <input type="number" id="mailReward" placeholder="奖励金币（0=无奖励）" style="max-width:190px" min="0">
+          <button class="btn" onclick="publishMail()">📮 发布邮件</button>
+        </div>
+        <div class="hint">发布后所有用户都可在「邮件中心」看到；带奖励的邮件用户点击「立即领取」金币实时到账</div>
+      </div>
+      <div class="panel">
+        <h2>已发布邮件</h2>
+        <div class="scroll-box" id="mailList"></div>
+      </div>
     </div>
   </div>
+
   <div class="msg" id="msg"></div>
 
 <script>
-  // ===== 后端 API =====
-  const API = 'https://api.mogoing.xyz';
+/* =====================================================================
+   admin.html 管理后台（合并版）
+   - 账号 / 种菜 / 留言 / 日记 / 教资刷题 / 邮件  六个模块 增删改查
+   - 后端：https://api.mogoing.xyz（Cloudflare Worker + D1）
+   - 兼容原版 admin.html 的「发放金币 / 发布邮件」，配置存后端 /api/cfg
+   ===================================================================== */
+(function () {
+'use strict';
 
-  // ===== 登录守卫：仅管理员可进 =====
-  const user = localStorage.getItem('blindbox_user');
-  const manager = localStorage.getItem('blindbox_manager') === '1';
-  if (!user || !manager) { location.replace('index.html'); }
-  const pass = localStorage.getItem('blindbox_pass') || '';
-  document.getElementById('who').textContent = ' · ' + user;
+/* ---------------- 常量 ---------------- */
+var API = 'https://api.mogoing.xyz';
+var PLOT_COUNT = 16;
+var CROPS = {
+  apple: { name: '苹果', cycle: 5 * 3600 * 1000 },
+  pine: { name: '松果', cycle: 8 * 3600 * 1000 },
+  rose: { name: '玫瑰', cycle: 6 * 3600 * 1000 },
+  candy: { name: '糖果', cycle: 30 * 1000 },
+  potato: { name: '土豆', cycle: 12 * 3600 * 1000 },
+  mushroomseed: { name: '蘑菇', cycle: 10 * 3600 * 1000 },
+  pumpkin: { name: '南瓜', cycle: 24 * 3600 * 1000 },
+  cabbage: { name: '白菜', cycle: 8 * 3600 * 1000 },
+  radish: { name: '萝卜', cycle: 6 * 3600 * 1000 }
+};
+var CROP_KEYS = ['apple', 'pine', 'rose', 'candy', 'potato', 'mushroomseed', 'pumpkin', 'cabbage', 'radish'];
+/* 教资题库（取自 edu/data/index.js，共 21 个题库 / 1127 题） */
+var QUIZ_BANKS = [{"id":"zhsz-01-01-单选题-职业理念-60题","sub":"zhsz","subName":"综合素质","title":"01-单选-职业理念","kind":"single","count":60},{"id":"zhsz-02-02-单选题-法律法规-70题","sub":"zhsz","subName":"综合素质","title":"02-单选-法律法规","kind":"single","count":70},{"id":"zhsz-03-03-单选题-职业道德-40题","sub":"zhsz","subName":"综合素质","title":"03-单选-职业道德","kind":"single","count":40},{"id":"zhsz-04-04-单选题-文化素养-80题","sub":"zhsz","subName":"综合素质","title":"04-单选-文化素养","kind":"single","count":80},{"id":"zhsz-05-05-单选题-基本能力-50题","sub":"zhsz","subName":"综合素质","title":"05-单选-基本能力","kind":"single","count":50},{"id":"zhsz-06-06-材料分析题专项-30题","sub":"zhsz","subName":"综合素质","title":"06-材料分析题","kind":"material","count":30},{"id":"zhsz-07-07-写作题专项-12题-3篇范文","sub":"zhsz","subName":"综合素质","title":"07-写作题","kind":"writing","count":12},{"id":"jyjs-08-01-单选题-教育基础-70题","sub":"jyjs","subName":"教育教学知识与能力","title":"01-单选-教育基础","kind":"single","count":70},{"id":"jyjs-09-02-单选题-学生指导-70题","sub":"jyjs","subName":"教育教学知识与能力","title":"02-单选-学生指导","kind":"single","count":70},{"id":"jyjs-10-03-单选题-班级管理-40题","sub":"jyjs","subName":"教育教学知识与能力","title":"03-单选-班级管理","kind":"single","count":40},{"id":"jyjs-11-04-单选题-教学实施-70题","sub":"jyjs","subName":"教育教学知识与能力","title":"04-单选-教学实施","kind":"single","count":70},{"id":"jyjs-12-05-单选题-教学设计-50题","sub":"jyjs","subName":"教育教学知识与能力","title":"05-单选-教学设计","kind":"single","count":50},{"id":"jyjs-13-06-简答题专项-120题","sub":"jyjs","subName":"教育教学知识与能力","title":"06-简答题","kind":"short","count":120},{"id":"jyjs-14-07-材料分析题专项-25题","sub":"jyjs","subName":"教育教学知识与能力","title":"07-材料分析题","kind":"material","count":25},{"id":"jyjs-15-08-教学设计题专项-12题-3篇范文","sub":"jyjs","subName":"教育教学知识与能力","title":"08-教学设计题","kind":"design","count":12},{"id":"ms-16-02-结构化面试题库-150题","sub":"ms","subName":"面试","title":"02-结构化面试","kind":"interview","count":150},{"id":"ms-17-04-答辩常见问题-60题","sub":"ms","subName":"面试","title":"04-答辩常见问题","kind":"interview","count":60},{"id":"mock-18-01-综合素质模拟卷A-含答案解析","sub":"mock","subName":"模拟卷","title":"01-综合素质模拟卷A","kind":"mixed","count":33},{"id":"mock-19-02-综合素质模拟卷B-含答案解析","sub":"mock","subName":"模拟卷","title":"02-综合素质模拟卷B","kind":"mixed","count":33},{"id":"mock-20-03-教育教学模拟卷A-含答案解析","sub":"mock","subName":"模拟卷","title":"03-教育教学模拟卷A","kind":"mixed","count":26},{"id":"mock-21-04-教育教学模拟卷B-含答案解析","sub":"mock","subName":"模拟卷","title":"04-教育教学模拟卷B","kind":"mixed","count":26}];
 
-  // ===== 工具 =====
-  const $ = id => document.getElementById(id);
-  function toast(t){
-    const m = $('msg'); m.textContent = t; m.classList.add('show');
-    clearTimeout(m._t); m._t = setTimeout(() => m.classList.remove('show'), 2000);
-  }
-  function goHome(){ location.href = 'main.html'; }
-  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+/* ---------------- 状态 ---------------- */
+var S = {
+  user: '', pass: '', manager: false,
+  tab: 'users',
+  USERS: [], MSGS: [], DIARY: [], MAILS: [],
+  farm: null,
+  edu: null,
+  eduBank: ''
+};
 
-  // ===== 用户列表 =====
-  let USERS = [];
-  async function loadUsers(){
-    try {
-      const r = await fetch(`${API}/api/admin/users?admin_username=${encodeURIComponent(user)}&admin_password=${encodeURIComponent(pass)}`);
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '加载失败');
-      USERS = d.users || [];
-      $('sUsers').textContent = USERS.length;
-      $('sCoins').textContent = USERS.reduce((a, u) => a + (u.coins || 0), 0);
-      const rows = USERS.map(u => `
-        <tr>
-          <td>${u.id}</td>
-          <td>${esc(u.username)} ${u.manager === 1 ? '<span class="u-admin">管理员</span>' : ''}</td>
-          <td><span class="coin-cell">
-            <button class="pm-btn minus" ${u.manager===1?'disabled':''} onclick="adjustCoin('${esc(u.username)}',-1,this)">−</button>
-            <span class="coin-num" id="coin_${u.id}">🪙 ${u.coins}</span>
-            <button class="pm-btn plus" ${u.manager===1?'disabled':''} onclick="adjustCoin('${esc(u.username)}',1,this)">＋</button>
-          </span></td>
-          <td>${(u.created_at || '').slice(0, 10)}</td>
-          <td>${u.manager === 1 ? '<span style="color:var(--muted);font-size:11px">不可删</span>' :
-            `<button class="del" onclick="delUser('${esc(u.username)}')">删除</button>`}</td>
-        </tr>`).join('');
-      $('userRows').innerHTML = USERS.length ? rows : '<tr><td colspan="5" class="empty">暂无用户</td></tr>';
-    } catch (e) { toast('加载失败：' + e.message); }
-  }
+/* ---------------- 工具 ---------------- */
+function $id(x) { return document.getElementById(x); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+var _toastTimer = null;
+function toast(t, type) {
+  var m = $id('msg'); if (!m) return;
+  m.textContent = t;
+  m.className = 'msg show' + (type ? ' ' + type : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function () { m.className = 'msg'; }, 2400);
+}
+function ok(t) { toast('✅ ' + t, 'ok'); }
+function fail(t) { toast('⚠️ ' + t, 'bad'); }
+function fmtTime(t) {
+  if (!t) return '';
+  var d = new Date(String(t).replace(' ', 'T') + (/Z|[+-]\d\d:\d\d$/.test(String(t)) ? '' : 'Z'));
+  if (isNaN(d.getTime())) return String(t).slice(0, 16);
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function dateStr(ms) {
+  var d = new Date(ms || Date.now()); if (isNaN(d.getTime())) return '';
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function localInput(ms) {
+  if (!ms) return '';
+  var d = new Date(ms); if (isNaN(d.getTime())) return '';
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function inputToMs(v) {
+  if (!v) return 0;
+  var t = new Date(v).getTime();
+  return isNaN(t) ? 0 : t;
+}
 
-  // ===== 金币：单步 +/-（管理员账号不可调） =====
-  async function adjustCoin(username, delta, btn){
-    btn.disabled = true;
-    try {
-      const r = await fetch(`${API}/api/admin/addcoins`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ admin_username: user, admin_password: pass, username, amount: delta })
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      // 更新该行显示
-      USERS = USERS.map(u => u.username === username ? {...u, coins: d.coins} : u);
-      const target = USERS.find(u => u.username === username);
-      const el = document.getElementById('coin_' + target.id);
-      if (el) el.textContent = '🪙 ' + d.coins;
-      $('sCoins').textContent = USERS.reduce((a, u) => a + (u.coins || 0), 0);
-    } catch (e) { toast('失败：' + e.message); }
-    btn.disabled = false;
-  }
+/* ---------------- 网络层 ---------------- */
+function api(path, opts, timeout) {
+  timeout = timeout || 12000;
+  return new Promise(function (resolve, reject) {
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, timeout) : null;
+    var o = Object.assign({ cache: 'no-store' }, opts || {});
+    if (ctrl) o.signal = ctrl.signal;
+    fetch(API + path, o)
+      .then(function (r) {
+        return r.text().then(function (txt) {
+          var d;
+          try { d = JSON.parse(txt); } catch (e) { d = { ok: false, error: '服务器响应异常', _raw: txt.slice(0, 120) }; }
+          d._status = r.status;
+          return d;
+        });
+      })
+      .then(function (d) { clearTimeout(timer); resolve(d); })
+      .catch(function (e) { clearTimeout(timer); reject(e); });
+  });
+}
+function post(path, body) {
+  return api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+}
+function isMissingRoute(d) { return d && d._status === 404 && /接口不存在/.test(d.error || ''); }
+function adminQ(extra) {
+  return 'admin_username=' + encodeURIComponent(S.user) + '&admin_password=' + encodeURIComponent(S.pass) +
+    (extra ? '&' + extra : '');
+}
 
-  // ===== 发放金币 =====
-  async function addCoins(){
-    const username = $('addUser').value.trim();
-    const amount = parseInt($('addAmount').value, 10);
-    if (!username || !amount) return toast('请填写用户名和数量');
-    try {
-      const r = await fetch(`${API}/api/admin/addcoins`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ admin_username: user, admin_password: pass, username, amount })
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      toast(`✅ ${username} 金币 → ${d.coins}`);
-      $('addUser').value = ''; $('addAmount').value = '';
-      loadUsers();
-    } catch (e) { toast('失败：' + e.message); }
-  }
-
-  // ===== 删除用户 =====
-  async function delUser(username){
-    if (!confirm(`确定删除用户「${username}」吗？\n该用户的日记、留言、金币、分数、存档将全部清除，且不可恢复！`)) return;
-    try {
-      const r = await fetch(`${API}/api/admin/deleteuser`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ admin_username: user, admin_password: pass, username })
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      toast(`✅ 已删除 ${username}`);
-      loadUsers(); loadDiary();
-    } catch (e) { toast('失败：' + e.message); }
-  }
-
-  // ===== 日记：按用户分组加载 =====
-  let DIARY = [];
-  async function loadDiary(){
-    try {
-      const r = await fetch(`${API}/api/diary?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`);
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '加载失败');
-      DIARY = d.diary || [];
-      $('sDiary').textContent = DIARY.length;
-      renderDiary();
-    } catch (e) { $('diaryList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>'; }
-  }
-
-  function renderDiary(){
-    // 按用户名分组
-    const groups = {};
-    DIARY.forEach(it => {
-      const name = it.username || ('用户' + it.user_id);
-      if (!groups[name]) groups[name] = [];
-      groups[name].push(it);
-    });
-    const names = Object.keys(groups).sort();
-    $('diaryList').innerHTML = names.length ? names.map((name, gi) => `
-      <div class="user-group ${gi===0?'open':''}" id="ug_${gi}">
-        <div class="ug-head" onclick="document.getElementById('ug_${gi}').classList.toggle('open')">
-          <b>${esc(name)}</b>
-          <span style="display:flex;align-items:center;gap:7px">
-            <span class="ug-count">${groups[name].length} 条</span>
-            <button class="btn small ghost" onclick="event.stopPropagation();addDiaryFor('${esc(name)}')">＋ 新增</button>
-            <span class="ug-arrow">▼</span>
-          </span>
-        </div>
-        <div class="ug-body">
-          ${groups[name].map(it => `
-            <div class="d-item" id="dit_${it.id}">
-              <div class="d-head">
-                <time>${esc(it.created_at || '')}</time>
-                <span class="d-ops">
-                  <button class="btn small ghost" onclick="editDiary(${it.id})">编辑</button>
-                  <button class="btn small danger" onclick="delDiary(${it.id})">删除</button>
-                </span>
-              </div>
-              <p class="d-content">${esc(it.content)}</p>
-              <div class="edit-box" id="eb_${it.id}">
-                <textarea id="ebt_${it.id}">${esc(it.content)}</textarea>
-                <input type="text" id="ebd_${it.id}" placeholder="改时间（可选，留空保持原时间）" value="${esc(it.created_at || '')}">
-                <div class="eb-row">
-                  <button class="btn small" onclick="saveEdit(${it.id})">保存</button>
-                  <button class="btn small ghost" onclick="cancelEdit(${it.id})">取消</button>
-                </div>
-              </div>
-            </div>`).join('')}
-        </div>
-      </div>`).join('') : '<div class="empty">暂无日记</div>';
-  }
-
-  // ===== 日记：新增（管理员为指定用户新增） =====
-  function addDiaryFor(username){
-    const content = prompt(`为「${username}」新增一条日记，请输入内容：`);
-    if (!content || !content.trim()) return;
-    postDiaryAdd(username, content.trim());
-  }
-  async function postDiaryAdd(username, content){
-    try {
-      const r = await fetch(`${API}/api/diary`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: user, password: pass, content, target_username: username })
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      toast(`✅ 已为 ${username} 新增日记`);
-      loadDiary();
-    } catch (e) { toast('失败：' + e.message); }
-  }
-
-  // ===== 日记：编辑（管理员可改内容 + 时间） =====
-  function editDiary(id){
-    document.getElementById('eb_' + id).classList.add('show');
-    document.getElementById('dit_' + id).querySelector('.d-content').style.display = 'none';
-  }
-  function cancelEdit(id){
-    document.getElementById('eb_' + id).classList.remove('show');
-    document.getElementById('dit_' + id).querySelector('.d-content').style.display = '';
-  }
-  async function saveEdit(id){
-    const content = document.getElementById('ebt_' + id).value.trim();
-    const created_at = document.getElementById('ebd_' + id).value.trim();
-    if (!content) return toast('内容不能为空');
-    try {
-      const body = { username: user, password: pass, id, content };
-      // 只有填写了时间才传 created_at（管理员可改时间）；留空则保持原时间不变
-      if (created_at) body.created_at = created_at;
-      const r = await fetch(`${API}/api/diary/update`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(body)
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      toast('✅ 日记已更新');
-      loadDiary();
-    } catch (e) { toast('失败：' + e.message); }
-  }
-
-  // ===== 日记：删除 =====
-  async function delDiary(id){
-    if (!confirm('确定删除这条日记吗？')) return;
-    try {
-      const r = await fetch(`${API}/api/diary/delete`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: user, password: pass, id })
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      toast('✅ 日记已删除');
-      loadDiary();
-    } catch (e) { toast('失败：' + e.message); }
-  }
-
-  // ===== 发布邮件（写入全局 cfg.mails，所有用户可见） =====
-  async function publishMail(){
-    const title = $('mailTitle').value.trim();
-    const body = $('mailBody').value.trim();
-    const reward = Math.max(0, parseInt($('mailReward').value, 10) || 0);
-    if (!title || !body) return toast('请填写标题和正文');
-    try {
-      // 读现有 cfg
-      const r0 = await fetch(`${API}/api/cfg`);
-      const d0 = await r0.json();
-      const cfg = d0.cfg || {};
-      const mails = Array.isArray(cfg.mails) ? cfg.mails : [];
-      const id = Date.now();
-      mails.push({ id, title, body, reward, date: new Date().toISOString() });
-      // 写回 cfg
-      const r = await fetch(`${API}/api/cfg`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: user, password: pass, cfg: { ...cfg, mails } })
-      });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error || '失败');
-      toast('✅ 邮件已发布给所有用户');
-      $('mailTitle').value = ''; $('mailBody').value = ''; $('mailReward').value = '';
-    } catch (e) { toast('发布失败：' + e.message); }
-  }
-
+/* ---------------- 登录守卫（与原版 admin.html 一致：非管理员回登录页） ---------------- */
+function boot() {
+  var u = '', p = '', m = false;
+  try {
+    u = localStorage.getItem('blindbox_user') || '';
+    p = localStorage.getItem('blindbox_pass') || '';
+    m = localStorage.getItem('blindbox_manager') === '1';
+  } catch (e) { }
+  if (!u || !p || !m) { location.replace('index.html'); return; }
+  S.user = u; S.pass = p; S.manager = true;
+  $id('who').textContent = ' · ' + u;
   loadUsers();
+  loadMsgs();
   loadDiary();
+  loadMails();
+  probeCaps();
+  // 后台再验一次管理员身份，防止本地标记被改
+  api('/api/user?username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p)).then(function (d) {
+    if (d && d.ok && d.user && !d.user.manager) location.replace('index.html');
+  }).catch(function () { });
+}
+
+function goHome() { location.href = 'main.html'; }
+
+/* 探测后端是否已部署管理员扩展接口（未部署则给出明确提示，而非静默失败） */
+function probeCaps() {
+  api('/api/admin/save?' + adminQ('game=bean&target_username=' + encodeURIComponent(S.user)) + '&probe=1')
+    .then(function (d) {
+      if (isMissingRoute(d)) {
+        var n = '⚠️ 后端未部署「管理员读写他人存档」接口，种菜/教资目前只能读写你自己的存档。';
+        if ($id('farmNotice')) $id('farmNotice').innerHTML = '<div class="notice">' + n + '</div>';
+        if ($id('eduNotice')) $id('eduNotice').innerHTML = '<div class="notice">' + n + '</div>';
+      }
+    }).catch(function () { });
+  post('/api/admin/message/update', { admin_username: S.user, admin_password: S.pass, id: 0, content: '' })
+    .then(function (d) {
+      if (isMissingRoute(d) && $id('msgNotice')) {
+        $id('msgNotice').innerHTML = '<div class="notice">⚠️ 后端未部署「编辑/删除留言」接口：可发布，改/删会失败。</div>';
+      }
+    }).catch(function () { });
+}
+
+/* =====================================================================
+   一、账号管理
+   ===================================================================== */
+function loadUsers() {
+  $id('userRows').innerHTML = '<tr><td colspan="5" class="loading">加载中…</td></tr>';
+  api('/api/admin/users?' + adminQ()).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '加载失败');
+    S.USERS = d.users || [];
+    renderUsers();
+    fillUserSelects();
+    $id('sUsers').textContent = S.USERS.length;
+    $id('sCoins').textContent = S.USERS.reduce(function (a, u) { return a + (u.coins || 0); }, 0);
+    $id('usersCount').textContent = '共 ' + S.USERS.length + ' 个账号';
+  }).catch(function (e) {
+    $id('userRows').innerHTML = '<tr><td colspan="5" class="empty">加载失败：' + esc(e.message) + '</td></tr>';
+  });
+}
+
+function renderUsers() {
+  var kw = ($id('userSearch').value || '').trim().toLowerCase();
+  var list = S.USERS.filter(function (u) {
+    if (!kw) return true;
+    return String(u.id).indexOf(kw) >= 0 || String(u.username).toLowerCase().indexOf(kw) >= 0;
+  });
+  if (!list.length) {
+    $id('userRows').innerHTML = '<tr><td colspan="5" class="empty">' + (S.USERS.length ? '没有匹配的账号' : '暂无账号') + '</td></tr>';
+    return;
+  }
+  var self = S.user;
+  $id('userRows').innerHTML = list.map(function (u) {
+    var isAdm = u.manager === 1;
+    var isSelf = u.username === self;
+    return '<tr>' +
+      '<td>' + u.id + '</td>' +
+      '<td>' + esc(u.username) + ' ' +
+      (isAdm ? '<span class="u-admin">管理员</span>' : '') +
+      (isSelf ? ' <span class="u-me">当前</span>' : '') + '</td>' +
+      '<td><span class="coin-cell">' +
+      '<button class="pm-btn minus" ' + (isAdm ? 'disabled' : '') + ' onclick="adjustCoin(\'' + esc(u.username) + '\',-1)">−</button>' +
+      '<span class="coin-num" id="coin_' + u.id + '">🪙 ' + (u.coins || 0) + '</span>' +
+      '<button class="pm-btn plus" ' + (isAdm ? 'disabled' : '') + ' onclick="adjustCoin(\'' + esc(u.username) + '\',1)">＋</button>' +
+      '</span></td>' +
+      '<td>' + esc((u.created_at || '').slice(0, 10)) + '</td>' +
+      '<td><span class="row" style="gap:4px">' +
+      '<button class="btn tiny ghost" onclick="jumpFarm(\'' + esc(u.username) + '\')">种菜</button>' +
+      '<button class="btn tiny grape" onclick="jumpEdu(\'' + esc(u.username) + '\')">教资</button>' +
+      '<button class="btn tiny ghost" onclick="editUser(' + u.id + ')">改密</button>' +
+      (isSelf ? '<button class="btn tiny" disabled title="不能改自己的权限">权限</button>'
+        : '<button class="btn tiny" onclick="toggleManager(\'' + esc(u.username) + '\',' + (isAdm ? 0 : 1) + ')">' + (isAdm ? '降为普通' : '升为管理') + '</button>') +
+      (isAdm || isSelf ? '<button class="btn tiny danger" disabled title="不能删除管理员/自己">删除</button>'
+        : '<button class="btn tiny danger" onclick="delUser(\'' + esc(u.username) + '\')">删除</button>') +
+      '</span></td></tr>';
+  }).join('');
+}
+
+function createUser() {
+  var name = $id('nuName').value.trim();
+  var pass = $id('nuPass').value.trim();
+  var coins = parseInt($id('nuCoins').value, 10) || 0;
+  if (name.length < 2) return fail('用户名至少 2 个字符');
+  if (!pass) return fail('请填写密码');
+  post('/api/register', { username: name, password: pass }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '创建失败');
+    if (coins > 0) {
+      return post('/api/admin/addcoins', {
+        admin_username: S.user, admin_password: S.pass, username: name, amount: coins
+      }).then(function (r) {
+        if (!r || !r.ok) throw new Error('账号已创建，但发金币失败：' + ((r && r.error) || ''));
+      });
+    }
+  }).then(function () {
+    ok('已创建账号 ' + name);
+    $id('nuName').value = ''; $id('nuPass').value = ''; $id('nuCoins').value = '0';
+    loadUsers();
+  }).catch(function (e) { fail(e.message); });
+}
+
+function adjustCoin(username, delta) {
+  post('/api/admin/addcoins', {
+    admin_username: S.user, admin_password: S.pass, username: username, amount: delta
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '失败');
+    var u = S.USERS.filter(function (x) { return x.username === username; })[0];
+    if (u) {
+      u.coins = d.coins;
+      var el = $id('coin_' + u.id);
+      if (el) el.textContent = '🪙 ' + d.coins;
+      $id('sCoins').textContent = S.USERS.reduce(function (a, x) { return a + (x.coins || 0); }, 0);
+    }
+    ok(username + ' 金币 → ' + d.coins);
+    if (S.farm && S.farm.username === username && S.farm.data && $id('farmCoins')) {
+      S.farm.data.coins = d.coins;
+      $id('farmCoins').value = d.coins;
+    }
+  }).catch(function (e) { fail(e.message); });
+}
+
+/* 原版 admin.html 的「发放金币」表单 */
+function addCoins() {
+  var username = $id('addUser').value.trim();
+  var amount = parseInt($id('addAmount').value, 10);
+  if (!username || !amount) return fail('请填写用户名和数量');
+  post('/api/admin/addcoins', {
+    admin_username: S.user, admin_password: S.pass, username: username, amount: amount
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '失败');
+    ok(username + ' 金币 → ' + d.coins);
+    $id('addUser').value = ''; $id('addAmount').value = '';
+    loadUsers();
+  }).catch(function (e) { fail(e.message); });
+}
+
+function delUser(username) {
+  if (!confirm('确定删除用户「' + username + '」？\n其金币、留言、日记、种菜存档、教资进度将一并清除，不可恢复！')) return;
+  post('/api/admin/deleteuser', { admin_username: S.user, admin_password: S.pass, username: username })
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || '失败');
+      ok('已删除 ' + username);
+      S.USERS = S.USERS.filter(function (u) { return u.username !== username; });
+      renderUsers(); fillUserSelects(); loadMsgs(); loadDiary();
+      $id('sUsers').textContent = S.USERS.length;
+    }).catch(function (e) { fail(e.message); });
+}
+
+function editUser(id) {
+  var u = S.USERS.filter(function (x) { return x.id === id; })[0];
+  if (!u) return;
+  var np = prompt('为「' + u.username + '」设置新密码（留空取消）：', '');
+  if (np === null) return;
+  np = np.trim();
+  if (!np) return;
+  post('/api/admin/updateuser', {
+    admin_username: S.user, admin_password: S.pass, id: id, username: u.username, password: np
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '失败');
+    ok('已修改 ' + u.username + ' 的密码');
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) fail('后端缺少 /api/admin/updateuser 接口，部署补丁后可用');
+    else fail(e.message);
+  });
+}
+
+function toggleManager(username, val) {
+  if (!confirm('确定把「' + username + '」' + (val ? '升为管理员' : '降为普通用户') + '？')) return;
+  post('/api/admin/updateuser', {
+    admin_username: S.user, admin_password: S.pass, username: username, manager: val
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '失败');
+    ok('已更新权限');
+    loadUsers();
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) fail('后端缺少 /api/admin/updateuser 接口，部署补丁后可用');
+    else fail(e.message);
+  });
+}
+
+function fillUserSelects() {
+  var names = S.USERS.map(function (u) { return u.username; });
+  ['farmUser', 'eduUser', 'diaryUser'].forEach(function (id) {
+    var sel = $id(id); if (!sel) return;
+    var keep = sel.value;
+    sel.innerHTML = (id === 'diaryUser' ? '' : '<option value="">— 选择 —</option>') +
+      names.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+    if (keep && names.indexOf(keep) >= 0) sel.value = keep;
+  });
+  var mb = $id('mockBank');
+  if (mb && !mb.getAttribute('data-filled')) {
+    mb.innerHTML = QUIZ_BANKS.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.title) + '（' + b.count + '题）</option>'; }).join('');
+    mb.setAttribute('data-filled', '1');
+  }
+}
+
+function jumpFarm(username) {
+  switchTab('farm');
+  $id('farmUser').value = username;
+  loadFarm();
+}
+function jumpEdu(username) {
+  switchTab('edu');
+  $id('eduUser').value = username;
+  loadEdu();
+}
+
+/* =====================================================================
+   二、种菜管理
+   ===================================================================== */
+function emptyFarm() {
+  var plots = [];
+  for (var i = 0; i < PLOT_COUNT; i++) plots.push({ o: false, crop: '', grow: 0, plantedAt: 0, watered: false, fertilized: false });
+  return { plots: plots, coins: 0, inv: {} };
+}
+
+function loadFarm() {
+  var target = $id('farmUser').value;
+  if (!target) { $id('farmBody').style.display = 'none'; return; }
+  $id('farmBody').style.display = '';
+  $id('farmPlots').innerHTML = '<div class="loading" style="grid-column:1/-1">读取存档中…</div>';
+  var path = target === S.user
+    ? '/api/save?username=' + encodeURIComponent(S.user) + '&password=' + encodeURIComponent(S.pass) + '&game=bean'
+    : '/api/admin/save?' + adminQ('game=bean&target_username=' + encodeURIComponent(target));
+  api(path).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '读取失败');
+    var save = d.save && typeof d.save === 'object' ? d.save : {};
+    S.farm = { username: target, data: normalizeFarm(save.data && typeof save.data === 'object' ? save.data : save) };
+    $id('farmCoins').value = S.farm.data.coins;
+    renderFarm();
+    ok('已读取 ' + target + ' 的种菜存档');
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) {
+      S.farm = { username: target, data: emptyFarm() };
+      $id('farmCoins').value = 0;
+      renderFarm();
+      $id('farmNotice').innerHTML = '<div class="notice">⚠️ 后端缺少 /api/admin/save：只能读写你自己的存档。</div>';
+      fail('后端缺少管理员存档接口');
+    } else {
+      $id('farmPlots').innerHTML = '<div class="empty" style="grid-column:1/-1">读取失败：' + esc(e.message) + '</div>';
+      fail(e.message);
+    }
+  });
+}
+
+function normalizeFarm(d) {
+  if (!d || typeof d !== 'object') return emptyFarm();
+  var plots = [];
+  var src = Array.isArray(d.plots) ? d.plots : [];
+  for (var i = 0; i < PLOT_COUNT; i++) {
+    var p = src[i] || {};
+    plots.push({
+      o: !!p.o,
+      crop: p.crop || '',
+      grow: Math.max(0, Math.min(5, parseInt(p.grow, 10) || 0)),
+      plantedAt: parseInt(p.plantedAt, 10) || 0,
+      watered: !!p.watered,
+      fertilized: !!p.fertilized
+    });
+  }
+  return { plots: plots, coins: parseInt(d.coins, 10) || 0, inv: d.inv && typeof d.inv === 'object' ? d.inv : {} };
+}
+
+function renderFarm() {
+  if (!S.farm) return;
+  var f = S.farm.data;
+  if (!Array.isArray(f.plots)) f.plots = emptyFarm().plots;
+  if (!f.inv || typeof f.inv !== 'object') f.inv = {};
+  $id('farmPlots').innerHTML = f.plots.map(function (p, i) {
+    var opts = '<option value="">（空地）</option>' + CROP_KEYS.map(function (k) {
+      return '<option value="' + k + '"' + (p.crop === k ? ' selected' : '') + '>' + CROPS[k].name + '</option>';
+    }).join('');
+    var cropName = p.crop ? (CROPS[p.crop] ? CROPS[p.crop].name : p.crop) : '空地';
+    return '<div class="plot">' +
+      '<div class="phead">地块 ' + (i + 1) + '<span>' + esc(cropName) + ' · 成长 ' + p.grow + '/5</span></div>' +
+      '<div class="prow"><label>开垦</label><input type="checkbox" data-i="' + i + '" data-k="o"' + (p.o ? ' checked' : '') + ' style="width:auto;height:auto;flex:none"></div>' +
+      '<div class="prow"><label>作物</label><select data-i="' + i + '" data-k="crop" onchange="onPlotCrop(' + i + ',this.value)">' + opts + '</select></div>' +
+      '<div class="prow"><label>成长</label><input type="range" min="0" max="5" data-i="' + i + '" data-k="grow" value="' + p.grow + '" oninput="onPlotGrow(' + i + ',this.value)"></div>' +
+      '<div class="prow"><label>种植时间</label><input type="datetime-local" data-i="' + i + '" data-k="plantedAt" value="' + localInput(p.plantedAt) + '"></div>' +
+      '<div class="pfoot">' +
+      '<label style="font-size:11px;color:#A08A62;display:flex;gap:4px;align-items:center"><input type="checkbox" data-i="' + i + '" data-k="watered"' + (p.watered ? ' checked' : '') + ' style="width:auto;height:auto;flex:none">浇水</label>' +
+      '<label style="font-size:11px;color:#A08A62;display:flex;gap:4px;align-items:center"><input type="checkbox" data-i="' + i + '" data-k="fertilized"' + (p.fertilized ? ' checked' : '') + ' style="width:auto;height:auto;flex:none">施肥</label>' +
+      '<button class="btn tiny danger" onclick="clearPlot(' + i + ')">清空</button>' +
+      '</div></div>';
+  }).join('');
+  renderInv();
+}
+
+function renderInv() {
+  if (!S.farm) return;
+  var inv = S.farm.data.inv || {};
+  var keys = Object.keys(inv);
+  if (!keys.length) { $id('farmInv').innerHTML = '<div class="empty" style="grid-column:1/-1">背包是空的</div>'; return; }
+  $id('farmInv').innerHTML = keys.map(function (k) {
+    var label = k.replace(/_crop$/, '');
+    label = CROPS[label] ? CROPS[label].name + (/^.+_crop$/.test(k) ? '（果实）' : '（种子）') : k;
+    return '<div class="inv-item"><span title="' + esc(k) + '">' + esc(label) + '</span>' +
+      '<input type="number" data-inv="' + esc(k) + '" value="' + (parseInt(inv[k], 10) || 0) + '">' +
+      '<button class="pm-btn minus" onclick="removeInvKey(\'' + esc(k) + '\')">×</button></div>';
+  }).join('');
+}
+
+function redrawFarm() { if (S.farm) collectFarm(); renderFarm(); }
+function onPlotCrop(i, v) {
+  if (!S.farm) return;
+  var p = S.farm.data.plots[i];
+  p.crop = v;
+  if (v) { if (!p.plantedAt) p.plantedAt = Date.now(); if (!p.o) p.o = true; }
+  else p.plantedAt = 0;
+  redrawFarm();
+}
+function onPlotGrow(i, v) {
+  if (!S.farm) return;
+  var p = S.farm.data.plots[i];
+  p.grow = Math.max(0, Math.min(5, parseInt(v, 10) || 0));
+  var c = CROPS[p.crop];
+  if (c && p.crop) p.plantedAt = Date.now() - Math.floor(p.grow * c.cycle / 5);
+  var head = $id('farmPlots').children[i] && $id('farmPlots').children[i].querySelector('.phead span');
+  if (head) head.textContent = (p.crop ? (CROPS[p.crop] ? CROPS[p.crop].name : p.crop) : '空地') + ' · 成长 ' + p.grow + '/5';
+  collectFarm();
+}
+function clearPlot(i) {
+  if (!S.farm) return;
+  collectFarm();
+  S.farm.data.plots[i] = { o: true, crop: '', grow: 0, plantedAt: 0, watered: false, fertilized: false };
+  renderFarm();
+}
+function openAllPlots() {
+  if (!S.farm) return fail('先选择用户并读取存档');
+  collectFarm();
+  S.farm.data.plots.forEach(function (p) { p.o = true; });
+  renderFarm();
+  ok('已全部开垦（记得保存）');
+}
+function clearAllPlots() {
+  if (!S.farm) return fail('先选择用户并读取存档');
+  if (!confirm('清空全部地块（作物、成长、浇水施肥全部重置）？')) return;
+  collectFarm();
+  var keepCoins = S.farm.data.coins;
+  S.farm.data.plots = emptyFarm().plots;
+  S.farm.data.coins = keepCoins;
+  $id('farmCoins').value = keepCoins;
+  renderFarm();
+  ok('菜地已清空（记得保存）');
+}
+function removeInvKey(k) {
+  if (!S.farm) return;
+  collectFarm();
+  delete S.farm.data.inv[k];
+  renderInv();
+}
+function addInvKey() {
+  if (!S.farm) return fail('先选择用户并读取存档');
+  var k = $id('invKey').value.trim();
+  var v = parseInt($id('invVal').value, 10) || 0;
+  if (!k) return fail('请填写物品名');
+  collectFarm();
+  S.farm.data.inv[k] = v;
+  $id('invKey').value = ''; $id('invVal').value = '0';
+  renderInv();
+}
+
+function collectFarm() {
+  var f = S.farm;
+  if (!f) return null;
+  f.data.coins = parseInt($id('farmCoins').value, 10) || 0;
+  var nodes = $id('farmPlots').querySelectorAll('input,select');
+  Array.prototype.forEach.call(nodes, function (el) {
+    var i = parseInt(el.getAttribute('data-i'), 10), k = el.getAttribute('data-k');
+    if (isNaN(i) || !k) return;
+    var p = f.data.plots[i]; if (!p) return;
+    if (el.type === 'checkbox') p[k] = el.checked;
+    else if (el.type === 'range') p[k] = parseInt(el.value, 10) || 0;
+    else if (el.type === 'datetime-local') p[k] = inputToMs(el.value);
+    else p[k] = el.value;
+  });
+  var invNodes = $id('farmInv').querySelectorAll('input[data-inv]');
+  Array.prototype.forEach.call(invNodes, function (el) {
+    f.data.inv[el.getAttribute('data-inv')] = parseInt(el.value, 10) || 0;
+  });
+  return f;
+}
+
+function saveFarm() {
+  if (!S.farm) return fail('先选择用户并读取存档');
+  var f = collectFarm();
+  var target = f.username;
+  var path = target === S.user ? '/api/save' : '/api/admin/save';
+  var body = target === S.user
+    ? { username: S.user, password: S.pass, game: 'bean', data: f.data }
+    : { admin_username: S.user, admin_password: S.pass, target_username: target, game: 'bean', data: f.data };
+  post(path, body).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '保存失败');
+    ok('已保存 ' + target + ' 的种菜存档');
+    loadFarm();
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) fail('后端缺少 /api/admin/save 接口');
+    else fail(e.message);
+  });
+}
+
+function resetFarm() {
+  if (!S.farm) return fail('先选择用户并读取存档');
+  if (!confirm('重置菜地与背包（金币保留）？')) return;
+  S.farm.data.plots = emptyFarm().plots;
+  S.farm.data.inv = {};
+  S.farm.data.coins = parseInt($id('farmCoins').value, 10) || 0;
+  renderFarm();
+  ok('本地已重置，点「保存存档」生效');
+}
+
+/* =====================================================================
+   三、留言管理
+   ===================================================================== */
+function loadMsgs() {
+  $id('msgList').innerHTML = '<div class="loading">加载中…</div>';
+  api('/api/messages').then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '加载失败');
+    S.MSGS = d.messages || [];
+    renderMsgs();
+    $id('sMsg').textContent = S.MSGS.length;
+  }).catch(function (e) {
+    $id('msgList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+  });
+}
+
+function renderMsgs() {
+  var kw = ($id('msgSearch').value || '').trim().toLowerCase();
+  var list = S.MSGS.filter(function (m) {
+    if (!kw) return true;
+    return String(m.username || '').toLowerCase().indexOf(kw) >= 0 ||
+      String(m.content || '').toLowerCase().indexOf(kw) >= 0 || String(m.id) === kw;
+  });
+  if (!list.length) { $id('msgList').innerHTML = '<div class="empty">' + (S.MSGS.length ? '没有匹配的留言' : '还没有留言') + '</div>'; return; }
+  $id('msgList').innerHTML = list.map(function (m) {
+    return '<div class="m-item" id="m_' + m.id + '">' +
+      '<div class="m-head"><span><span class="m-who">' + esc(m.username || ('用户' + m.user_id)) + '</span> ' +
+      '<span class="m-meta">#' + m.id + ' · ' + fmtTime(m.created_at) + '</span></span>' +
+      '<span class="row" style="gap:4px">' +
+      '<button class="btn tiny ghost" onclick="editMsg(' + m.id + ')">编辑</button>' +
+      '<button class="btn tiny danger" onclick="delMsg(' + m.id + ')">删除</button>' +
+      '</span></div>' +
+      '<p id="mb_' + m.id + '">' + esc(m.content) + '</p>' +
+      '<div class="edit-box" id="me_' + m.id + '">' +
+      '<textarea id="met_' + m.id + '" style="min-height:60px">' + esc(m.content) + '</textarea>' +
+      '<div class="eb-row">' +
+      '<button class="btn tiny" onclick="saveMsg(' + m.id + ')">保存</button>' +
+      '<button class="btn tiny ghost" onclick="cancelMsg(' + m.id + ')">取消</button>' +
+      '</div></div></div>';
+  }).join('');
+}
+
+function addMsg() {
+  var content = ($id('msgNew').value || '').trim();
+  if (!content) return fail('请填写留言内容');
+  post('/api/message', { username: S.user, password: S.pass, content: content }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '发布失败');
+    $id('msgNew').value = '';
+    ok('留言已发布');
+    loadMsgs();
+  }).catch(function (e) { fail(e.message); });
+}
+
+function editMsg(id) {
+  $id('me_' + id).classList.add('show');
+  $id('mb_' + id).style.display = 'none';
+}
+function cancelMsg(id) {
+  $id('me_' + id).classList.remove('show');
+  $id('mb_' + id).style.display = '';
+}
+function saveMsg(id) {
+  var content = $id('met_' + id).value.trim();
+  if (!content) return fail('内容不能为空');
+  post('/api/admin/message/update', {
+    admin_username: S.user, admin_password: S.pass, id: id, content: content
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '修改失败');
+    ok('留言已修改');
+    loadMsgs();
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) fail('后端缺少 /api/admin/message/update 接口');
+    else fail(e.message);
+  });
+}
+function delMsg(id) {
+  if (!confirm('确定删除这条留言（#' + id + '）？')) return;
+  post('/api/admin/message/delete', {
+    admin_username: S.user, admin_password: S.pass, id: id
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '删除失败');
+    ok('留言已删除');
+    loadMsgs();
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) fail('后端缺少 /api/admin/message/delete 接口');
+    else fail(e.message);
+  });
+}
+
+/* =====================================================================
+   四、日记管理（按用户分组）
+   ===================================================================== */
+function loadDiary() {
+  $id('diaryList').innerHTML = '<div class="loading">加载中…</div>';
+  api('/api/diary?username=' + encodeURIComponent(S.user) + '&password=' + encodeURIComponent(S.pass))
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || '加载失败');
+      S.DIARY = d.diary || [];
+      renderDiary();
+      $id('sDiary').textContent = S.DIARY.length;
+      $id('diaryCount').textContent = '共 ' + S.DIARY.length + ' 条';
+    }).catch(function (e) {
+      $id('diaryList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+    });
+}
+
+function renderDiary() {
+  var kw = ($id('diarySearch').value || '').trim().toLowerCase();
+  var list = S.DIARY.filter(function (it) {
+    if (!kw) return true;
+    return String(it.content || '').toLowerCase().indexOf(kw) >= 0 ||
+      String(it.username || '').toLowerCase().indexOf(kw) >= 0;
+  });
+  var groups = {};
+  list.forEach(function (it) {
+    var name = it.username || ('用户' + it.user_id);
+    (groups[name] = groups[name] || []).push(it);
+  });
+  var names = Object.keys(groups).sort();
+  if (!names.length) { $id('diaryList').innerHTML = '<div class="empty">暂无日记</div>'; return; }
+  $id('diaryList').innerHTML = names.map(function (name, gi) {
+    var items = groups[name];
+    return '<div class="user-group' + (gi === 0 ? ' open' : '') + '" id="dg_' + gi + '">' +
+      '<div class="ug-head" onclick="document.getElementById(\'dg_' + gi + '\').classList.toggle(\'open\')">' +
+      '<b>' + esc(name) + '</b>' +
+      '<span style="display:flex;align-items:center;gap:7px">' +
+      '<span class="ug-count">' + items.length + ' 条</span>' +
+      '<button class="btn tiny ghost" onclick="event.stopPropagation();quickAddDiary(\'' + esc(name) + '\')">＋ 新增</button>' +
+      '<span class="ug-arrow">▼</span></span></div>' +
+      '<div class="ug-body">' + items.map(function (it) {
+        return '<div class="d-item" id="d_' + it.id + '">' +
+          '<div class="d-head"><time>#' + it.id + ' · ' + fmtTime(it.created_at) + '</time>' +
+          '<span class="d-ops">' +
+          '<button class="btn tiny ghost" onclick="editDiary(' + it.id + ')">编辑</button>' +
+          '<button class="btn tiny danger" onclick="delDiary(' + it.id + ')">删除</button>' +
+          '</span></div>' +
+          '<p class="d-content" id="db_' + it.id + '">' + esc(it.content) + '</p>' +
+          '<div class="edit-box" id="de_' + it.id + '">' +
+          '<textarea id="det_' + it.id + '" style="min-height:70px">' + esc(it.content) + '</textarea>' +
+          '<input type="text" id="ded_' + it.id + '" placeholder="改时间（可选，留空保持原时间）" value="' + esc(it.created_at || '') + '">' +
+          '<div class="eb-row">' +
+          '<button class="btn tiny" onclick="saveDiary(' + it.id + ')">保存</button>' +
+          '<button class="btn tiny ghost" onclick="cancelDiary(' + it.id + ')">取消</button>' +
+          '</div></div></div>';
+      }).join('') + '</div></div>';
+  }).join('');
+}
+
+function quickAddDiary(username) {
+  $id('diaryUser').value = username;
+  $id('diaryNew').focus();
+  $id('diaryNew').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function addDiary() {
+  var target = $id('diaryUser').value;
+  var content = ($id('diaryNew').value || '').trim();
+  if (!target) return fail('先选择「为谁新增」');
+  if (!content) return fail('请填写日记内容');
+  post('/api/diary', {
+    username: S.user, password: S.pass,
+    content: content, target_username: target
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '新增失败');
+    $id('diaryNew').value = '';
+    ok('已为 ' + target + ' 新增日记');
+    loadDiary();
+  }).catch(function (e) { fail(e.message); });
+}
+
+function editDiary(id) {
+  $id('de_' + id).classList.add('show');
+  $id('db_' + id).style.display = 'none';
+}
+function cancelDiary(id) {
+  $id('de_' + id).classList.remove('show');
+  $id('db_' + id).style.display = '';
+}
+function saveDiary(id) {
+  var content = $id('det_' + id).value.trim();
+  var t = $id('ded_' + id).value.trim();
+  if (!content) return fail('内容不能为空');
+  var body = { username: S.user, password: S.pass, id: id, content: content };
+  if (t) body.created_at = t;
+  post('/api/diary/update', body).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '修改失败');
+    ok('日记已更新');
+    loadDiary();
+  }).catch(function (e) { fail(e.message); });
+}
+function delDiary(id) {
+  if (!confirm('确定删除这条日记（#' + id + '）？')) return;
+  post('/api/diary/delete', { username: S.user, password: S.pass, id: id })
+    .then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || '删除失败');
+      ok('日记已删除');
+      loadDiary();
+    }).catch(function (e) { fail(e.message); });
+}
+
+/* =====================================================================
+   五、教资刷题进度
+   ===================================================================== */
+function emptyEdu() { return { banks: {}, daily: {}, checkin: {}, mockHist: [] }; }
+function needEdu() {
+  if (!S.edu) { fail('先选择用户并读取进度'); return false; }
+  return true;
+}
+
+function normalizeEdu(d) {
+  if (!d || typeof d !== 'object') return emptyEdu();
+  return {
+    banks: d.banks && typeof d.banks === 'object' ? d.banks : {},
+    daily: d.daily && typeof d.daily === 'object' ? d.daily : {},
+    checkin: d.checkin && typeof d.checkin === 'object' ? d.checkin : {},
+    mockHist: Array.isArray(d.mockHist) ? d.mockHist : []
+  };
+}
+
+function loadEdu() {
+  var target = $id('eduUser').value;
+  if (!target) { $id('eduBody').style.display = 'none'; return; }
+  $id('eduBody').style.display = '';
+  $id('eduRows').innerHTML = '<tr><td colspan="7" class="loading">读取进度中…</td></tr>';
+  var path = target === S.user
+    ? '/api/save?username=' + encodeURIComponent(S.user) + '&password=' + encodeURIComponent(S.pass) + '&game=edu_v1'
+    : '/api/admin/save?' + adminQ('game=edu_v1&target_username=' + encodeURIComponent(target));
+  api(path).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '读取失败');
+    var save = d.save && typeof d.save === 'object' ? d.save : {};
+    var data = save.data && typeof save.data === 'object' ? save.data : save;
+    S.edu = { username: target, data: normalizeEdu(data) };
+    renderEdu();
+    ok('已读取 ' + target + ' 的教资进度');
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) {
+      S.edu = { username: target, data: emptyEdu() };
+      renderEdu();
+      $id('eduNotice').innerHTML = '<div class="notice">⚠️ 后端缺少 /api/admin/save：只能读写你自己的进度。</div>';
+      fail('后端缺少管理员存档接口');
+    } else {
+      $id('eduRows').innerHTML = '<tr><td colspan="7" class="empty">读取失败：' + esc(e.message) + '</td></tr>';
+      fail(e.message);
+    }
+  });
+}
+
+function bankStat(id) {
+  var s = (S.edu.data.banks || {})[id] || {};
+  var done = s.done && typeof s.done === 'object' ? s.done : {};
+  var wrong = Array.isArray(s.wrong) ? s.wrong : [];
+  var star = Array.isArray(s.star) ? s.star : [];
+  var right = 0, wrongDone = 0;
+  Object.keys(done).forEach(function (k) {
+    if (done[k] === 'right') right++;
+    else if (done[k] === 'wrong') wrongDone++;
+  });
+  return {
+    done: done, doneCount: Object.keys(done).length, right: right, wrongDone: wrongDone,
+    wrong: wrong, star: star,
+    wrongStat: s.wrongStat && typeof s.wrongStat === 'object' ? s.wrongStat : {}
+  };
+}
+
+function renderEdu() {
+  if (!S.edu) return;
+  var P = S.edu.data;
+  if (!P.banks) P.banks = {};
+  if (!P.checkin) P.checkin = {};
+  if (!Array.isArray(P.mockHist)) P.mockHist = [];
+  var totDone = 0, totRight = 0, totWrong = 0, totStar = 0, totQ = 0;
+  QUIZ_BANKS.forEach(function (b) {
+    var st = bankStat(b.id);
+    totDone += st.doneCount; totRight += st.right; totWrong += st.wrongDone; totStar += st.star.length; totQ += b.count;
+  });
+  var maxMock = P.mockHist.length ? Math.max.apply(null, P.mockHist.map(function (m) { return m.score || 0; })) : 0;
+  $id('eduSum').innerHTML =
+    '<div class="s"><b>' + totDone + '</b><span>已做 / ' + totQ + '</span></div>' +
+    '<div class="s"><b>' + totRight + '</b><span>做对</span></div>' +
+    '<div class="s"><b>' + totWrong + '</b><span>做错</span></div>' +
+    '<div class="s"><b>' + Object.keys(P.checkin).length + '</b><span>打卡天数</span></div>' +
+    '<div class="s"><b>' + maxMock + '</b><span>模拟考最高</span></div>';
+  $id('eduRows').innerHTML = QUIZ_BANKS.map(function (b) {
+    var st = bankStat(b.id);
+    return '<tr>' +
+      '<td>' + esc(b.subName) + ' · ' + esc(b.title) + '</td>' +
+      '<td>' + st.doneCount + ' / ' + b.count + '</td>' +
+      '<td>' + st.right + '</td>' +
+      '<td>' + st.wrongDone + '</td>' +
+      '<td>' + st.wrong.length + '</td>' +
+      '<td>' + st.star.length + '</td>' +
+      '<td><span class="row" style="gap:4px">' +
+      '<button class="btn tiny ghost" onclick="openEduBank(\'' + esc(b.id) + '\')">编辑</button>' +
+      '<button class="btn tiny danger" onclick="resetEduBank(\'' + esc(b.id) + '\')">清空</button>' +
+      '</span></td></tr>';
+  }).join('');
+  renderCheckin();
+  renderMock();
+}
+
+function renderCheckin() {
+  if (!S.edu) return;
+  var ck = S.edu.data.checkin || {};
+  var keys = Object.keys(ck).sort(function (a, b) { return a < b ? -1 : 1; });
+  $id('eduCheckin').innerHTML = keys.length ? keys.map(function (k) {
+    return '<span class="chip">' + esc(k) + '<button onclick="delCheckin(\'' + esc(k) + '\')" title="删除">×</button></span>';
+  }).join('') : '<div class="empty" style="text-align:left;padding:8px 0">暂无打卡</div>';
+}
+
+function renderMock() {
+  if (!S.edu) return;
+  var mh = S.edu.data.mockHist || [];
+  $id('eduMock').innerHTML = mh.length ? mh.map(function (m, i) {
+    var title = (QUIZ_BANKS.filter(function (b) { return b.id === m.id; })[0] || {}).title || m.id;
+    return '<div class="d-item"><div class="d-head"><b style="font-size:12.5px;color:var(--grape)">' + esc(title) + '</b>' +
+      '<span class="d-ops"><span class="m-meta">' + esc(m.date || '') + ' · ' + (m.score || 0) + ' 分</span>' +
+      '<button class="btn tiny danger" onclick="delMock(' + i + ')">删除</button></span></div></div>';
+  }).join('') : '<div class="empty" style="text-align:left;padding:8px 0">暂无模拟考成绩</div>';
+}
+
+function addCheckin() {
+  if (!needEdu()) return;
+  var d = $id('chkDate').value;
+  if (!d) return fail('请选择日期');
+  S.edu.data.checkin[d] = Date.now();
+  renderCheckin(); ok('已添加打卡 ' + d + '（记得保存）');
+}
+function delCheckin(k) { if (!needEdu()) return; delete S.edu.data.checkin[k]; renderCheckin(); }
+function clearCheckin() {
+  if (!needEdu()) return;
+  if (!confirm('清空所有打卡记录？')) return;
+  S.edu.data.checkin = {}; renderCheckin(); ok('已清空打卡（记得保存）');
+}
+function addMock() {
+  if (!needEdu()) return;
+  var bank = $id('mockBank').value;
+  var score = parseInt($id('mockScore').value, 10);
+  var date = $id('mockDate').value || dateStr();
+  if (isNaN(score)) return fail('请填写分数');
+  S.edu.data.mockHist.push({ id: bank, score: score, date: date });
+  $id('mockScore').value = '';
+  renderEdu();
+  ok('已添加成绩（记得保存）');
+}
+function delMock(i) {
+  if (!needEdu()) return;
+  S.edu.data.mockHist.splice(i, 1);
+  renderEdu();
+}
+
+function ensureBank(id) {
+  if (!S.edu) return null;
+  var banks = S.edu.data.banks;
+  if (!banks[id]) banks[id] = { done: {}, wrong: [], wrongStat: {}, star: [], draft: null };
+  var s = banks[id];
+  if (!s.done || typeof s.done !== 'object') s.done = {};
+  if (!Array.isArray(s.wrong)) s.wrong = [];
+  if (!s.wrongStat || typeof s.wrongStat !== 'object') s.wrongStat = {};
+  if (!Array.isArray(s.star)) s.star = [];
+  return s;
+}
+
+function openEduBank(id) {
+  if (!needEdu()) return;
+  S.eduBank = id;
+  var b = QUIZ_BANKS.filter(function (x) { return x.id === id; })[0];
+  var st = bankStat(id);
+  var doneKeys = Object.keys(st.done).sort(function (a, b2) { return (+a) - (+b2); });
+  $id('eduEditor').innerHTML = '<div class="user-group open"><div class="ug-head" onclick="this.parentNode.classList.toggle(\'open\')">' +
+    '<b>' + esc(b.title) + '</b><span style="display:flex;align-items:center;gap:7px"><span class="ug-count">' + st.doneCount + '/' + b.count + '</span><span class="ug-arrow">▼</span></span></div>' +
+    '<div class="ug-body">' +
+    '<div class="row" style="margin-bottom:8px">' +
+    '<input type="number" id="qbN" placeholder="题号" style="width:90px">' +
+    '<select id="qbState" style="width:120px"><option value="right">做对</option><option value="wrong">做错</option><option value="done">已做(未判)</option></select>' +
+    '<button class="btn tiny" onclick="addQState()">＋ 设置题号状态</button>' +
+    '<button class="btn tiny danger" onclick="clearBankDone()">清空已做</button>' +
+    '</div>' +
+    '<div class="hint" style="margin:0 0 6px">已做（' + doneKeys.length + '）：</div>' +
+    '<div>' + (doneKeys.length ? doneKeys.map(function (k) {
+      var cls = st.done[k] === 'right' ? 'ok' : (st.done[k] === 'wrong' ? 'bad' : '');
+      return '<span class="chip ' + cls + '">第' + k + '题 · ' + (st.done[k] === 'right' ? '对' : st.done[k] === 'wrong' ? '错' : '已做') +
+        '<button onclick="delQState(' + k + ')" title="移除">×</button></span>';
+    }).join('') : '<span class="m-meta">无</span>') + '</div>' +
+    '<div class="hint" style="margin:12px 0 6px">错题本（' + st.wrong.length + '）：</div>' +
+    '<div>' + (st.wrong.length ? st.wrong.map(function (n) {
+      var w = st.wrongStat[n] || {};
+      var tip = w.c ? ('错 ' + w.c + ' 次' + (w.t ? '，最近 ' + dateStr(w.t) : '')) : '';
+      return '<span class="chip bad" title="' + esc(tip) + '">第' + n + '题' + (w.c ? '（错' + w.c + '次）' : '') +
+        '<button onclick="delWrong(' + n + ')" title="移出错题本">×</button></span>';
+    }).join('') : '<span class="m-meta">无</span>') + '</div>' +
+    '<div class="row" style="margin-top:8px">' +
+    '<input type="number" id="ebWN" placeholder="错题号" style="width:90px">' +
+    '<input type="number" id="ebWC" placeholder="错误次数" style="width:110px" value="1">' +
+    '<button class="btn tiny ghost" onclick="addWrong()">＋ 加入错题本</button>' +
+    '</div>' +
+    '<div class="hint" style="margin:12px 0 6px">星标（' + st.star.length + '）：</div>' +
+    '<div>' + (st.star.length ? st.star.map(function (n) {
+      return '<span class="chip star">第' + n + '题<button onclick="delStar(' + n + ')" title="取消星标">×</button></span>';
+    }).join('') : '<span class="m-meta">无</span>') + '</div>' +
+    '<div class="row" style="margin-top:8px">' +
+    '<input type="number" id="ebSN" placeholder="星标题号" style="width:100px">' +
+    '<button class="btn tiny" onclick="addStar()">＋ 加星标</button>' +
+    '</div></div></div>';
+  $id('eduEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function addQState() {
+  if (!needEdu()) return;
+  var n = parseInt($id('qbN').value, 10);
+  if (!n || n < 1) return fail('请填写正确题号');
+  ensureBank(S.eduBank).done[n] = $id('qbState').value;
+  $id('qbN').value = '';
+  renderEdu(); openEduBank(S.eduBank);
+}
+function delQState(n) {
+  var s = ensureBank(S.eduBank); if (!s) return;
+  delete s.done[n];
+  renderEdu(); openEduBank(S.eduBank);
+}
+function clearBankDone() {
+  if (!needEdu()) return;
+  if (!confirm('清空该题库的「已做」记录（错题本和星标保留）？')) return;
+  ensureBank(S.eduBank).done = {};
+  renderEdu(); openEduBank(S.eduBank);
+}
+function addWrong() {
+  if (!needEdu()) return;
+  var n = parseInt($id('ebWN').value, 10);
+  var c = parseInt($id('ebWC').value, 10) || 1;
+  if (!n || n < 1) return fail('请填写错题号');
+  var s = ensureBank(S.eduBank);
+  if (s.wrong.indexOf(n) < 0) s.wrong.push(n);
+  var w = s.wrongStat[n] || { c: 0, t: 0, f: 0 };
+  w.c = c; if (!w.f) w.f = Date.now(); w.t = Date.now();
+  s.wrongStat[n] = w;
+  $id('ebWN').value = '';
+  renderEdu(); openEduBank(S.eduBank);
+}
+function delWrong(n) {
+  var s = ensureBank(S.eduBank); if (!s) return;
+  var i = s.wrong.indexOf(n);
+  if (i >= 0) s.wrong.splice(i, 1);
+  delete s.wrongStat[n];
+  renderEdu(); openEduBank(S.eduBank);
+}
+function addStar() {
+  if (!needEdu()) return;
+  var n = parseInt($id('ebSN').value, 10);
+  if (!n || n < 1) return fail('请填写星标题号');
+  var s = ensureBank(S.eduBank);
+  if (s.star.indexOf(n) < 0) s.star.push(n);
+  $id('ebSN').value = '';
+  renderEdu(); openEduBank(S.eduBank);
+}
+function delStar(n) {
+  var s = ensureBank(S.eduBank); if (!s) return;
+  var i = s.star.indexOf(n);
+  if (i >= 0) s.star.splice(i, 1);
+  renderEdu(); openEduBank(S.eduBank);
+}
+function resetEduBank(id) {
+  if (!needEdu()) return;
+  var b = QUIZ_BANKS.filter(function (x) { return x.id === id; })[0];
+  if (!confirm('清空「' + (b ? b.title : id) + '」的进度、错题本、星标？')) return;
+  delete S.edu.data.banks[id];
+  renderEdu(); ok('已清空该题库（记得保存）');
+}
+
+function saveEdu() {
+  if (!S.edu) return fail('先选择用户并读取进度');
+  var target = S.edu.username;
+  var path = target === S.user ? '/api/save' : '/api/admin/save';
+  var body = target === S.user
+    ? { username: S.user, password: S.pass, game: 'edu_v1', data: S.edu.data }
+    : { admin_username: S.user, admin_password: S.pass, target_username: target, game: 'edu_v1', data: S.edu.data };
+  post(path, body).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '保存失败');
+    ok('已保存 ' + target + ' 的教资进度');
+    loadEdu();
+  }).catch(function (e) {
+    if (/接口不存在/.test(e.message || '')) fail('后端缺少 /api/admin/save 接口');
+    else fail(e.message);
+  });
+}
+
+function resetEdu() {
+  if (!S.edu) return fail('先选择用户并读取进度');
+  if (!confirm('清空该用户全部教资进度（题库/错题/星标/打卡/模拟考）？')) return;
+  S.edu.data = emptyEdu();
+  renderEdu();
+  $id('eduEditor').innerHTML = '';
+  ok('本地已清空，点「保存进度」生效');
+}
+
+/* =====================================================================
+   六、邮件（cfg.mails，原版 admin.html 功能 + 列表/删除）
+   ===================================================================== */
+function loadMails() {
+  api('/api/cfg').then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '加载失败');
+    var cfg = d.cfg || {};
+    S.MAILS = Array.isArray(cfg.mails) ? cfg.mails.slice() : [];
+    renderMails();
+  }).catch(function (e) {
+    if ($id('mailList')) $id('mailList').innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+  });
+}
+
+function renderMails() {
+  if (!$id('mailList')) return;
+  if (!S.MAILS.length) { $id('mailList').innerHTML = '<div class="empty">还没有发布过邮件</div>'; return; }
+  $id('mailList').innerHTML = S.MAILS.slice().reverse().map(function (m, ri) {
+    var i = S.MAILS.length - 1 - ri;
+    return '<div class="d-item"><div class="d-head">' +
+      '<b style="font-size:12.5px;color:var(--grape)">' + esc(m.title || '(无标题)') + '</b>' +
+      '<span class="d-ops"><span class="m-meta">' + (m.reward ? '🪙 ' + m.reward + ' · ' : '') + fmtTime(m.date) + '</span>' +
+      '<button class="btn tiny danger" onclick="delMail(' + i + ')">删除</button></span></div>' +
+      '<p class="d-content">' + esc(m.body || '') + '</p></div>';
+  }).join('');
+}
+
+function publishMail() {
+  var title = $id('mailTitle').value.trim();
+  var body = $id('mailBody').value.trim();
+  var reward = Math.max(0, parseInt($id('mailReward').value, 10) || 0);
+  if (!title || !body) return fail('请填写标题和正文');
+  api('/api/cfg').then(function (d0) {
+    if (!d0 || !d0.ok) throw new Error((d0 && d0.error) || '读取配置失败');
+    var cfg = d0.cfg || {};
+    var mails = Array.isArray(cfg.mails) ? cfg.mails : [];
+    mails.push({ id: Date.now(), title: title, body: body, reward: reward, date: new Date().toISOString() });
+    return post('/api/cfg', { username: S.user, password: S.pass, cfg: Object.assign({}, cfg, { mails: mails }) });
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '发布失败');
+    ok('邮件已发布给所有用户');
+    $id('mailTitle').value = ''; $id('mailBody').value = ''; $id('mailReward').value = '';
+    loadMails();
+  }).catch(function (e) { fail('发布失败：' + e.message); });
+}
+
+function delMail(i) {
+  if (!confirm('删除这条邮件？')) return;
+  api('/api/cfg').then(function (d0) {
+    if (!d0 || !d0.ok) throw new Error((d0 && d0.error) || '读取配置失败');
+    var cfg = d0.cfg || {};
+    var mails = (Array.isArray(cfg.mails) ? cfg.mails : []).slice();
+    mails.splice(i, 1);
+    return post('/api/cfg', { username: S.user, password: S.pass, cfg: Object.assign({}, cfg, { mails: mails }) });
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '删除失败');
+    ok('邮件已删除');
+    loadMails();
+  }).catch(function (e) { fail('删除失败：' + e.message); });
+}
+
+/* =====================================================================
+   标签页切换
+   ===================================================================== */
+var TABS = {
+  users: 'pane-users', farm: 'pane-farm', msg: 'pane-msg',
+  diary: 'pane-diary', edu: 'pane-edu', mail: 'pane-mail'
+};
+function switchTab(name) {
+  S.tab = name;
+  Object.keys(TABS).forEach(function (k) {
+    var pane = $id(TABS[k]);
+    if (pane) pane.style.display = (k === name ? '' : 'none');
+    var tab = $id('tab-' + k);
+    if (tab) tab.classList.toggle('active', k === name);
+  });
+  if (name === 'farm' && !S.farm && $id('farmUser').value) loadFarm();
+  if (name === 'edu' && !S.edu && $id('eduUser').value) loadEdu();
+}
+
+/* =====================================================================
+   启动
+   ===================================================================== */
+document.addEventListener('DOMContentLoaded', function () {
+  if ($id('mockDate')) $id('mockDate').value = dateStr();
+  if ($id('chkDate')) $id('chkDate').value = dateStr();
+  boot();
+});
+
+/* 暴露给 HTML 内联 onclick 的入口 */
+window.switchTab = switchTab;
+window.goHome = goHome;
+window.loadUsers = loadUsers; window.renderUsers = renderUsers; window.createUser = createUser;
+window.adjustCoin = adjustCoin; window.addCoins = addCoins; window.delUser = delUser; window.editUser = editUser;
+window.toggleManager = toggleManager; window.jumpFarm = jumpFarm; window.jumpEdu = jumpEdu;
+window.loadFarm = loadFarm; window.saveFarm = saveFarm; window.resetFarm = resetFarm;
+window.redrawFarm = redrawFarm; window.onPlotCrop = onPlotCrop; window.onPlotGrow = onPlotGrow;
+window.clearPlot = clearPlot; window.openAllPlots = openAllPlots; window.clearAllPlots = clearAllPlots;
+window.addInvKey = addInvKey; window.removeInvKey = removeInvKey;
+window.loadMsgs = loadMsgs; window.renderMsgs = renderMsgs; window.addMsg = addMsg;
+window.editMsg = editMsg; window.cancelMsg = cancelMsg; window.saveMsg = saveMsg; window.delMsg = delMsg;
+window.loadDiary = loadDiary; window.renderDiary = renderDiary; window.addDiary = addDiary;
+window.quickAddDiary = quickAddDiary; window.editDiary = editDiary; window.cancelDiary = cancelDiary;
+window.saveDiary = saveDiary; window.delDiary = delDiary;
+window.loadEdu = loadEdu; window.saveEdu = saveEdu; window.resetEdu = resetEdu;
+window.needEdu = needEdu; window.openEduBank = openEduBank; window.resetEduBank = resetEduBank;
+window.addQState = addQState; window.delQState = delQState; window.clearBankDone = clearBankDone;
+window.addWrong = addWrong; window.delWrong = delWrong; window.addStar = addStar; window.delStar = delStar;
+window.addCheckin = addCheckin; window.delCheckin = delCheckin; window.clearCheckin = clearCheckin;
+window.addMock = addMock; window.delMock = delMock;
+window.loadMails = loadMails; window.publishMail = publishMail; window.delMail = delMail;
+window.__S = S;
+
+})();
+
 </script>
 <script>
 // ===== 安卓返回键：本页按返回 = 回主界面 =====
