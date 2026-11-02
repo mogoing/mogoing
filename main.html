@@ -94,9 +94,14 @@
   }
   .brand{display:flex;flex-direction:column;align-items:center;gap:4px}
   .user{font-size:14px;color:var(--muted)}
-  .top-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;align-self:flex-start}
-  .tr-row{display:flex;align-items:center;gap:10px}
-  /* ===== 音乐胶囊（新闻/邮件图标正下方）：点胶囊进音乐页，圆点控制播放/暂停，歌名太长滚动 ===== */
+  .top-right{display:flex;align-items:center;gap:10px;align-self:flex-start;flex:none}
+  /* ===== 金币行：钱包 + 音乐胶囊（胶囊在金币右边） ===== */
+  .wallet-row{
+    position:relative;z-index:1;width:100%;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    margin:0 0 4px;
+  }
+  /* ===== 音乐胶囊：点胶囊进音乐页，圆点控制播放/暂停，歌名太长滚动 ===== */
   .music-pill{
     flex:none;display:flex;align-items:center;gap:9px;width:150px;
     min-height:40px;padding:5px 5px 5px 14px;
@@ -407,8 +412,9 @@
     header{justify-content:space-between;gap:8px}
     .brand-logo{height:63px}
     .top-right{gap:8px}
-    .tr-row{gap:8px}
     .top-icon{width:63px;height:63px;border-radius:16px}
+    .wallet-row{gap:8px}
+    .music-pill{width:138px}
     .stage-shell{border-radius:20px;padding:12px}
     .stage{gap:14px 12px}
     .box{border-radius:18px;gap:6px}
@@ -659,23 +665,23 @@
       <div class="brand">
         <img class="brand-logo" src="assets/logo.png" alt="丰稔季" id="brandLogo">
         <p class="user" id="hello"></p>
-        <div class="wallet">
-          <img src="assets/coin.png" alt="金币">
-          <b id="coinNum">0</b>
-          <button class="recharge" id="goRecharge">充值</button>
-        </div>
       </div>
       <div class="top-right">
-        <div class="tr-row">
-          <button class="top-icon" id="goNews" title="活动"><img src="assets/news.png" alt="活动"></button>
-          <button class="top-icon" id="goEmails" title="邮件"><img src="assets/emails.png" alt="邮件"></button>
-        </div>
-        <button class="music-pill" id="musicPill" title="音乐">
-          <span class="mp-name" id="mpName"><span class="mp-in" id="mpIn">音乐</span></span>
-          <span class="mp-play" id="mpPlay" role="button" aria-label="播放/暂停"></span>
-        </button>
+        <button class="top-icon" id="goNews" title="活动"><img src="assets/news.png" alt="活动"></button>
+        <button class="top-icon" id="goEmails" title="邮件"><img src="assets/emails.png" alt="邮件"></button>
       </div>
     </header>
+    <div class="wallet-row">
+      <div class="wallet">
+        <img src="assets/coin.png" alt="金币">
+        <b id="coinNum">0</b>
+        <button class="recharge" id="goRecharge">充值</button>
+      </div>
+      <button class="music-pill" id="musicPill" title="音乐">
+        <span class="mp-name" id="mpName"><span class="mp-in" id="mpIn">音乐</span></span>
+        <span class="mp-play" id="mpPlay" role="button" aria-label="播放/暂停"></span>
+      </button>
+    </div>
     <p class="hint" id="hint"></p>
     <section class="stage" id="stage"></section>
   </div>
@@ -1060,7 +1066,17 @@
       const url = await mcResolveUrl(st);
       if (!url) { toast('这首歌暂时解析不到，去音乐页换一首吧'); mcSave({ playing: false }); mcRender(); return; }
       a.src = url;
-      try { a.currentTime = Math.max(0, Number(st.pos) || 0); } catch (e) {}
+      // 先等元数据就绪再 seek，否则 seek 会被丢弃
+      const seekTo = Math.max(0, Number(st.pos) || 0);
+      if (seekTo > 0) {
+        const ready = await new Promise((resolve) => {
+          let settled = false;
+          const done = (v) => { if (settled) return; settled = true; resolve(v); };
+          a.addEventListener('loadedmetadata', () => done(true), { once: true });
+          setTimeout(() => done(false), 4000);
+        });
+        if (ready) { try { a.currentTime = seekTo; } catch (e) {} }
+      }
       try { await a.play(); } catch (e) { mcSave({ playing: false }); }
       mcRender();
     } finally {
