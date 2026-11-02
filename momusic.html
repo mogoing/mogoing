@@ -97,18 +97,8 @@
   .mu-search button:active{transform:scale(.95)}
   .mu-search button:disabled{opacity:.6;pointer-events:none}
 
-  /* ===== 音源 / 音质选择 ===== */
+  /* ===== 音质选择 ===== */
   .mu-opts{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-  .mu-srcs{display:flex;gap:8px;flex-wrap:wrap}
-  .chip{
-    height:32px;padding:0 14px;border:none;border-radius:999px;cursor:pointer;
-    font-size:12.5px;font-weight:800;color:var(--muted);
-    background:rgba(255,255,255,.78);
-    box-shadow:0 2px 8px rgba(155,93,229,.08);
-    transition:transform .15s;
-  }
-  .chip:active{transform:scale(.93)}
-  .chip.on{color:#fff;background:linear-gradient(135deg,#4ECDC4,#2FBFB5);box-shadow:0 4px 10px rgba(47,191,181,.3)}
   .mu-qseg{display:flex;align-items:center;gap:8px}
   .mu-qlabel{font-size:12px;font-weight:800;color:var(--muted)}
   .seg{display:flex;background:rgba(255,255,255,.82);border-radius:999px;padding:3px;box-shadow:0 2px 8px rgba(155,93,229,.1)}
@@ -119,6 +109,102 @@
   }
   .seg button:active{transform:scale(.93)}
   .seg button.on{color:#fff;background:linear-gradient(135deg,var(--coral),var(--grape));box-shadow:0 3px 8px rgba(255,107,107,.3)}
+
+  /* ===== 搜索抽屉：折叠/展开 ===== */
+  .mu-drawer-head{display:flex;align-items:center;gap:8px}
+  .mu-toggle{
+    flex:none;width:30px;height:30px;border:none;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(155,93,229,.14);
+    color:var(--grape);font-size:14px;font-weight:900;
+    transition:transform .25s,background .2s;
+    margin-bottom:12px;
+  }
+  .mu-toggle:active{transform:scale(.9)}
+  .mu-toggle.open svg{transform:rotate(180deg)}
+  .mu-toggle svg{transition:transform .25s}
+  .mu-collapse{
+    overflow:hidden;max-height:600px;opacity:1;
+    transition:max-height .32s cubic-bezier(.3,.9,.3,1),opacity .25s,margin .3s;
+  }
+  .mu-collapse.folded{max-height:0;opacity:0;margin-bottom:0!important}
+
+  /* ===== 搜索提示词（可点）===== */
+  #qHint{
+    margin:8px 2px 0;display:none;flex-wrap:wrap;gap:8px;
+  }
+  #qHint.on{display:flex}
+  .hint-chip{
+    display:inline-flex;align-items:baseline;gap:5px;
+    padding:7px 13px;border:none;border-radius:999px;cursor:pointer;
+    background:rgba(255,255,255,.95);
+    box-shadow:0 3px 10px rgba(155,93,229,.12);
+    transition:transform .15s,box-shadow .2s;
+    max-width:100%;
+  }
+  .hint-chip:active{transform:scale(.95)}
+  .hint-chip .hc-song{font-size:13.5px;font-weight:800;color:var(--ink)}
+  .hint-chip .hc-artist{font-size:11px;font-weight:600;color:var(--muted)}
+  .hint-chip:hover{box-shadow:0 5px 14px rgba(155,93,229,.2)}
+
+  /* ===== 我的收藏卡片 ===== */
+  .mu-favcard{
+    margin-top:14px;
+    border-radius:20px;
+    background:rgba(255,255,255,.62);
+    box-shadow:0 6px 18px rgba(155,93,229,.12);
+    overflow:hidden;
+  }
+  .mu-favhead{
+    display:flex;align-items:center;gap:8px;padding:11px 14px;cursor:pointer;
+    transition:background .2s;
+  }
+  .mu-favhead:active{background:rgba(255,255,255,.9)}
+  .mu-favhead .fh-ic{font-size:15px}
+  .mu-favhead b{font-size:13.5px;font-weight:900;color:var(--ink)}
+  .mu-favhead em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
+  .mu-favhead .fh-arrow{margin-left:auto;color:var(--muted);font-size:12px;transition:transform .25s}
+  .mu-favcard.open .fh-arrow{transform:rotate(180deg)}
+  .mu-favbody{max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.3,.9,.3,1)}
+  .mu-favcard.open .mu-favbody{max-height:420px;overflow-y:auto}
+  .mu-favbody .mu-list{padding:0 10px 10px}
+  .fav-empty{padding:20px 14px;text-align:center;font-size:12.5px;font-weight:700;color:var(--muted)}
+
+  /* ===== 列表行：爱心 / 播放 / 加号 ===== */
+  .row-btns{flex:none;display:flex;align-items:center;gap:2px}
+  .ico-btn{
+    flex:none;width:32px;height:32px;border:none;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;color:var(--muted);
+    transition:transform .15s,color .2s,background .2s;
+  }
+  .ico-btn:active{transform:scale(.85)}
+  .ico-btn.fav-on{color:var(--coral)}
+  .ico-btn.fav-on svg{fill:var(--coral)}
+  /* Q版播放按钮：圆润、不对称 */
+  .q-play{
+    flex:none;width:36px;height:36px;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    border-radius:50% 46% 52% 44% / 46% 50% 44% 52%;
+    background:linear-gradient(145deg,var(--coral),var(--grape));
+    box-shadow:0 4px 11px rgba(255,107,107,.34);
+    transition:transform .15s,box-shadow .2s;
+  }
+  .q-play:active{transform:scale(.88) rotate(-6deg)}
+  /* Q版加号（下一首播放）：薄荷绿、歪一点 */
+  .q-add{
+    flex:none;width:30px;height:30px;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    border-radius:44% 52% 46% 50% / 52% 44% 50% 46%;
+    background:linear-gradient(145deg,#4ECDC4,#2FBFB5);
+    box-shadow:0 3px 9px rgba(47,191,181,.32);
+    transition:transform .15s;
+  }
+  .q-add:active{transform:scale(.85) rotate(8deg)}
+  .q-add.bump{animation:addBump .32s cubic-bezier(.2,.9,.3,1.4)}
+  @keyframes addBump{0%{transform:scale(1)}55%{transform:scale(1.24)}100%{transform:scale(1)}}
+  /* 播放器圆形按钮更圆润 */
+  #btnPlay{border-radius:52% 48% 50% 46% / 48% 52% 46% 50%}
 
   /* ===== 列表 ===== */
   .mu-listhead{display:flex;align-items:center;gap:8px;margin:2px 2px 8px}
@@ -282,16 +368,24 @@
   </header>
 
   <div class="mu-shell">
-    <div class="mu-search">
-      <input id="q" type="search" placeholder="搜索歌名 / 歌手，如：晴天 周杰伦" enterkeyhint="search" autocomplete="off">
-      <button id="qGo">搜索</button>
+    <div class="mu-drawer-head">
+      <button class="mu-toggle open" id="muToggle" title="收起/展开搜索">
+        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 5l7 9H5z" fill="currentColor"/></svg>
+      </button>
     </div>
-    <div class="mu-opts">
-      <div class="mu-qseg">
-        <span class="mu-qlabel">音质</span>
-        <div class="seg" id="qseg">
-          <button data-q="std">标准</button>
-          <button data-q="loss">无损</button>
+    <div class="mu-collapse" id="muSearchWrap">
+      <div class="mu-search">
+        <input id="q" type="search" placeholder="搜索歌名 / 歌手" enterkeyhint="search" autocomplete="off">
+        <button id="qGo">搜索</button>
+      </div>
+      <div id="qHint"></div>
+      <div class="mu-opts">
+        <div class="mu-qseg">
+          <span class="mu-qlabel">音质</span>
+          <div class="seg" id="qseg">
+            <button data-q="std">标准</button>
+            <button data-q="loss">无损</button>
+          </div>
         </div>
       </div>
     </div>
@@ -303,6 +397,19 @@
     <div class="mu-list" id="list"></div>
     <div class="mu-morewrap"><button id="qMore" style="display:none">加载更多</button></div>
     <p class="mu-note">标准 / 无损可自由切换 · 搜「歌名 歌手」更容易出原版</p>
+
+    <!-- 我的收藏 -->
+    <div class="mu-favcard" id="favCard">
+      <div class="mu-favhead" id="favHead">
+        <span class="fh-ic">❤️</span>
+        <b>我的收藏</b>
+        <em id="favCount"></em>
+        <span class="fh-arrow">▾</span>
+      </div>
+      <div class="mu-favbody">
+        <div class="mu-list" id="favList"></div>
+      </div>
+    </div>
   </div>
 
   <div class="mu-player" id="player">
@@ -1098,16 +1205,49 @@
     }
     list.innerHTML = queue.map((t, i) => {
       const isNow = cur && String(t.id) === String(cur.id);
-      const tail = isNow ? eqHTML() : '<span class="mu-playic"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>';
+      const fav = isFav(t);
       return '<div class="mu-row' + (t._dead ? ' dead' : '') + (isNow ? ' now' : '') + '" data-i="' + i + '" style="animation-delay:' + Math.min(300, i * 22) + 'ms">' +
         '<div class="mu-tile t' + (i % 6 + 1) + '"><span>' + esc((t.name || '♪').trim().charAt(0) || '♪') + '</span><img data-i="' + i + '" alt=""></div>' +
         '<div class="mu-txt"><b>' + esc(t.name) + '</b><em>' + esc(t.artist) + (t.album ? ' · ' + esc(t.album) : '') + '</em></div>' +
-        tail + '</div>';
+        '<div class="row-btns">' +
+          '<button class="ico-btn' + (fav ? ' fav-on' : '') + '" data-fav="' + i + '" title="' + (fav ? '取消收藏' : '收藏') + '">' +
+            '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 21s-7.5-4.7-9.3-9C1.4 8.6 3.4 5 6.9 5c2 0 3.4 1.1 4.1 2.1C11.7 6.1 13.1 5 15.1 5c3.5 0 5.5 3.6 4.2 7-1.8 4.3-9.3 9-9.3 9z" fill="' + (fav ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/></svg>' +
+          '</button>' +
+          (isNow ? eqHTML() :
+            '<button class="q-play" data-play="' + i + '" title="播放">' +
+              '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+            '</button>') +
+          '<button class="q-add" data-add="' + i + '" title="下一首播放">' +
+            '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>' +
+          '</button>' +
+        '</div></div>';
     }).join('');
     if (io) list.querySelectorAll('.mu-tile img').forEach((img) => io.observe(img));
     else list.querySelectorAll('.mu-tile img').forEach((img) => loadRowCover(img));
   }
+  // ============================================================
+  // ===== 收藏（存后端 /api/save，game=music_love） =====
+  // ============================================================
   $('list').addEventListener('click', (e) => {
+    // 爱心收藏
+    const favBtn = e.target.closest('[data-fav]');
+    if (favBtn) {
+      e.stopPropagation();
+      const i = parseInt(favBtn.dataset.fav, 10);
+      if (queue[i]) toggleFav(queue[i]);
+      return;
+    }
+    // Q版加号：下一首播放
+    const addBtn = e.target.closest('[data-add]');
+    if (addBtn) {
+      e.stopPropagation();
+      const i = parseInt(addBtn.dataset.add, 10);
+      addBtn.classList.add('bump');
+      setTimeout(() => addBtn.classList.remove('bump'), 340);
+      if (queue[i]) insertNext(queue[i]);
+      return;
+    }
+    // 点行 = 播放
     const row = e.target.closest('.mu-row');
     if (!row) return;
     const i = parseInt(row.dataset.i, 10);
@@ -1119,6 +1259,264 @@
     saveQueue();
     playCurrent(0, true);
   });
+  const BACKEND = 'https://api.mogoing.xyz';
+  const FAV_GAME = 'music_love';
+  const KEY_FAV_LOCAL = 'momusic_fav_local';
+  let favItems = [];
+  let favLoaded = false;
+
+  function favUser() {
+    try { return localStorage.getItem('blindbox_user') || ''; } catch (e) { return ''; }
+  }
+  function favPass() {
+    try { return localStorage.getItem('blindbox_pass') || ''; } catch (e) { return ''; }
+  }
+  // 本地缓存（后端不可用时也能用）
+  function loadFavLocal() {
+    try { const a = JSON.parse(localStorage.getItem(KEY_FAV_LOCAL) || '[]'); if (Array.isArray(a)) favItems = a; } catch (e) {}
+  }
+  function saveFavLocal() {
+    try { localStorage.setItem(KEY_FAV_LOCAL, JSON.stringify(favItems.slice(0, 200))); } catch (e) {}
+  }
+  async function loadFavorites() {
+    loadFavLocal();
+    renderFavList();
+    const u = favUser(), p = favPass();
+    if (!u || !p) { favLoaded = true; return; }
+    try {
+      const r = await fetch(BACKEND + '/api/save?username=' + encodeURIComponent(u) +
+        '&password=' + encodeURIComponent(p) + '&game=' + FAV_GAME, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) { favLoaded = true; return; }
+      const j = await r.json();
+      let data = j && j.save;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
+      if (data && Array.isArray(data.items) && data.items.length) {
+        favItems = data.items;
+        saveFavLocal();
+        renderFavList();
+      }
+    } catch (e) {}
+    favLoaded = true;
+  }
+  async function pushFavorites() {
+    saveFavLocal();
+    const u = favUser(), p = favPass();
+    if (!u || !p) return false;
+    try {
+      const r = await fetch(BACKEND + '/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p, game: FAV_GAME, data: { items: favItems.slice(0, 200) } }),
+        signal: AbortSignal.timeout(12000)
+      });
+      const j = await r.json().catch(() => null);
+      return !!(j && j.ok);
+    } catch (e) { return false; }
+  }
+  function isFav(t) {
+    if (!t) return false;
+    const id = String(t.id || '');
+    return favItems.some(x => String(x.id) === id);
+  }
+  function toFavObj(t) {
+    return {
+      id: String(t.id || ''), uid: String(t.uid || t.id || ''), name: String(t.name || ''),
+      artist: String(t.artist || ''), album: String(t.album || ''), pic: String(t.pic || ''),
+      cover: String(t.cover || ''), source: String(t.source || ''),
+      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, ts: Date.now()
+    };
+  }
+  async function toggleFav(t) {
+    if (!t) return;
+    const id = String(t.id || '');
+    const i = favItems.findIndex(x => String(x.id) === id);
+    if (i >= 0) {
+      favItems.splice(i, 1);
+      toast('已取消收藏');
+    } else {
+      favItems.unshift(toFavObj(t));
+      toast('❤️ 已收藏');
+    }
+    renderFavList();
+    renderList();
+    const ok = await pushFavorites();
+    if (!ok && favUser() && favPass()) toast('收藏已存本地（云端同步失败）');
+  }
+  function renderFavList() {
+    const box = $('favList');
+    if (!box) return;
+    $('favCount').textContent = favItems.length ? favItems.length + ' 首' : '';
+    if (!favItems.length) {
+      box.innerHTML = '<div class="fav-empty">还没有收藏 · 点歌曲右边的 ♡ 就能收进来</div>';
+      return;
+    }
+    box.innerHTML = favItems.map((t, i) => {
+      const isNow = cur && String(t.id) === String(cur.id);
+      return '<div class="mu-row' + (isNow ? ' now' : '') + '" data-fav="' + i + '">' +
+        '<div class="mu-tile t' + (i % 6 + 1) + '"><span>' + esc((t.name || '♪').trim().charAt(0) || '♪') + '</span></div>' +
+        '<div class="mu-txt"><b>' + esc(t.name) + '</b><em>' + esc(t.artist) + (t.album ? ' · ' + esc(t.album) : '') + '</em></div>' +
+        '<div class="row-btns">' +
+          '<button class="ico-btn fav-on" data-unfav="' + i + '" title="取消收藏">' +
+            '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 21s-7.5-4.7-9.3-9C1.4 8.6 3.4 5 6.9 5c2 0 3.4 1.1 4.1 2.1C11.7 6.1 13.1 5 15.1 5c3.5 0 5.5 3.6 4.2 7-1.8 4.3-9.3 9-9.3 9z" fill="currentColor"/></svg>' +
+          '</button>' +
+          '<button class="q-play" data-favplay="' + i + '">' +
+            '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+          '</button>' +
+        '</div></div>';
+    }).join('');
+  }
+  $('favList').addEventListener('click', (e) => {
+    const unf = e.target.closest('[data-unfav]');
+    if (unf) {
+      e.stopPropagation();
+      const i = parseInt(unf.dataset.unfav, 10);
+      const t = favItems[i];
+      if (t) toggleFav(t);
+      return;
+    }
+    const pl = e.target.closest('[data-favplay]');
+    if (pl) {
+      e.stopPropagation();
+      const i = parseInt(pl.dataset.favplay, 10);
+      const t = favItems[i];
+      if (!t) return;
+      // 收藏里的歌加入队列并播放
+      if (!queue.some(x => String(x.id) === String(t.id))) queue.unshift(t);
+      cur = t; qi = 0;
+      saveQueue();
+      playCurrent(0, true);
+      return;
+    }
+    const row = e.target.closest('.mu-row');
+    if (row && row.dataset.fav != null) {
+      const i = parseInt(row.dataset.fav, 10);
+      const t = favItems[i];
+      if (!t) return;
+      if (cur && String(t.id) === String(cur.id)) { togglePlay(); return; }
+      if (!queue.some(x => String(x.id) === String(t.id))) queue.unshift(t);
+      cur = t; qi = 0;
+      saveQueue();
+      playCurrent(0, true);
+    }
+  });
+  // 收藏卡片展开/收起
+  $('favHead').addEventListener('click', () => {
+    $('favCard').classList.toggle('open');
+  });
+
+  // ============================================================
+  // ===== 搜索抽屉折叠 =====
+  // ============================================================
+  $('muToggle').addEventListener('click', () => {
+    const wrap = $('muSearchWrap');
+    const folded = wrap.classList.toggle('folded');
+    $('muToggle').classList.toggle('open', !folded);
+  });
+
+  // ============================================================
+  // ===== 搜索提示词（自带歌手，字体小灰） =====
+  // ============================================================
+  // 常见歌曲 → 原唱歌手映射（离线秒出，也能点）
+  const SONG_ARTIST_HINTS = {
+    '晴天': '周杰伦', '稻香': '周杰伦', '七里香': '周杰伦', '告白气球': '周杰伦',
+    '青花瓷': '周杰伦', '夜曲': '周杰伦', '简单爱': '周杰伦', '半岛铁盒': '周杰伦',
+    '演员': '薛之谦', '丑八怪': '薛之谦', '认真的雪': '薛之谦', '起风了': '买辣椒也用券',
+    '成都': '赵雷', '南方姑娘': '赵雷', '平凡之路': '朴树', '生如夏花': '朴树',
+    '海阔天空': 'Beyond', '光辉岁月': 'Beyond', '真的爱你': 'Beyond',
+    '红豆': '王菲', '匆匆那年': '王菲', '传奇': '王菲',
+    '十年': '陈奕迅', '浮夸': '陈奕迅', '爱情转移': '陈奕迅', '孤勇者': '陈奕迅',
+    '江南': '林俊杰', '曹操': '林俊杰', '小酒窝': '林俊杰', '修炼爱情': '林俊杰',
+    '光年之外': '邓紫棋', '泡沫': '邓紫棋', '来自天堂的魔鬼': '邓紫棋',
+    '模特': '李荣浩', '李白': '李荣浩', '年少有为': '李荣浩',
+    '消愁': '毛不易', '像我这样的人': '毛不易', '平凡的一天': '毛不易',
+    '夜空中最亮的星': '逃跑计划', '春天里': '汪峰', '怒放的生命': '汪峰',
+    '小幸运': '田馥甄', '魔鬼中的天使': '田馥甄', '后来': '刘若英',
+    '听海': '张惠妹', '记得': '张惠妹', '至少还有你': '林忆莲',
+    '爱情三十六计': '蔡依林', '倒带': '蔡依林', '舞娘': '蔡依林',
+    '勇气': '梁静茹', '可惜不是你': '梁静茹', '暖暖': '梁静茹',
+    '洋葱': '杨宗纬', '其实都没有': '杨宗纬',
+    '你是我的眼': '萧煌奇', '童话': '光良', '第一次': '光良',
+    '朋友': '周华健', '花心': '周华健', '水手': '郑智化',
+    '我的未来不是梦': '张雨生', '大海': '张雨生',
+    '月亮代表我的心': '邓丽君', '甜蜜蜜': '邓丽君',
+    '吻别': '张学友', '一千个伤心的理由': '张学友', '祝福': '张学友',
+    '忘情水': '刘德华', '中国人': '刘德华', '冰雨': '刘德华',
+    '练习': '刘若英', '为爱痴狂': '刘若英',
+    '给自己': '张杰', '这,就是爱': '张杰', '逆战': '张杰',
+    '穿越时空的思念': '张杰'
+  };
+  // 模糊：输入的部分文字能匹配到提示
+  function findHints(kw) {
+    const k = String(kw || '').trim();
+    if (!k) return [];
+    const out = [];
+    const kk = plain(k);
+    for (const song in SONG_ARTIST_HINTS) {
+      const ps = plain(song);
+      if (ps === kk) out.unshift({ song, artist: SONG_ARTIST_HINTS[song], exact: true });
+      else if (ps.indexOf(kk) === 0 || ps.indexOf(kk) >= 0) out.push({ song, artist: SONG_ARTIST_HINTS[song], exact: false });
+    }
+    // 去重 + 最多 4 条，且优先完全匹配
+    const seen = new Set();
+    const res = [];
+    for (const h of out) {
+      const key = h.song;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      res.push(h);
+      if (res.length >= 4) break;
+    }
+    return res;
+    }
+  function renderHints(kw) {
+    const box = $('qHint');
+    const hs = findHints(kw);
+    if (!hs.length || plain(kw).length < 1) { box.classList.remove('on'); box.innerHTML = ''; return; }
+    box.innerHTML = hs.map(h =>
+      '<button class="hint-chip" data-song="' + esc(h.song) + '" data-artist="' + esc(h.artist) + '">' +
+        '<span class="hc-song">' + esc(h.song) + '</span>' +
+        '<span class="hc-artist">' + esc(h.artist) + '</span>' +
+      '</button>'
+    ).join('');
+    box.classList.add('on');
+  }
+  $('qHint').addEventListener('click', (ev) => {
+    const c = ev.target.closest('.hint-chip');
+    if (!c) return;
+    const song = c.dataset.song, artist = c.dataset.artist;
+    $('q').value = song + ' ' + artist;
+    $('qHint').classList.remove('on');
+    doSearch(song + ' ' + artist);
+  });
+  let hintTimer = null;
+  $('q').addEventListener('input', () => {
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => renderHints($('q').value), 260);
+  });
+  $('q').addEventListener('focus', () => renderHints($('q').value));
+
+  // ============================================================
+  // ===== 下一首播放（Q版加号） =====
+  // ============================================================
+  function insertNext(t) {
+    if (!t) return;
+    const id = String(t.id || '');
+    if (queue.some(x => String(x.id) === id && x !== t)) {
+      // 已在队列 → 挪到下一首
+      const idx = queue.findIndex(x => String(x.id) === id);
+      const [item] = queue.splice(idx, 1);
+      const target = Math.max(0, cur ? queue.indexOf(cur) + 1 : 0);
+      queue.splice(target, 0, item);
+    } else {
+      const copy = Object.assign({}, t);
+      const target = Math.max(0, cur ? queue.indexOf(cur) + 1 : queue.length);
+      queue.splice(target, 0, copy);
+    }
+    saveQueue();
+    renderList();
+    toast('已加入下一首播放');
+  }
+
 
   // ===== 音质 =====
   function renderOpts() {
@@ -1162,6 +1560,10 @@
     if (S && S.playing) playCurrent(Math.max(0, Number(S.pos) || 0), true);
   }
   renderList();
+  renderFavList();
+  loadFavorites();
+  // 收藏卡片默认展开，方便一眼看到
+  $('favCard').classList.add('open');
 </script>
 </body>
 </html>
