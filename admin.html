@@ -190,6 +190,49 @@
   .chip.bad{background:rgba(255,77,109,.14);color:#B3243F}
   .chip.star{background:rgba(255,217,61,.28);color:#8A6A00}
 
+  /* ===== 后端状态灯 ===== */
+  .cap-light{
+    display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;
+    font-size:11.5px;font-weight:800;white-space:nowrap;cursor:default;
+  }
+  .cap-light i{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+  .cap-light.ok{background:rgba(78,205,196,.18);color:#127F78}
+  .cap-light.ok i{background:#2FB5AC;box-shadow:0 0 0 3px rgba(47,181,172,.25)}
+  .cap-light.part{background:rgba(255,217,61,.26);color:#8A6A00}
+  .cap-light.part i{background:#F59E0B;box-shadow:0 0 0 3px rgba(245,158,11,.22)}
+  .cap-light.bad{background:rgba(255,77,109,.14);color:#B3243F}
+  .cap-light.bad i{background:#FF4D6D;box-shadow:0 0 0 3px rgba(255,77,109,.22)}
+
+  /* ===== 仪表盘 ===== */
+  .dash{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}
+  .dash .card{
+    background:linear-gradient(150deg,#FFF,#FAF5FF);border:1.5px solid #EFE6FB;border-radius:14px;
+    padding:12px;position:relative;overflow:hidden;
+  }
+  .dash .card::after{
+    content:"";position:absolute;right:-14px;bottom:-14px;width:52px;height:52px;border-radius:50%;
+    background:linear-gradient(135deg,rgba(255,107,107,.12),rgba(155,93,229,.12));
+  }
+  .dash .card b{display:block;font-size:22px;line-height:1.2;position:relative;
+    background:linear-gradient(135deg,var(--coral),var(--grape));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .dash .card span{font-size:11.5px;color:var(--muted);font-weight:700}
+  .dash .card em{display:block;font-style:normal;font-size:10.5px;color:var(--muted);margin-top:3px;opacity:.8}
+
+  /* ===== 备份 / 导入 ===== */
+  .bk-area{
+    width:100%;min-height:110px;border:2px solid var(--line);border-radius:11px;padding:9px 11px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.5;
+    background:#FFFDF8;color:var(--ink);outline:none;resize:vertical;
+  }
+  .bk-area:focus{border-color:var(--grape);box-shadow:0 0 0 4px rgba(155,93,229,.12)}
+
+  /* ===== 置顶徽章 ===== */
+  .pin-badge{
+    display:inline-block;background:linear-gradient(135deg,#F59E0B,#EA580C);color:#fff;
+    font-size:10px;font-weight:800;border-radius:999px;padding:1px 7px;margin-left:5px;vertical-align:1px;
+  }
+  .m-item.pinned{border-color:#F5C77E;background:linear-gradient(150deg,#FFFBEF,#FFF4DC)}
+
   .msg{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
     background:rgba(74,63,92,.92);color:#fff;padding:10px 20px;border-radius:999px;
     font-size:13px;font-weight:700;opacity:0;transition:.3s;z-index:9;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
@@ -242,16 +285,37 @@
         <div class="stat"><b id="sMsg">-</b><span>留言</span></div>
         <div class="stat"><b id="sDiary">-</b><span>日记</span></div>
       </div>
-      <button class="btn ghost small" onclick="goHome()">返回主页</button>
+      <div class="row" style="gap:8px;align-items:center">
+        <span class="cap-light" id="capLight"><i></i>探测中…</span>
+        <button class="btn small ghost" onclick="goHome()">返回主页</button>
+      </div>
     </div>
 
     <div class="tabs">
+      <button class="tab" id="tab-dash" onclick="switchTab('dash')"><i>📊</i>概览</button>
       <button class="tab active" id="tab-users" onclick="switchTab('users')"><i>👤</i>账号</button>
       <button class="tab" id="tab-farm" onclick="switchTab('farm')"><i>🌱</i>种菜</button>
       <button class="tab" id="tab-msg" onclick="switchTab('msg')"><i>💬</i>留言</button>
       <button class="tab" id="tab-diary" onclick="switchTab('diary')"><i>📖</i>日记</button>
       <button class="tab" id="tab-edu" onclick="switchTab('edu')"><i>📚</i>教资刷题</button>
       <button class="tab" id="tab-mail" onclick="switchTab('mail')"><i>📮</i>邮件</button>
+      <button class="tab" id="tab-tool" onclick="switchTab('tool')"><i>🧰</i>备份</button>
+    </div>
+
+    <!-- ================= 概览 ================= -->
+    <div id="pane-dash" style="display:none">
+      <div class="panel">
+        <h2>数据概览 <span class="sub">（实时统计 · 60 秒自动刷新）</span></h2>
+        <div class="dash" id="dashCards"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn small ghost" onclick="refreshDash()">🔄 立即刷新</button>
+          <span style="font-size:11px;color:var(--muted)" id="dashTime"></span>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>最近动态</h2>
+        <div class="scroll-box" id="dashFeed"></div>
+      </div>
     </div>
 
     <!-- ================= 账号 ================= -->
@@ -415,6 +479,32 @@
         <div class="scroll-box" id="mailList"></div>
       </div>
     </div>
+
+    <!-- ================= 备份 ================= -->
+    <div id="pane-tool" style="display:none">
+      <div class="panel">
+        <h2>数据备份 <span class="sub">（导出账号 / 留言 / 日记 / 存档为 JSON）</span></h2>
+        <div class="row" style="margin-bottom:9px">
+          <button class="btn" onclick="doBackup()">💾 生成备份</button>
+          <button class="btn small ghost" onclick="copyBackup()">📋 复制</button>
+          <button class="btn small ghost" onclick="downloadBackup()">⬇️ 下载文件</button>
+          <button class="btn small danger" onclick="clearTextarea('backupOut')">清空</button>
+        </div>
+        <textarea class="bk-area" id="backupOut" placeholder="点「生成备份」，这里会出现完整 JSON…"></textarea>
+        <div class="hint" id="backupInfo"></div>
+      </div>
+
+      <div class="panel">
+        <h2>恢复数据 <span class="sub">（把备份 JSON 粘回来，逐条恢复用户存档）</span></h2>
+        <div class="row" style="margin-bottom:9px">
+          <button class="btn small ghost" onclick="clearTextarea('restoreIn')">清空</button>
+          <button class="btn small" onclick="restoreBackup()">⚠️ 执行恢复</button>
+        </div>
+        <textarea class="bk-area" id="restoreIn" placeholder="粘贴备份 JSON…"></textarea>
+        <div class="notice">恢复只会写回「已有账号」的存档与设置，不会新建账号、不会删除任何数据。建议先在小号上测试。</div>
+        <div class="hint" id="restoreInfo"></div>
+      </div>
+    </div>
   </div>
 
   <div class="msg" id="msg"></div>
@@ -454,7 +544,9 @@ var S = {
   USERS: [], MSGS: [], DIARY: [], MAILS: [],
   farm: null,
   edu: null,
-  eduBank: ''
+  eduBank: '',
+  caps: {},                    // 后端能力探测结果
+  PINNED: []                   // 置顶留言 id（存 cfg.pinnedMsgs）
 };
 
 /* ---------------- 工具 ---------------- */
@@ -552,22 +644,71 @@ function boot() {
 
 function goHome() { location.href = 'main.html'; }
 
-/* 探测后端是否已部署管理员扩展接口（未部署则给出明确提示，而非静默失败） */
+/* 探测后端能力：把结果写进顶栏状态灯 + 各模块提示条 */
 function probeCaps() {
+  var pending = 3;
+
+  function done() {
+    pending--;
+    if (pending > 0) return;
+    renderCaps();
+  }
+
+  // 1) 管理员读写他人存档
   api('/api/admin/save?' + adminQ('game=bean&target_username=' + encodeURIComponent(S.user)) + '&probe=1')
     .then(function (d) {
-      if (isMissingRoute(d)) {
+      S.caps.adminSave = !isMissingRoute(d);
+      if (!S.caps.adminSave) {
         var n = '⚠️ 后端未部署「管理员读写他人存档」接口，种菜/教资目前只能读写你自己的存档。';
         if ($id('farmNotice')) $id('farmNotice').innerHTML = '<div class="notice">' + n + '</div>';
         if ($id('eduNotice')) $id('eduNotice').innerHTML = '<div class="notice">' + n + '</div>';
       }
-    }).catch(function () { });
+    }).catch(function () { S.caps.adminSave = false; }).then(done);
+
+  // 2) 管理员改/删留言
   post('/api/admin/message/update', { admin_username: S.user, admin_password: S.pass, id: 0, content: '' })
     .then(function (d) {
-      if (isMissingRoute(d) && $id('msgNotice')) {
-        $id('msgNotice').innerHTML = '<div class="notice">⚠️ 后端未部署「编辑/删除留言」接口：可发布，改/删会失败。</div>';
+      // 路由不存在 → 404 接口不存在；路由存在 → 会返回 400(缺少ID) 或 404(留言不存在)
+      S.caps.adminMsg = !isMissingRoute(d);
+      if (!S.caps.adminMsg && $id('msgNotice')) {
+        $id('msgNotice').innerHTML = '<div class="notice">⚠️ 后端未部署「编辑/删除留言」接口：可以发布，改/删会失败。</div>';
       }
-    }).catch(function () { });
+    }).catch(function () { S.caps.adminMsg = false; }).then(done);
+
+  // 3) 管理员改用户（改密/改权限）
+  post('/api/admin/updateuser', { admin_username: S.user, admin_password: S.pass, username: S.user, manager: 1 })
+    .then(function (d) {
+      S.caps.adminUser = !isMissingRoute(d);
+      if (!S.caps.adminUser && $id('userApiNotice')) {
+        $id('userApiNotice').style.display = '';
+        $id('userApiNotice').innerHTML = '<div class="notice">⚠️ 后端未部署「改密码 / 改管理员权限」接口，这两个按钮会失败。</div>';
+      }
+    }).catch(function () { S.caps.adminUser = false; }).then(done);
+}
+
+/* 顶栏后端状态灯 */
+function renderCaps() {
+  var el = $id('capLight'); if (!el) return;
+  var c = S.caps;
+  var has = [c.adminSave, c.adminUser, c.adminMsg];
+  var n = has.filter(Boolean).length;
+  if (n === 3) {
+    el.className = 'cap-light ok';
+    el.innerHTML = '<i></i>后端完整';
+    el.title = '全部管理接口已部署';
+  } else if (n > 0) {
+    el.className = 'cap-light part';
+    el.innerHTML = '<i></i>后端部分可用 ' + n + '/3';
+    el.title = '缺：' + [
+      !c.adminSave ? '管理员存档' : '',
+      !c.adminUser ? '改用户' : '',
+      !c.adminMsg ? '改删留言' : ''
+    ].filter(Boolean).join('、');
+  } else {
+    el.className = 'cap-light bad';
+    el.innerHTML = '<i></i>后端待部署';
+    el.title = '管理接口全部缺失，请部署 zzz-backend/worker.js';
+  }
 }
 
 /* =====================================================================
@@ -962,6 +1103,7 @@ function resetFarm() {
    ===================================================================== */
 function loadMsgs() {
   $id('msgList').innerHTML = '<div class="loading">加载中…</div>';
+  if (!S.PINNED.length) loadPinned();
   api('/api/messages').then(function (d) {
     if (!d || !d.ok) throw new Error((d && d.error) || '加载失败');
     S.MSGS = d.messages || [];
@@ -979,12 +1121,21 @@ function renderMsgs() {
     return String(m.username || '').toLowerCase().indexOf(kw) >= 0 ||
       String(m.content || '').toLowerCase().indexOf(kw) >= 0 || String(m.id) === kw;
   });
+  // 置顶的排前面
+  list.sort(function (a, b) {
+    var pa = S.PINNED.indexOf(a.id) >= 0, pb = S.PINNED.indexOf(b.id) >= 0;
+    if (pa !== pb) return pa ? -1 : 1;
+    return b.id - a.id;
+  });
   if (!list.length) { $id('msgList').innerHTML = '<div class="empty">' + (S.MSGS.length ? '没有匹配的留言' : '还没有留言') + '</div>'; return; }
   $id('msgList').innerHTML = list.map(function (m) {
-    return '<div class="m-item" id="m_' + m.id + '">' +
-      '<div class="m-head"><span><span class="m-who">' + esc(m.username || ('用户' + m.user_id)) + '</span> ' +
-      '<span class="m-meta">#' + m.id + ' · ' + fmtTime(m.created_at) + '</span></span>' +
+    var pinned = S.PINNED.indexOf(m.id) >= 0;
+    return '<div class="m-item' + (pinned ? ' pinned' : '') + '" id="m_' + m.id + '">' +
+      '<div class="m-head"><span><span class="m-who">' + esc(m.username || ('用户' + m.user_id)) + '</span>' +
+      (pinned ? '<span class="pin-badge">置顶</span>' : '') +
+      ' <span class="m-meta">#' + m.id + ' · ' + fmtTime(m.created_at) + '</span></span>' +
       '<span class="row" style="gap:4px">' +
+      '<button class="btn tiny ' + (pinned ? 'ghost' : '') + '" onclick="togglePin(' + m.id + ')">' + (pinned ? '取消置顶' : '置顶') + '</button>' +
       '<button class="btn tiny ghost" onclick="editMsg(' + m.id + ')">编辑</button>' +
       '<button class="btn tiny danger" onclick="delMsg(' + m.id + ')">删除</button>' +
       '</span></div>' +
@@ -1512,11 +1663,240 @@ function delMail(i) {
 }
 
 /* =====================================================================
+   置顶留言（存后端 cfg，不新增接口）
+   ===================================================================== */
+function loadPinned() {
+  return api('/api/cfg').then(function (d) {
+    var cfg = (d && d.ok && d.cfg) || {};
+    S.PINNED = Array.isArray(cfg.pinnedMsgs) ? cfg.pinnedMsgs.slice() : [];
+  }).catch(function () { S.PINNED = []; });
+}
+
+function savePinned() {
+  return api('/api/cfg').then(function (d0) {
+    var cfg = (d0 && d0.ok && d0.cfg) || {};
+    cfg.pinnedMsgs = S.PINNED;
+    return post('/api/cfg', { username: S.user, password: S.pass, cfg: cfg });
+  }).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '保存失败');
+  });
+}
+
+function togglePin(id) {
+  var i = S.PINNED.indexOf(id);
+  if (i >= 0) { S.PINNED.splice(i, 1); ok('已取消置顶'); }
+  else { S.PINNED.push(id); ok('已置顶'); }
+  savePinned().then(function () { renderMsgs(); })
+    .catch(function (e) { fail('置顶保存失败：' + e.message); });
+}
+
+/* =====================================================================
+   七、数据概览（实时仪表盘 + 最近动态）
+   ===================================================================== */
+var _dashTimer = null;
+
+function refreshDash() {
+  var cards = $id('dashCards'); if (!cards) return;
+  cards.innerHTML = '<div class="loading" style="grid-column:1/-1">统计中…</div>';
+
+  Promise.all([
+    api('/api/admin/users?' + adminQ()),
+    api('/api/messages'),
+    api('/api/diary?username=' + encodeURIComponent(S.user) + '&password=' + encodeURIComponent(S.pass)),
+    api('/api/cfg'),
+  ]).then(function (arr) {
+    var users = (arr[0] && arr[0].users) || [];
+    var msgs = (arr[1] && arr[1].messages) || [];
+    var diary = (arr[2] && arr[2].diary) || [];
+    var cfg = (arr[3] && arr[3].cfg) || {};
+    var mails = Array.isArray(cfg.mails) ? cfg.mails : [];
+
+    var totalCoins = users.reduce(function (a, u) { return a + (u.coins || 0); }, 0);
+    var admins = users.filter(function (u) { return u.manager === 1; }).length;
+    // 最近 7 天新增账号
+    var now = Date.now(), d7 = 0;
+    users.forEach(function (u) {
+      var t = u.created_at ? new Date(String(u.created_at).replace(' ', 'T') + 'Z').getTime() : 0;
+      if (t && now - t < 7 * 86400000) d7++;
+    });
+
+    cards.innerHTML =
+      card(users.length, '注册账号', '其中管理员 ' + admins + ' 个') +
+      card(totalCoins, '金币总量', '人均 ' + (users.length ? Math.round(totalCoins / users.length) : 0)) +
+      card(msgs.length, '留言总数', '公开可见') +
+      card(diary.length, '日记总数', '含私密内容') +
+      card(mails.length, '已发邮件', '全体用户可见') +
+      card(d7, '近 7 天新增', '新注册用户');
+
+    if ($id('dashTime')) {
+      var d = new Date();
+      var p = function (n) { return (n < 10 ? '0' : '') + n; };
+      $id('dashTime').textContent = '更新于 ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    }
+
+    // 最近动态：留言 + 日记按时间合并
+    var feed = [];
+    msgs.slice(0, 12).forEach(function (m) {
+      feed.push({ t: m.created_at, kind: '💬 留言', who: m.username || ('用户' + m.user_id), text: m.content });
+    });
+    diary.slice(0, 12).forEach(function (x) {
+      feed.push({ t: x.created_at, kind: '📖 日记', who: x.username || ('用户' + x.user_id), text: x.content });
+    });
+    feed.sort(function (a, b) {
+      var ta = a.t ? new Date(String(a.t).replace(' ', 'T') + 'Z').getTime() : 0;
+      var tb = b.t ? new Date(String(b.t).replace(' ', 'T') + 'Z').getTime() : 0;
+      return tb - ta;
+    });
+    var box = $id('dashFeed');
+    if (box) {
+      box.innerHTML = feed.length ? feed.slice(0, 14).map(function (f) {
+        return '<div class="m-item"><div class="m-head"><span>' +
+          '<span class="m-who">' + esc(f.who) + '</span>' +
+          '<span class="pin-badge" style="background:linear-gradient(135deg,#7C3AED,#9B5DE5)">' + esc(f.kind) + '</span>' +
+          '</span><span class="m-meta">' + fmtTime(f.t) + '</span></div>' +
+          '<p>' + esc(String(f.text || '').slice(0, 120)) + (String(f.text || '').length > 120 ? '…' : '') + '</p></div>';
+      }).join('') : '<div class="empty">暂无动态</div>';
+    }
+  }).catch(function (e) {
+    cards.innerHTML = '<div class="empty" style="grid-column:1/-1">统计失败：' + esc(e.message) + '</div>';
+  });
+
+  // 自动刷新（只在本页签时）
+  clearTimeout(_dashTimer);
+  _dashTimer = setTimeout(function () {
+    if (S.tab === 'dash') refreshDash();
+  }, 60000);
+}
+
+function card(num, label, note) {
+  return '<div class="card"><b>' + num + '</b><span>' + label + '</span><em>' + note + '</em></div>';
+}
+
+/* =====================================================================
+   八、数据备份 / 恢复
+   ===================================================================== */
+function clearTextarea(id) { var e = $id(id); if (e) e.value = ''; }
+
+function doBackup() {
+  var out = $id('backupOut'); if (!out) return;
+  out.value = '';
+  if ($id('backupInfo')) $id('backupInfo').textContent = '正在收集数据…';
+
+  var games = ['bean', 'edu_v1', 'board_read', 'mailbox', 'pvz', 'shawarma', 'signin'];
+  api('/api/admin/users?' + adminQ()).then(function (dU) {
+    if (!dU || !dU.ok) throw new Error((dU && dU.error) || '读取用户失败');
+    var users = dU.users || [];
+    var tasks = users.map(function (u) {
+      return Promise.all(games.map(function (g) {
+        return api('/api/admin/save?' + adminQ('game=' + encodeURIComponent(g) + '&target_username=' + encodeURIComponent(u.username)))
+          .then(function (r) {
+            if (r && r.ok && r.save != null) { (u.saves = u.saves || {})[g] = r.save; }
+          }).catch(function () { });
+      })).then(function () { return u; });
+    });
+    return Promise.all(tasks).then(function (rows) {
+      return Promise.all([
+        api('/api/messages'),
+        api('/api/diary?username=' + encodeURIComponent(S.user) + '&password=' + encodeURIComponent(S.pass)),
+        api('/api/cfg'),
+      ]).then(function (arr) {
+        return {
+          _meta: { app: 'mogoing-admin', version: 1, exported_at: new Date().toISOString(), exporter: S.user },
+          users: rows.map(function (u) {
+            return { id: u.id, username: u.username, manager: u.manager, coins: u.coins, created_at: u.created_at, saves: u.saves || {} };
+          }),
+          messages: (arr[0] && arr[0].messages) || [],
+          diary: (arr[1] && arr[1].diary) || [],
+          cfg: (arr[2] && arr[2].cfg) || {},
+        };
+      });
+    });
+  }).then(function (pack) {
+    var txt = JSON.stringify(pack, null, 1);
+    out.value = txt;
+    var kb = (txt.length / 1024).toFixed(1);
+    if ($id('backupInfo')) {
+      $id('backupInfo').textContent = '✅ 备份完成：' + pack.users.length + ' 个账号 · ' +
+        pack.messages.length + ' 条留言 · ' + pack.diary.length + ' 条日记 · 共 ' + kb + ' KB（' +
+        pack.users.reduce(function (a, u) { return a + Object.keys(u.saves || {}).length; }, 0) + ' 份存档）';
+    }
+    ok('备份已生成，记得复制保存');
+  }).catch(function (e) {
+    if ($id('backupInfo')) $id('backupInfo').textContent = '❌ 备份失败：' + e.message;
+    fail('备份失败：' + e.message);
+  });
+}
+
+function copyBackup() {
+  var e = $id('backupOut');
+  if (!e || !e.value) return fail('还没有备份内容');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(e.value).then(function () { ok('已复制到剪贴板'); })
+      .catch(function () { e.select(); fail('请手动 Ctrl+C 复制'); });
+  } else { e.select(); fail('请手动 Ctrl+C 复制'); }
+}
+
+function downloadBackup() {
+  var e = $id('backupOut');
+  if (!e || !e.value) return fail('还没有备份内容');
+  var blob = new Blob([e.value], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mogoing-backup-' + dateStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 500);
+  ok('已开始下载');
+}
+
+function restoreBackup() {
+  var e = $id('restoreIn'); if (!e) return;
+  var txt = (e.value || '').trim();
+  if (!txt) return fail('先把备份 JSON 粘贴到下面的框里');
+  var pack;
+  try { pack = JSON.parse(txt); } catch (err) { return fail('JSON 格式不对：' + err.message); }
+  if (!pack || !Array.isArray(pack.users)) return fail('这不是本后台导出的备份（缺少 users 数组）');
+
+  var targets = pack.users.filter(function (u) { return u.saves && Object.keys(u.saves).length; });
+  if (!targets.length) return fail('备份里没有可恢复的存档');
+  if (!confirm('准备恢复 ' + targets.length + ' 个账号的存档，共 ' +
+    targets.reduce(function (a, u) { return a + Object.keys(u.saves).length; }, 0) +
+    ' 份。\n只会写回已有账号，不会新建/删除。继续？')) return;
+
+  var done = 0, errs = [];
+  api('/api/admin/users?' + adminQ()).then(function (dU) {
+    var known = {};
+    ((dU && dU.users) || []).forEach(function (u) { known[u.username] = true; });
+    var chain = Promise.resolve();
+    targets.forEach(function (u) {
+      if (!known[u.username]) { errs.push(u.username + '（账号不存在，跳过）'); return; }
+      Object.keys(u.saves).forEach(function (g) {
+        chain = chain.then(function () {
+          return post('/api/admin/save', {
+            admin_username: S.user, admin_password: S.pass,
+            target_username: u.username, game: g, data: u.saves[g]
+          }).then(function (r) {
+            if (r && r.ok) done++;
+            else errs.push(u.username + '/' + g + '：' + ((r && r.error) || '失败'));
+          }).catch(function (e) { errs.push(u.username + '/' + g + '：' + e.message); });
+        });
+      });
+    });
+    return chain.then(function () {
+      var msg = '✅ 恢复完成：成功 ' + done + ' 份' + (errs.length ? '，失败 ' + errs.length + ' 份' : '');
+      if ($id('restoreInfo')) $id('restoreInfo').textContent = msg + (errs.length ? ' | ' + errs.slice(0, 5).join('; ') : '');
+      if (errs.length) fail(msg); else ok(msg);
+      loadUsers();
+    });
+  }).catch(function (e) { fail('恢复失败：' + e.message); });
+}
+
+/* =====================================================================
    标签页切换
    ===================================================================== */
 var TABS = {
-  users: 'pane-users', farm: 'pane-farm', msg: 'pane-msg',
-  diary: 'pane-diary', edu: 'pane-edu', mail: 'pane-mail'
+  dash: 'pane-dash', users: 'pane-users', farm: 'pane-farm', msg: 'pane-msg',
+  diary: 'pane-diary', edu: 'pane-edu', mail: 'pane-mail', tool: 'pane-tool'
 };
 function switchTab(name) {
   S.tab = name;
@@ -1528,6 +1908,7 @@ function switchTab(name) {
   });
   if (name === 'farm' && !S.farm && $id('farmUser').value) loadFarm();
   if (name === 'edu' && !S.edu && $id('eduUser').value) loadEdu();
+  if (name === 'dash') refreshDash();
 }
 
 /* =====================================================================
@@ -1561,6 +1942,9 @@ window.addWrong = addWrong; window.delWrong = delWrong; window.addStar = addStar
 window.addCheckin = addCheckin; window.delCheckin = delCheckin; window.clearCheckin = clearCheckin;
 window.addMock = addMock; window.delMock = delMock;
 window.loadMails = loadMails; window.publishMail = publishMail; window.delMail = delMail;
+window.refreshDash = refreshDash; window.doBackup = doBackup; window.copyBackup = copyBackup;
+window.downloadBackup = downloadBackup; window.restoreBackup = restoreBackup; window.clearTextarea = clearTextarea;
+window.togglePin = togglePin; window.loadPinned = loadPinned;
 window.__S = S;
 
 })();
