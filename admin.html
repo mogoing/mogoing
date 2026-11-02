@@ -299,6 +299,7 @@
       <button class="tab" id="tab-diary" onclick="switchTab('diary')"><i>📖</i>日记</button>
       <button class="tab" id="tab-edu" onclick="switchTab('edu')"><i>📚</i>教资刷题</button>
       <button class="tab" id="tab-mail" onclick="switchTab('mail')"><i>📮</i>邮件</button>
+      <button class="tab" id="tab-log" onclick="switchTab('log')"><i>📜</i>日志</button>
       <button class="tab" id="tab-tool" onclick="switchTab('tool')"><i>🧰</i>备份</button>
     </div>
 
@@ -477,6 +478,25 @@
       <div class="panel">
         <h2>已发布邮件</h2>
         <div class="scroll-box" id="mailList"></div>
+      </div>
+    </div>
+
+    <!-- ================= 日志 ================= -->
+    <div id="pane-log" style="display:none">
+      <div class="panel">
+        <h2>操作日志 <span class="sub">（谁在什么时候改了什么 · 后端 admin_logs 表）</span></h2>
+        <div class="row" style="margin-bottom:9px">
+          <input type="text" id="logSearch" placeholder="搜索动作 / 对象（如 user.delete、wh）" style="flex:1;min-width:180px;max-width:320px">
+          <select id="logLimit" style="width:120px">
+            <option value="50">最近 50</option>
+            <option value="100" selected>最近 100</option>
+            <option value="200">最近 200</option>
+          </select>
+          <button class="btn small ghost" onclick="loadLogs()">刷新</button>
+        </div>
+        <div class="hint" id="logInfo"></div>
+        <div class="notice" id="logNotice" style="display:none"></div>
+        <div class="scroll-box" id="logList"></div>
       </div>
     </div>
 
@@ -1773,6 +1793,72 @@ function card(num, label, note) {
 }
 
 /* =====================================================================
+   操作日志
+   ===================================================================== */
+var LOG_NAMES = {
+  'coins.adjust': { t: '调整金币', c: '#F59E0B' },
+  'user.delete': { t: '删除用户', c: '#FF4D6D' },
+  'user.update': { t: '修改用户', c: '#9B5DE5' },
+  'save.write': { t: '写存档', c: '#4ECDC4' },
+  'msg.update': { t: '改留言', c: '#7C3AED' },
+  'msg.delete': { t: '删留言', c: '#FF4D6D' },
+  'diary.update': { t: '改日记', c: '#9B5DE5' },
+  'diary.delete': { t: '删日记', c: '#FF4D6D' },
+  'cfg.update': { t: '改配置', c: '#2FB5AC' },
+  'user.create': { t: '新建账号', c: '#7ED957' }
+};
+
+function logName(a) {
+  var x = LOG_NAMES[a];
+  return x ? x : { t: a, c: '#9A8FB5' };
+}
+
+function loadLogs() {
+  var box = $id('logList'); if (!box) return;
+  box.innerHTML = '<div class="loading">加载中…</div>';
+  var limit = ($id('logLimit') && $id('logLimit').value) || '100';
+  var kw = ($id('logSearch') && $id('logSearch').value || '').trim();
+  var q = adminQ('limit=' + limit) + (kw ? '&q=' + encodeURIComponent(kw) : '');
+
+  api('/api/admin/logs?' + q).then(function (d) {
+    if (!d || !d.ok) throw new Error((d && d.error) || '加载失败');
+    var logs = d.logs || [];
+    if ($id('logInfo')) $id('logInfo').textContent = '共 ' + logs.length + ' 条' + (kw ? '（已筛选：' + kw + '）' : '');
+    if (!logs.length) {
+      box.innerHTML = '<div class="empty">暂无日志' + (kw ? '（没有匹配的记录）' : '') + '</div>';
+      return;
+    }
+    box.innerHTML = logs.map(function (l) {
+      var nm = logName(l.action);
+      var detail = '';
+      if (l.detail) {
+        try {
+          var o = JSON.parse(l.detail);
+          detail = Object.keys(o).map(function (k) {
+            var v = o[k];
+            if (k === 'password_changed') return v ? '改了密码' : '未改密码';
+            if (typeof v === 'object') v = JSON.stringify(v);
+            return k + '=' + String(v).slice(0, 40);
+          }).join(' · ');
+        } catch (e) { detail = String(l.detail).slice(0, 80); }
+      }
+      return '<div class="d-item"><div class="d-head">' +
+        '<span><span class="pin-badge" style="background:' + nm.c + '">' + esc(nm.t) + '</span>' +
+        '<b style="font-size:12.5px;color:var(--grape);margin-left:6px">' + esc(l.target || '—') + '</b></span>' +
+        '<span class="m-meta">' + esc(l.actor) + ' · ' + fmtTime(l.created_at) + '</span></div>' +
+        (detail ? '<p class="d-content" style="font-size:12px;color:var(--muted)">' + esc(detail) + '</p>' : '') +
+        '</div>';
+    }).join('');
+  }).catch(function (e) {
+    if ($id('logNotice')) {
+      $id('logNotice').style.display = '';
+      $id('logNotice').innerHTML = '⚠️ 后端未部署 /api/admin/logs 接口（或旧版本）：' + esc(e.message);
+    }
+    box.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+  });
+}
+
+/* =====================================================================
    八、数据备份 / 恢复
    ===================================================================== */
 function clearTextarea(id) { var e = $id(id); if (e) e.value = ''; }
@@ -1896,7 +1982,7 @@ function restoreBackup() {
    ===================================================================== */
 var TABS = {
   dash: 'pane-dash', users: 'pane-users', farm: 'pane-farm', msg: 'pane-msg',
-  diary: 'pane-diary', edu: 'pane-edu', mail: 'pane-mail', tool: 'pane-tool'
+  diary: 'pane-diary', edu: 'pane-edu', mail: 'pane-mail', log: 'pane-log', tool: 'pane-tool'
 };
 function switchTab(name) {
   S.tab = name;
@@ -1909,6 +1995,7 @@ function switchTab(name) {
   if (name === 'farm' && !S.farm && $id('farmUser').value) loadFarm();
   if (name === 'edu' && !S.edu && $id('eduUser').value) loadEdu();
   if (name === 'dash') refreshDash();
+  if (name === 'log') loadLogs();
 }
 
 /* =====================================================================
@@ -1945,6 +2032,7 @@ window.loadMails = loadMails; window.publishMail = publishMail; window.delMail =
 window.refreshDash = refreshDash; window.doBackup = doBackup; window.copyBackup = copyBackup;
 window.downloadBackup = downloadBackup; window.restoreBackup = restoreBackup; window.clearTextarea = clearTextarea;
 window.togglePin = togglePin; window.loadPinned = loadPinned;
+window.loadLogs = loadLogs;
 window.__S = S;
 
 })();
