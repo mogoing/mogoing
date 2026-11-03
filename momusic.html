@@ -618,14 +618,31 @@
   // ===== 音频 =====
   const SVG_PLAY  = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
   const SVG_PAUSE = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/></svg>';
-  // 通知原生壳（APK）：播放时保持后台服务存活，暂停/结束时也告知
+  // 通知原生壳（APK）：播放时才拉起通知栏服务，带上当前歌名/歌手
   function nativeMedia(on) {
     try {
       if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
-      if (on) { if (AndroidBridge.mediaStart) AndroidBridge.mediaStart(); }
-      else { if (AndroidBridge.mediaStop) AndroidBridge.mediaStop(); }
+      if (on) {
+        if (AndroidBridge.mediaStart) {
+          AndroidBridge.mediaStart(cur?.name || '烩菜听歌', cur?.artist || '');
+        }
+      } else {
+        if (AndroidBridge.mediaStop) AndroidBridge.mediaStop();
+      }
     } catch (e) {}
   }
+  // 切歌时刷新通知栏歌名（不重新起服务）
+  function nativeMediaUpdate() {
+    try {
+      if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
+      if (AndroidBridge.mediaUpdate) {
+        AndroidBridge.mediaUpdate(cur?.name || '', cur?.artist || '');
+      }
+    } catch (e) {}
+  }
+  // 供 APK 通知栏「暂停」按钮回调
+  window.mmTogglePlay = function () { try { togglePlay(); } catch (e) {} };
+  window.mmPause = function () { try { if (audio && !audio.paused) audio.pause(); } catch (e) {} };
   function ensureAudio() {
     if (audio) return audio;
     audio = new Audio();
@@ -881,6 +898,8 @@
     renderRowsState();
     setBar(Math.max(0, Number(pos) || 0), a.duration);
     mediaSession();
+    // 切歌后刷新通知栏歌名
+    nativeMediaUpdate();
   }
   function togglePlay() {
     if (!cur) { toast('先搜索并点一首歌吧'); return; }
