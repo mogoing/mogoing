@@ -995,8 +995,13 @@
       }
     } catch (e) {}
   }
-  // 供 APK 通知栏暂停键回调（主页里的迷你播放器）
+  // 供 APK 通知栏按钮回调（主页只有迷你播放器，无队列）
   window.mmTogglePlay = function () { try { mcToggle(); } catch (e) {} };
+  window.mmPause = function () { try { if (mcAudio && !mcAudio.paused) mcAudio.pause(); } catch (e) {} };
+  window.mmPlay  = function () { try { if (mcAudio && mcAudio.paused) mcAudio.play().catch(function(){}); } catch (e) {} };
+  // 主页没有队列：下一首/上一首 去音乐页处理
+  window.mmNext = function () { try { location.href = 'momusic.html'; } catch (e) {} };
+  window.mmPrev = function () { try { location.href = 'momusic.html'; } catch (e) {} };
   function mcEnsureAudio() {
     if (mcAudio) return mcAudio;
     mcAudio = new Audio();
