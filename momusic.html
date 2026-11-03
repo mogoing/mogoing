@@ -640,9 +640,12 @@
       }
     } catch (e) {}
   }
-  // 供 APK 通知栏「暂停」按钮回调
+  // 供 APK 通知栏按钮回调（暂停 / 上一首 / 下一首 / 播放）
   window.mmTogglePlay = function () { try { togglePlay(); } catch (e) {} };
   window.mmPause = function () { try { if (audio && !audio.paused) audio.pause(); } catch (e) {} };
+  window.mmPlay  = function () { try { if (audio && audio.paused) audio.play().catch(function(){}); } catch (e) {} };
+  window.mmNext  = function () { try { next(); } catch (e) {} };
+  window.mmPrev  = function () { try { prev(); } catch (e) {} };
   function ensureAudio() {
     if (audio) return audio;
     audio = new Audio();
