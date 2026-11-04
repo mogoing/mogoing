@@ -1061,8 +1061,8 @@
   window.mmPause = function () { try { if (mcAudio && !mcAudio.paused) mcAudio.pause(); } catch (e) {} };
   window.mmPlay  = function () { try { if (mcAudio && mcAudio.paused) mcAudio.play().catch(function(){}); } catch (e) {} };
   // 主页没有队列：下一首/上一首 去音乐页处理
-  window.mmNext = function () { try { location.href = 'momusic.html'; } catch (e) {} };
-  window.mmPrev = function () { try { location.href = 'momusic.html'; } catch (e) {} };
+  window.mmNext = function () { try { location.href = 'momusic/momusic_index.html'; } catch (e) {} };
+  window.mmPrev = function () { try { location.href = 'momusic/momusic_index.html'; } catch (e) {} };
   function mcEnsureAudio() {
     if (mcAudio) return mcAudio;
     mcAudio = new Audio();
@@ -1161,7 +1161,7 @@
         mcState = st;
       } else {
         toast('还没有收藏的歌，去音乐页搜一首吧');
-        location.href = 'momusic.html';
+        location.href = 'momusic/momusic_index.html';
         return;
       }
     }
@@ -1193,13 +1193,13 @@
   }
   function mcToggle() {
     const st = mcState;
-    if (!st || !st.id) { location.href = 'momusic.html'; return; }
+    if (!st || !st.id) { location.href = 'momusic/momusic_index.html'; return; }
     const a = mcEnsureAudio();
     if (!a.paused && !a.ended) { a.pause(); return; }
     if (a.src && a.paused && a.readyState >= 2 && !a.ended) { a.play().catch(() => {}); return; }
     mcStart();
   }
-  musicPill.addEventListener('click', () => location.href = 'momusic.html');
+  musicPill.addEventListener('click', () => location.href = 'momusic/momusic_index.html');
   mpPlay.addEventListener('click', (e) => { e.stopPropagation(); mcToggle(); });
   mcRender();
   if (mcState && mcState.playing && mcState.id) mcStart();
