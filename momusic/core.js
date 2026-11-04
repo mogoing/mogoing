@@ -332,24 +332,41 @@
       var bk = await Promise.all([searchKugou(kw), searchQQ(kw), searchBilibili(kw, songKw)]);
       all = all.concat(bk[0], bk[1], bk[2]);
     }
-    // 网易云/酷狗/QQ 全都找不到「原唱」时（典型：周杰伦），再用 B 站补一次
+    // 判断「是否已经有一个可信的原唱」
+    // 关键：不能只看歌名匹配——「晴天 / Jay」「晴天 / 梦里啥都有」这类是假名/翻唱号，
+    // 必须校验歌手像不像真歌手，否则 B 站兜底永远不会触发（周杰伦就永远落到 Jay）。
     var hasRealOriginal = all.some(function (t) {
       var pn = plain(t.name);
       if (pn.indexOf(songKw) < 0) return false;
       if (isCover(t)) return false;
-      if (artistHint && plain(t.artist).indexOf(artistHint) < 0) return false;
-      return true;
+
+      var ar = String(t.artist || ''), pArt = plain(ar);
+      // ① 用户明确指定了歌手：必须是他
+      if (artistHint) return pArt.indexOf(artistHint) >= 0;
+      // ② 没指定歌手时，要求歌手「像真歌手」：
+      //    不能是纯英文短名(Jay/Lie/en)、不能是翻唱号/工作室
+      if (FAKE_ARTIST_RE.test(ar)) return false;
+      if (/^[A-Za-z][A-Za-z0-9 .]{1,14}$/.test(ar.trim())) return false;  // Jay / Lie / MIKA
+      // ③ 知名歌手直接算数
+      if (FAMOUS_RE.test(ar)) return true;
+      // ④ 其它情况：中文歌手名（≥2字）才算可信
+      return /[\u4e00-\u9fa5]{2,}/.test(ar);
     });
+
     if (!hasRealOriginal) {
       // ① APK 内：原生一次搞定「搜索+取直链」，直接造一条可用结果
       if (hasNativeBi()) {
-        var nbi = await nativeBilibili(kw, 24000);
+        // 带歌手搜更准；用户没给歌手时，用「歌名 + 常见歌手」不行，
+        // 所以先按原词搜，B站标题里通常自带歌手
+        var nbi = await nativeBilibili(kw, 26000);
         if (nbi && nbi.url) {
+          var biArtist = parts.slice(1).join(' ') || String(nbi.title || '').match(/周杰伦|周杰倫|赵雷|陈奕迅|林俊杰|邓紫棋|薛之谦|李荣浩|毛不易|王菲|那英|朴树|田馥甄|梁静茹/);
+          biArtist = (biArtist && biArtist[0]) || (parts.slice(1).join(' ') || '');
           all = all.concat([{
             id: 'bi_' + (nbi.bvid || Math.random().toString(36).slice(2)),
             uid: 'bi_' + (nbi.bvid || ''),
             name: (parts[0] || kw),                 // 用户搜的歌名
-            artist: parts.slice(1).join(' ') || '', // 用户给的歌手
+            artist: biArtist,                       // 从标题提取，或用用户给的
             album: '',
             cover: '',
             source: 'bilibili',
@@ -484,6 +501,7 @@
         if (done) return;
         done = true;
         cleanup();
+        global.MUSIC_BI_ERR = 'native timeout ' + (timeoutMs || 22000) + 'ms';
         resolve(null);
       }, timeoutMs || 22000);
 
@@ -495,7 +513,13 @@
         if (done || cbId !== id) return;
         done = true;
         cleanup();
-        if (!data || !data.ok || !data.url) { resolve(null); return; }
+        if (!data) { global.MUSIC_BI_ERR = 'native null response'; resolve(null); return; }
+        if (!data.ok || !data.url) {
+          global.MUSIC_BI_ERR = 'native: ' + (data.error || 'no url');
+          resolve(null);
+          return;
+        }
+        global.MUSIC_BI_ERR = '';
         resolve({
           url: fixScheme(String(data.url)),
           br: Number(data.kbps) || 0,
