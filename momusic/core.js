@@ -194,7 +194,121 @@
     return [];
   }
 
-  /* 打分：谁更像"原唱" —— 关键是歌手与用户意图、歌曲名纯净度 */
+  /* 输入歌名 → 返回候选歌手列表（供搜索框下拉选择）
+     排序原则：本地已知原唱映射最可信，其次知名歌手，最后才看出现次数。
+     因为 GD/vkeys 对周杰伦这类歌返回的全是翻唱，光靠接口数据推不出真原唱。 */
+  var artistSuggestCache = new Map();
+
+  // 人工整理的「歌名 → 原唱」映射（与搜索页 HINTS 保持同步的常用子集）
+  var KNOWN_ORIGINAL = {
+    '晴天':'周杰伦','稻香':'周杰伦','七里香':'周杰伦','告白气球':'周杰伦','青花瓷':'周杰伦',
+    '夜曲':'周杰伦','简单爱':'周杰伦','半岛铁盒':'周杰伦','花海':'周杰伦','搁浅':'周杰伦',
+    '一路向北':'周杰伦','枫':'周杰伦','我是如此相信':'周杰伦',
+    '演员':'薛之谦','丑八怪':'薛之谦','认真的雪':'薛之谦',
+    '成都':'赵雷','南方姑娘':'赵雷','平凡之路':'朴树','生如夏花':'朴树',
+    '海阔天空':'Beyond','光辉岁月':'Beyond','真的爱你':'Beyond',
+    '红豆':'王菲','匆匆那年':'王菲','传奇':'王菲',
+    '十年':'陈奕迅','浮夸':'陈奕迅','爱情转移':'陈奕迅','孤勇者':'陈奕迅','孤独患者':'陈奕迅',
+    '江南':'林俊杰','曹操':'林俊杰','小酒窝':'林俊杰','修炼爱情':'林俊杰','可惜没如果':'林俊杰',
+    '光年之外':'邓紫棋','泡沫':'邓紫棋','来自天堂的魔鬼':'邓紫棋','句号':'邓紫棋',
+    '模特':'李荣浩','李白':'李荣浩','年少有为':'李荣浩','戒烟':'李荣浩','老街':'李荣浩','不将就':'李荣浩',
+    '消愁':'毛不易','像我这样的人':'毛不易','平凡的一天':'毛不易',
+    '夜空中最亮的星':'逃跑计划','春天里':'汪峰','怒放的生命':'汪峰',
+    '小幸运':'田馥甄','魔鬼中的天使':'田馥甄','后来':'刘若英','为爱痴狂':'刘若英',
+    '听海':'张惠妹','记得':'张惠妹','至少还有你':'林忆莲',
+    '倒带':'蔡依林','舞娘':'蔡依林','布拉格广场':'蔡依林',
+    '勇气':'梁静茹','可惜不是你':'梁静茹','暖暖':'梁静茹','宁夏':'梁静茹',
+    '洋葱':'杨宗纬','其实都没有':'杨宗纬',
+    '你是我的眼':'萧煌奇','童话':'光良','第一次':'光良',
+    '朋友':'周华健','花心':'周华健','水手':'郑智化',
+    '我的未来不是梦':'张雨生','大海':'张雨生',
+    '月亮代表我的心':'邓丽君','甜蜜蜜':'邓丽君',
+    '吻别':'张学友','一千个伤心的理由':'张学友','祝福':'张学友',
+    '忘情水':'刘德华','中国人':'刘德华','冰雨':'刘德华',
+    '逆战':'张杰','天下':'张杰',
+    '体面':'于文文','说散就散':'袁娅维',
+    '作曲家':'蔡健雅','红色高跟鞋':'蔡健雅',
+    '过火':'张信哲','信仰':'张信哲',
+    '挪威的森林':'伍佰','突然的自我':'伍佰',
+    '飞鸟和蝉':'任然'
+  };
+
+  function knownArtist(songName) {
+    var k = plain(songName);
+    for (var s in KNOWN_ORIGINAL) {
+      if (plain(s) === k) return KNOWN_ORIGINAL[s];
+    }
+    return '';
+  }
+
+  async function suggestArtists(songName) {
+    var song = String(songName || '').trim();
+    if (!song) return [];
+    var ck = 'as|' + plain(song);
+    var hit = artistSuggestCache.get(ck);
+    if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit.list;
+
+    var wantKw = plain(song);
+    var pools = [];
+    try {
+      var two = await Promise.all([searchGD(song, 1, 30), searchVkeys(song)]);
+      pools = two[0].concat(two[1]);
+    } catch (e) { pools = []; }
+
+    var map = {};
+
+    // ① 本地已知原唱 → 绝对第一（权重直接给满）
+    var known = knownArtist(song);
+    if (known) {
+      map[plain(known)] = { name: known, count: 99, famous: true, known: true };
+    }
+
+    // ② 接口候选补充
+    pools.forEach(function (t) {
+      var pn = plain(t.name);
+      if (pn.indexOf(wantKw) < 0) return;
+      var ar = String(t.artist || '').split('/')[0].trim();
+      if (!ar) return;
+      if (FAKE_ARTIST_RE.test(ar)) return;
+      if (/^[A-Za-z][A-Za-z0-9 .&_-]{1,14}$/.test(ar)) return;
+      var famous = FAMOUS_RE.test(ar);
+      if (!famous && !/[\u4e00-\u9fa5]{2,}/.test(ar)) return;
+      var key = plain(ar);
+      if (!map[key]) map[key] = { name: ar, count: 0, famous: famous, known: false };
+      map[key].count++;
+    });
+
+    var list = Object.keys(map).map(function (k) { return map[k]; })
+      .sort(function (a, b) {
+        if (a.known !== b.known) return a.known ? -1 : 1;      // 已知原唱最优先
+        if (a.famous !== b.famous) return a.famous ? -1 : 1;    // 其次知名歌手
+        return b.count - a.count;                               // 最后比出现次数
+      })
+      .slice(0, 8);
+
+    artistSuggestCache.set(ck, { at: Date.now(), list: list });
+    return list;
+  }
+
+  /* 判断某个歌手名是否「可信」（不像 Jay / Lie / en / 翻唱号 这类假名） */
+  function isTrustedArtist(ar, artistHint) {
+    var s = String(ar || '').trim();
+    if (!s) return false;
+    var p = plain(s);
+    // 用户明确指定了歌手：只要命中就算可信
+    if (artistHint) return p.indexOf(artistHint) >= 0;
+    if (!s) return false;
+    // 翻唱号 / 工作室 / 电台
+    if (FAKE_ARTIST_RE.test(s)) return false;
+    // 纯英文短名：Jay / Lie / en / MIKA STUDIO —— 全部不可信
+    if (/^[A-Za-z][A-Za-z0-9 .&_-]{1,14}$/.test(s)) return false;
+    // 知名中文歌手
+    if (FAMOUS_RE.test(s)) return true;
+    // 其它：必须有至少 2 个连续汉字
+    return /[\u4e00-\u9fa5]{2,}/.test(s);
+  }
+
+  /* 打分：谁更像「原唱」—— 关键是歌手与用户意图、歌曲名纯净度 */
   function scoreOf(t, songKw, artistHint) {
     var s = 0;
     var ar = String(t.artist || ''), pArt = plain(ar), name = String(t.name || ''), pn = plain(name);
@@ -340,47 +454,63 @@
       if (pn.indexOf(songKw) < 0) return false;
       if (isCover(t)) return false;
 
-      var ar = String(t.artist || ''), pArt = plain(ar);
-      // ① 用户明确指定了歌手：必须是他
-      if (artistHint) return pArt.indexOf(artistHint) >= 0;
-      // ② 没指定歌手时，要求歌手「像真歌手」：
-      //    不能是纯英文短名(Jay/Lie/en)、不能是翻唱号/工作室
-      if (FAKE_ARTIST_RE.test(ar)) return false;
-      if (/^[A-Za-z][A-Za-z0-9 .]{1,14}$/.test(ar.trim())) return false;  // Jay / Lie / MIKA
-      // ③ 知名歌手直接算数
-      if (FAMOUS_RE.test(ar)) return true;
-      // ④ 其它情况：中文歌手名（≥2字）才算可信
-      return /[\u4e00-\u9fa5]{2,}/.test(ar);
+      return isTrustedArtist(t.artist, artistHint);
     });
 
+    // ===== B站兜底：一旦命中，前面所有商业音源的数据全部作废 =====
+    // 原因：网易云/酷狗这些库里周杰伦都被下架了，只剩「Jay」「梦里啥都有」这类假名翻唱，
+    // 混在一起排序总会有被顶到第一的可能。所以只要 B 站能给出一首真原唱，
+    // 就直接用它，不再和前面的结果做任何比较。
+    var biHero = null;
     if (!hasRealOriginal) {
-      // ① APK 内：原生一次搞定「搜索+取直链」，直接造一条可用结果
+      // ① APK 内：原生一次搞定「搜索+取直链」
       if (hasNativeBi()) {
-        // 带歌手搜更准；用户没给歌手时，用「歌名 + 常见歌手」不行，
-        // 所以先按原词搜，B站标题里通常自带歌手
         var nbi = await nativeBilibili(kw, 26000);
         if (nbi && nbi.url) {
-          var biArtist = parts.slice(1).join(' ') || String(nbi.title || '').match(/周杰伦|周杰倫|赵雷|陈奕迅|林俊杰|邓紫棋|薛之谦|李荣浩|毛不易|王菲|那英|朴树|田馥甄|梁静茹/);
-          biArtist = (biArtist && biArtist[0]) || (parts.slice(1).join(' ') || '');
-          all = all.concat([{
+          var biArtist = parts.slice(1).join(' ');
+          if (!biArtist && nbi.title) {
+            var am = String(nbi.title).match(/周杰伦|周杰倫|赵雷|陈奕迅|林俊杰|邓紫棋|薛之谦|李荣浩|毛不易|王菲|那英|朴树|田馥甄|梁静茹|张学友|刘德华|五月天|苏打绿|汪苏泷|许嵩|张杰|华晨宇|孙燕姿|陶喆|王力宏/);
+            if (am) biArtist = am[0];
+          }
+          biHero = {
             id: 'bi_' + (nbi.bvid || Math.random().toString(36).slice(2)),
             uid: 'bi_' + (nbi.bvid || ''),
-            name: (parts[0] || kw),                 // 用户搜的歌名
-            artist: biArtist,                       // 从标题提取，或用用户给的
+            name: (parts[0] || kw),
+            artist: biArtist || '',
             album: '',
             cover: '',
             source: 'bilibili',
             bvid: nbi.bvid || '',
             dur: 0,
-            _biUrl: nbi.url,                        // 已解析好的直链，省一次请求
-            _biBr: nbi.br || 0
-          }]);
+            _biUrl: nbi.url,
+            _biBr: nbi.br || 0,
+            _biTitle: nbi.title || ''
+          };
         }
       }
-      // ② 网页版：走搜索 + 后端代理
-      var bi2 = await searchBilibili(kw, songKw);
-      if (bi2.length) all = all.concat(bi2);
+      // ② 网页版：搜索 + 后端代理（取最像整首歌的一条）
+      if (!biHero) {
+        var bi2 = await searchBilibili(kw, songKw);
+        if (bi2.length) {
+          // 按「歌名命中 + 歌手命中」挑一条，不参与后面的大排序
+          var best = null, bestScore = -1e9;
+          bi2.forEach(function (x) {
+            var sc = 0;
+            if (plain(x.name) === songKw) sc += 50;
+            else if (plain(x.name).indexOf(songKw) >= 0) sc += 20;
+            if (artistHint && plain(x.artist).indexOf(artistHint) >= 0) sc += 100;
+            if (sc > bestScore) { bestScore = sc; best = x; }
+          });
+          if (best) biHero = best;
+        }
+      }
     }
+
+    // ★ 关键：B 站拿到真原唱 → 完全弃用前面的商业音源结果，只返回这一首
+    if (biHero) {
+      return { hero: biHero, alts: [], all: [biHero], fromBili: true };
+    }
+
     if (!all.length) return { hero: null, alts: [], all: [] };
 
     var seen = {}, exact = [], loose = [];
@@ -401,7 +531,52 @@
       return scoreOf(y, songKw, artistHint) - scoreOf(x, songKw, artistHint);
     });
 
-    return { hero: ranked[0] || null, alts: ranked.slice(1, 6), all: ranked };
+    // 最后一道校验：如果排第一的歌手不可信（Jay / Lie / 翻唱号），
+    // 先在候选里找「歌手最匹配」的那首；都不行再走 B 站；再不行才退回原结果
+    var top = ranked[0] || null;
+    if (top && !isTrustedArtist(top.artist, artistHint)) {
+      // ① 候选里找歌手最可信的（有 artistHint 时优先匹配它）
+      var better = null, betterScore = -1e9;
+      ranked.forEach(function (x) {
+        if (!isTrustedArtist(x.artist, artistHint)) return;
+        var sc = scoreOf(x, songKw, artistHint);
+        if (sc > betterScore) { betterScore = sc; better = x; }
+      });
+      if (better) {
+        return { hero: better, alts: ranked.filter(function (x) { return x !== better; }).slice(0, 5), all: ranked };
+      }
+
+      // ② 候选里也没有可信的 → 用 B 站原生
+      if (hasNativeBi()) {
+        var nbi2 = await nativeBilibili(kw, 26000);
+        if (nbi2 && nbi2.url) {
+          var nm = String(nbi2.title || '');
+          var am2 = parts.slice(1).join(' ');
+          if (!am2 && nm) {
+            var m3 = nm.match(/周杰伦|周杰倫|赵雷|陈奕迅|林俊杰|邓紫棋|薛之谦|李荣浩|毛不易|王菲|那英|朴树|田馥甄|梁静茹|张学友|刘德华|五月天|苏打绿|汪苏泷|许嵩|张杰|华晨宇|孙燕姿|陶喆|王力宏/);
+            if (m3) am2 = m3[0];
+          }
+          var biFix = {
+            id: 'bi_' + (nbi2.bvid || Math.random().toString(36).slice(2)),
+            uid: 'bi_' + (nbi2.bvid || ''),
+            name: (parts[0] || kw),
+            artist: am2 || '',
+            album: '', cover: '',
+            source: 'bilibili',
+            bvid: nbi2.bvid || '',
+            dur: 0,
+            _biUrl: nbi2.url,
+            _biBr: nbi2.br || 0,
+            _biTitle: nbi2.title || ''
+          };
+          return { hero: biFix, alts: [], all: [biFix], fromBili: true };
+        }
+      }
+    }
+
+    var topHero = ranked[0] || null;
+    var trusted = topHero ? isTrustedArtist(topHero.artist, artistHint) : false;
+    return { hero: topHero, alts: ranked.slice(1, 6), all: ranked, trusted: trusted };
   }
 
   /* ================= 播放直链 ================= */
@@ -790,7 +965,7 @@
   global.MUSIC = {
     GD: GD, VKEYS: VKEYS, VKEYS_QQ: VKEYS_QQ, METING: METING,
     esc: esc, plain: plain, stripTags: stripTags, fmtTime: fmtTime, trackKey: trackKey,
-    isCover: isCover, jsonp: jsonp,
+    isCover: isCover, jsonp: jsonp, isTrustedArtist: isTrustedArtist, suggestArtists: suggestArtists,
     searchGD: searchGD, searchKugou: searchKugou, searchQQ: searchQQ, searchVkeys: searchVkeys,
     searchBilibili: searchBilibili, bilibiliUrl: bilibiliUrl, BACKEND: BACKEND,
     searchArtistMore: searchArtistMore, findBest: findBest,
