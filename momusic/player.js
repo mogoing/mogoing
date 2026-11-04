@@ -190,13 +190,17 @@
     }
 
     var br = Number(res.br) || 0;
-    emit('quality', br);
-    if (P.quality === 'loss' && br && br < 740) emit('toast', '这首暂无无损，已用 ' + br + 'K 播放');
+    var fromBI = (res.from === 'bilibili');
+    emit('quality', br, fromBI);
+    // B站兜底来的音轨是 m4a（通常 128~320kbps），不提示"暂无无损"以免打扰
+    if (!fromBI && P.quality === 'loss' && br && br < 740) {
+      emit('toast', '这首暂无无损，已用 ' + br + 'K 播放');
+    }
 
     saveState({
       id: P.cur.id, uid: P.cur.uid || P.cur.id, name: P.cur.name, artist: P.cur.artist,
       album: P.cur.album || '', pic: P.cur.pic || '', cover: P.cur.cover || '', source: P.cur.source || '',
-      kgHashes: P.cur.kgHashes || null, qqMid: P.cur.qqMid || null,
+      kgHashes: P.cur.kgHashes || null, qqMid: P.cur.qqMid || null, bvid: P.cur.bvid || null,
       playing: true, pos: Math.max(0, Number(pos) || 0)
     });
 
@@ -358,7 +362,7 @@
       id: String(t.id || ''), uid: String(t.uid || t.id || ''), name: String(t.name || ''),
       artist: String(t.artist || ''), album: String(t.album || ''), pic: String(t.pic || ''),
       cover: String(t.cover || ''), source: String(t.source || ''),
-      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, ts: Date.now()
+      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, bvid: t.bvid || null, ts: Date.now()
     };
   }
 
@@ -427,7 +431,7 @@
     list.unshift({
       id: id, uid: String(t.uid || t.id || ''), name: t.name || '', artist: t.artist || '',
       album: t.album || '', pic: t.pic || '', cover: t.cover || '', source: t.source || '',
-      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, ts: Date.now()
+      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, bvid: t.bvid || null, ts: Date.now()
     });
     try { localStorage.setItem(K_RECENT, JSON.stringify(list.slice(0, 30))); } catch (e) {}
     emit('recent');
@@ -462,7 +466,7 @@
         t = {
           id: String(st.id), uid: String(st.uid || st.id), name: st.name || '未知歌曲',
           artist: st.artist || '', album: st.album || '', pic: st.pic || '', cover: st.cover || '',
-          source: st.source || '', kgHashes: st.kgHashes || null, qqMid: st.qqMid || null
+          source: st.source || '', kgHashes: st.kgHashes || null, qqMid: st.qqMid || null, bvid: st.bvid || null
         };
         P.queue.splice(Math.min(P.qi, P.queue.length), 0, t);
       }
