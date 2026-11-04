@@ -10,6 +10,8 @@
   var VKEYS     = 'https://api.vkeys.cn/v2/music/netease';
   var VKEYS_QQ  = 'https://api.vkeys.cn/v2/music/tencent';
   var PROXY     = (global.MOMUSIC_PROXY ? String(global.MOMUSIC_PROXY).replace(/\/$/, '') : '');
+  // 自建后端：B站音源兜底代理（解决冷门/付费歌曲播不了）
+  var BACKEND   = 'https://api.mogoing.xyz';
 
   /* ---------------- 文本工具 ---------------- */
   function esc(s) {
@@ -226,7 +228,89 @@
     var d = (t.dur && t.dur > 0 ? t.dur : 0);
     if (d && d < 120) s -= 60;
 
+    // ⑨ B站来源：只要歌名和歌手都对得上，就是能用的一整首歌，给较高权重
+    //   （B站没有"翻唱标记"体系，靠歌手命中判断更可靠）
+    if (t.source === 'bilibili') {
+      if (artistHint && pArt.indexOf(artistHint) >= 0) s += 90;
+      if (pn === songKw) s += 40;
+    }
+
     return s;
+  }
+
+  /* B站搜索：商业音源都没有时兜底（周杰伦等版权歌靠这路） */
+  async function searchBilibili(kw, songKw) {
+    try {
+      var r = await fetch(BACKEND + '/api/bi/search?kw=' + encodeURIComponent(kw), {
+        signal: AbortSignal.timeout(18000)
+      });
+      if (!r.ok) return [];
+      var j = await r.json();
+      if (!j || !j.ok || !Array.isArray(j.list)) return [];
+      var wantKw = plain(songKw || kw);
+      var ARTIST_RE = /周杰伦|周杰倫|赵雷|陈奕迅|薛之谦|薛之謙|林俊杰|林俊傑|邓紫棋|鄧紫棋|李荣浩|李榮浩|毛不易|王菲|那英|朴树|樸樹|Beyond|田馥甄|梁静茹|梁靜茹|张惠妹|張惠妹|蔡依林|刘若英|劉若英|张学友|張學友|刘德华|劉德華|周深|五月天|苏打绿|蘇打綠|汪苏泷|許嵩|许嵩|张杰|張傑|华晨宇|華晨宇|孙燕姿|孫燕姿|陶喆|王力宏|李健|逃跑计划|汪峰|杨宗纬|楊宗緯|萧煌奇|蕭煌奇|光良|周华健|周華健|郑智化|鄭智化|张雨生|張雨生|邓丽君|鄧麗君|任然|于文文|袁娅维|袁婭維|蔡健雅|张信哲|張信哲|伍佰|Tank|阿信|汪蘇瀧|GEM|周興哲|周兴哲/i;
+
+      return j.list.map(function (v) {
+        var title = String(v.title || '');
+        // 去掉开头的【xxx】标签
+        var clean = title.replace(/^\s*[【\[][^】\]]*[】\]]\s*/, '').trim();
+        var artist = '', name = clean;
+
+        var stripNoise = function (x) {
+          return String(x || '')
+            .replace(/[（(【\[].*?[）)】\]]/g, '')
+            .replace(/\s*(MV|4K|8K|Hi-?Res|高清|超清|无损|完整版|修复版|歌词版|纯享|试听|现场|Live|2160P|1080P|720P)\s*/gi, ' ')
+            .replace(/[''""「」『』《》【】]/g, '')
+            .replace(/^[\s\-—丨|:：]+|[\s\-—丨|:：]+$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        };
+
+        // 多种标题结构，逐个评估哪个解析结果最像目标歌名
+        var tries = [];
+        var m1 = /^(.{1,20}?)\s+-\s+(.+)$/.exec(clean);
+        if (m1) tries.push({ artist: m1[1], name: m1[2] });
+        var m2 = /^(.{1,20}?)\s*[《「](.+?)[》」]/.exec(clean);
+        if (m2) tries.push({ artist: m2[1], name: m2[2] });
+        var m3 = /^[《「【](.+?)[》」】]\s*(.+)$/.exec(clean);
+        if (m3) tries.push({ artist: m3[2], name: m3[1] });
+        var m4 = /^(.{1,20}?)\s*[-—丨|]\s*(.{1,20})$/.exec(clean);
+        if (m4) { tries.push({ artist: m4[2], name: m4[1] }); tries.push({ artist: m4[1], name: m4[2] }); }
+        tries.push({ artist: v.author || '', name: clean });
+
+        var best = null, bestScore = -1;
+        tries.forEach(function (cand) {
+          var nm = stripNoise(cand.name);
+          var ar = stripNoise(cand.artist);
+          if (!nm) return;
+          var sc = 0;
+          if (wantKw && plain(nm).indexOf(wantKw) >= 0) sc += 8;
+          if (plain(nm) === wantKw) sc += 4;
+          // 歌手名如果本身就是知名歌手，加分；如果只是up主昵称，不加分
+          if (ARTIST_RE.test(ar)) sc += 3;
+          if (ar && ar.length <= 16) sc += 1;
+          if (sc > bestScore) { bestScore = sc; best = { name: nm, artist: ar }; }
+        });
+
+        if (!best || !best.name) best = { name: stripNoise(clean) || clean, artist: '' };
+        // 歌手字段若只是 UP 主昵称（含"音乐""私藏""歌单"等），丢掉
+        if (best.artist && /音乐|私藏|歌单|电台|频道|听歌|每日|推荐|合集|搬运|up主|视频|剪辑/i.test(best.artist) && !ARTIST_RE.test(best.artist)) {
+          best.artist = '';
+        }
+
+        return {
+          id: 'bi_' + v.bvid,
+          uid: 'bi_' + v.bvid,
+          name: best.name || title || '未知歌曲',
+          artist: best.artist || String(v.author || '未知歌手'),
+          album: '',
+          cover: String(v.pic || ''),
+          source: 'bilibili',
+          bvid: String(v.bvid || ''),
+          dur: 0
+        };
+      }).filter(function (x) { return x.bvid && x.name; });
+    } catch (e) { return []; }
   }
 
   /* 核心：搜索并挑出唯一"原唱" —— 只返回一首主曲 + 少量备选 */
@@ -245,8 +329,40 @@
       return plain(t.name).indexOf(songKw) >= 0;
     });
     if (needBackup) {
-      var bk = await Promise.all([searchKugou(kw), searchQQ(kw)]);
-      all = all.concat(bk[0], bk[1]);
+      var bk = await Promise.all([searchKugou(kw), searchQQ(kw), searchBilibili(kw, songKw)]);
+      all = all.concat(bk[0], bk[1], bk[2]);
+    }
+    // 网易云/酷狗/QQ 全都找不到「原唱」时（典型：周杰伦），再用 B 站补一次
+    var hasRealOriginal = all.some(function (t) {
+      var pn = plain(t.name);
+      if (pn.indexOf(songKw) < 0) return false;
+      if (isCover(t)) return false;
+      if (artistHint && plain(t.artist).indexOf(artistHint) < 0) return false;
+      return true;
+    });
+    if (!hasRealOriginal) {
+      // ① APK 内：原生一次搞定「搜索+取直链」，直接造一条可用结果
+      if (hasNativeBi()) {
+        var nbi = await nativeBilibili(kw, 24000);
+        if (nbi && nbi.url) {
+          all = all.concat([{
+            id: 'bi_' + (nbi.bvid || Math.random().toString(36).slice(2)),
+            uid: 'bi_' + (nbi.bvid || ''),
+            name: (parts[0] || kw),                 // 用户搜的歌名
+            artist: parts.slice(1).join(' ') || '', // 用户给的歌手
+            album: '',
+            cover: '',
+            source: 'bilibili',
+            bvid: nbi.bvid || '',
+            dur: 0,
+            _biUrl: nbi.url,                        // 已解析好的直链，省一次请求
+            _biBr: nbi.br || 0
+          }]);
+        }
+      }
+      // ② 网页版：走搜索 + 后端代理
+      var bi2 = await searchBilibili(kw, songKw);
+      if (bi2.length) all = all.concat(bi2);
     }
     if (!all.length) return { hero: null, alts: [], all: [] };
 
@@ -255,7 +371,10 @@
       var k = trackKey(t);
       if (seen[k]) return;
       var pn = plain(t.name);
-      if (pn.indexOf(songKw) < 0) return;
+      // B站条目的标题是视频标题，解析后可能不含完整歌名，放宽为互相包含
+      var nameHit = pn.indexOf(songKw) >= 0 ||
+                    (t.source === 'bilibili' && songKw.indexOf(pn) >= 0 && pn.length >= 2);
+      if (!nameHit) return;
       if (isCover(t) && !(artistHint && plain(t.artist).indexOf(artistHint) >= 0)) return;
       seen[k] = 1;
       (pn === songKw ? exact : loose).push(t);
@@ -336,6 +455,112 @@
     } catch (e) { return null; }
   }
 
+  /* ================= B站音源兜底 ================= */
+  // B 站接口有防盗链（Origin 白名单），浏览器直连会被 CORS 拦。
+  // 但 B 站音频 CDN 不限来源，<audio src> 能直接播。
+  // 取音频 URL 这一步有两条路：
+  //   ① APK 原生（AndroidBridge.biResolve）：Java 侧无 CORS，走手机自己的网络
+  //   ② 自建后端代理（网页版用，但 CF 出口 IP 被 B 站风控，多数时候不可用）
+  var biCache = new Map();
+  var BI_TTL = 15 * 60 * 1000;
+  var biSeq = 0;
+
+  // 判断是否在 APK 里，且原生实现了 biResolve
+  function hasNativeBi() {
+    try {
+      return typeof AndroidBridge !== 'undefined' && AndroidBridge
+             && typeof AndroidBridge.biResolve === 'function';
+    } catch (e) { return false; }
+  }
+
+  // 调 APK 原生解析，包成 Promise。超时/失败都返回 null，不影响后续流程。
+  function nativeBilibili(kw, timeoutMs) {
+    return new Promise(function (resolve) {
+      if (!hasNativeBi()) { resolve(null); return; }
+
+      var id = 'bi' + (++biSeq) + '_' + Math.random().toString(36).slice(2, 7);
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve(null);
+      }, timeoutMs || 22000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        try { if (global.__biCb === wrapper) delete global.__biCb; } catch (e) {}
+      }
+      function wrapper(cbId, data) {
+        if (done || cbId !== id) return;
+        done = true;
+        cleanup();
+        if (!data || !data.ok || !data.url) { resolve(null); return; }
+        resolve({
+          url: fixScheme(String(data.url)),
+          br: Number(data.kbps) || 0,
+          from: 'bilibili',
+          bvid: String(data.bvid || ''),
+          title: String(data.title || '')
+        });
+      }
+      // 同一个回调入口，靠 cbId 区分并发请求
+      var prev = global.__biCb;
+      global.__biCb = function (cbId, data) {
+        if (typeof prev === 'function') { try { prev(cbId, data); } catch (e) {} }
+        wrapper(cbId, data);
+      };
+
+      try {
+        AndroidBridge.biResolve(String(kw), id);
+      } catch (e) {
+        if (done) return;
+        done = true; cleanup(); resolve(null);
+      }
+    });
+  }
+
+  async function bilibiliUrl(t, quality) {
+    var name = String((t && t.name) || '').trim();
+    var artist = String((t && t.artist) || '').split('/')[0].trim();
+    if (!name) return null;
+
+    // 去掉版本标记，提高命中「整首歌」的概率
+    var cleanName = name.replace(/[（(【\[].*?[）)】\]]/g, '').replace(/\s+/g, ' ').trim();
+    var kw = (cleanName + ' ' + artist).trim();
+    var ckey = 'bi|' + kw.toLowerCase();
+    var hit = biCache.get(ckey);
+    if (hit && Date.now() - hit.at < BI_TTL) return hit;
+
+    // ① 优先 APK 原生
+    var nres = await nativeBilibili(kw, 22000);
+    if (nres && nres.url) {
+      nres.at = Date.now();
+      biCache.set(ckey, nres);
+      return nres;
+    }
+
+    // ② 退回后端代理（网页版；CF 出口常被 B 站 -412 拦，失败就放弃）
+    try {
+      var r = await fetch(BACKEND + '/api/bi/resolve?kw=' + encodeURIComponent(kw), {
+        signal: AbortSignal.timeout(18000)
+      });
+      if (!r.ok) return null;
+      var j = await r.json();
+      if (!j || !j.ok || !j.url) return null;
+
+      var res = {
+        url: j.url,
+        br: Number(j.kbps) || 0,
+        from: 'bilibili',
+        bvid: j.bvid || '',
+        at: Date.now()
+      };
+      biCache.set(ckey, res);
+      return res;
+    } catch (e) { return null; }
+  }
+
   /* 多通道路由，前端不暴露来源 */
   async function resolveUrl(t, quality) {
     if (!t) return null;
@@ -343,36 +568,49 @@
     var hit = urlCache.get(key);
     if (hit && Date.now() - hit.at < URL_TTL) return hit;
 
+    // 搜索阶段已经用原生解析好直链的（B站），直接用，不再发第二轮请求
+    if (t._biUrl) {
+      var pre = { url: t._biUrl, br: Number(t._biBr) || 0, from: 'bilibili', at: Date.now() };
+      urlCache.set(key, pre);
+      return pre;
+    }
+
     var uid = t.uid || t.id;
+    var isBili = (t.source === 'bilibili') || /^bi_/.test(String(uid || ''));
     var chain = [];
 
-    if (t.kgHashes && t.kgHashes.length) {
-      if (quality === 'loss') chain.push(function () { return kugouUrl(t, '999'); });
-      chain.push(
-        function () { return kugouUrl(t, '320'); },
-        function () { return kugouUrl(t, '128'); },
-        function () { return kugouUrl(t, ''); }
-      );
-    }
-    if (t.qqMid) {
-      if (quality === 'loss') chain.push(function () { return qqUrl(t, 6); }, function () { return qqUrl(t, 5); });
-      chain.push(function () { return qqUrl(t, 5); }, function () { return qqUrl(t, 4); }, function () { return qqUrl(t, 3); });
-    }
-    if (uid) {
-      var src = t.source || 'netease';
-      if (quality === 'loss') chain.push(
-        function () { return gdUrl(uid, 999, src); },
-        function () { return gdUrl(uid, 740, src); }
-      );
-      chain.push(function () { return gdUrl(uid, 320, src); });
-      if (PROXY) chain.push(function () { return proxyUrl(uid, quality === 'loss' ? 999000 : 320000); });
-      if (quality === 'loss') chain.push(function () { return vkeysUrl(uid, 5); });
-      chain.push(
-        function () { return vkeysUrl(uid, 4); },
-        function () { return gdUrl(uid, 128, src); },
-        function () { return vkeysUrl(uid, 2); }
-      );
-    }
+    // B站来源的曲目，商业音源一定拿不到，直接跳过省时间
+    if (!isBili) {
+      if (t.kgHashes && t.kgHashes.length) {
+        if (quality === 'loss') chain.push(function () { return kugouUrl(t, '999'); });
+        chain.push(
+          function () { return kugouUrl(t, '320'); },
+          function () { return kugouUrl(t, '128'); },
+          function () { return kugouUrl(t, ''); }
+        );
+      }
+      if (t.qqMid) {
+        if (quality === 'loss') chain.push(function () { return qqUrl(t, 6); }, function () { return qqUrl(t, 5); });
+        chain.push(function () { return qqUrl(t, 5); }, function () { return qqUrl(t, 4); }, function () { return qqUrl(t, 3); });
+      }
+      if (uid) {
+        var src = t.source || 'netease';
+        if (quality === 'loss') chain.push(
+          function () { return gdUrl(uid, 999, src); },
+          function () { return gdUrl(uid, 740, src); }
+        );
+        chain.push(function () { return gdUrl(uid, 320, src); });
+        if (PROXY) chain.push(function () { return proxyUrl(uid, quality === 'loss' ? 999000 : 320000); });
+        if (quality === 'loss') chain.push(function () { return vkeysUrl(uid, 5); });
+        chain.push(
+          function () { return vkeysUrl(uid, 4); },
+          function () { return gdUrl(uid, 128, src); },
+          function () { return vkeysUrl(uid, 2); }
+        );
+      }   // end if (uid)
+    }     // end if (!isBili)
+    // 最后一道兜底：所有商业音源都拿不到时，走 B 站（周杰伦等版权歌专用）
+    chain.push(function () { return bilibiliUrl(t, quality); });
 
     for (var i = 0; i < chain.length; i++) {
       var res = await chain[i]();
@@ -530,6 +768,7 @@
     esc: esc, plain: plain, stripTags: stripTags, fmtTime: fmtTime, trackKey: trackKey,
     isCover: isCover, jsonp: jsonp,
     searchGD: searchGD, searchKugou: searchKugou, searchQQ: searchQQ, searchVkeys: searchVkeys,
+    searchBilibili: searchBilibili, bilibiliUrl: bilibiliUrl, BACKEND: BACKEND,
     searchArtistMore: searchArtistMore, findBest: findBest,
     resolveUrl: resolveUrl, fetchPic: fetchPic,
     lyric: lyric, parseLRC: parseLRC,
