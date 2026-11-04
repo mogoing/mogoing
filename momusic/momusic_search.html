@@ -452,6 +452,13 @@
     try {
       var r = await M.findBest(kw);
       if (window.__view !== myView) return;
+      // APK 内 B站兜底若失败，把原因提示出来（便于定位问题出在哪一环）
+      try {
+        if (r.hero && r.hero.source !== 'bilibili' && window.MUSIC_BI_ERR) {
+          console.warn('[bili] fallback failed:', window.MUSIC_BI_ERR);
+          window.toast('B站兜底未接通：' + window.MUSIC_BI_ERR);
+        }
+      } catch (e) {}
       if (!r.hero) {
         $('sLoading').classList.remove('on');
         renderHist();
@@ -782,6 +789,17 @@
 
   renderHist();
   renderPicks();
+
+  // 启动时打印环境信息，方便排查 B站通道是否可用
+  try {
+    var hasAB = (typeof AndroidBridge !== 'undefined' && AndroidBridge);
+    var hasBI = hasAB && typeof AndroidBridge.biResolve === 'function';
+    console.log('[env] AndroidBridge=' + (hasAB ? 'yes' : 'no') +
+                ' biResolve=' + (hasBI ? 'yes' : 'no') +
+                ' corejs=34');
+    if (hasAB && !hasBI) window.toast('APK 版本过旧，缺少 biResolve');
+  } catch (e) {}
+
 })();
 </script>
 </body>
