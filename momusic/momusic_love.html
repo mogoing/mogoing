@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的收藏</title>
+</head>
+<body>
+
+<style>
+  #viewHost{
+    background:transparent;
+  }
+  #viewHost > * + *{
+    margin-top:13px;
+  }
+
+  /* ===== 收藏总卡 ===== */
+  .fcard{
+    width:100%;border-radius:var(--r-lg);
+    background:linear-gradient(150deg,#FFFFFF 0%,#FFF7EC 58%,#FFEFE0 100%);
+    box-shadow:0 16px 42px rgba(155,93,229,.22),inset 0 0 0 2px rgba(255,255,255,.95);
+    overflow:hidden;
+    animation:mmPop .45s cubic-bezier(.2,.9,.3,1.15) both;
+  }
+  @keyframes mmPop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+
+  .fhead{display:flex;align-items:center;gap:11px;padding:16px 16px 14px}
+  .fhead .fi{
+    flex:none;width:40px;height:40px;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;font-size:19px;
+    background:linear-gradient(145deg,#FFE1E1,#FFD0D0);
+    box-shadow:0 5px 13px rgba(255,107,107,.26);
+  }
+  .fhead .ft{flex:1;min-width:0}
+  .fhead b{display:block;font-size:17px;font-weight:900;color:var(--ink);letter-spacing:.4px}
+  .fhead em{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:var(--muted);margin-top:2px}
+  .fplay{
+    flex:none;height:40px;padding:0 16px;border:none;border-radius:999px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:800;color:#fff;
+    display:flex;align-items:center;gap:6px;
+    background:linear-gradient(135deg,var(--coral),var(--grape));
+    box-shadow:0 7px 18px rgba(255,107,107,.34);
+    transition:transform .16s,opacity .2s;
+  }
+  .fplay:active{transform:scale(.93)}
+  .fplay:disabled{opacity:.45;pointer-events:none}
+
+  .fbody{padding:0 12px 14px}
+  .flist{display:flex;flex-direction:column;gap:9px}
+
+  .frow{
+    display:flex;align-items:center;gap:12px;
+    padding:9px 11px;border-radius:var(--r-md);
+    background:rgba(255,255,255,.94);
+    box-shadow:0 3px 11px rgba(155,93,229,.09);
+    cursor:pointer;
+    transition:transform .15s,box-shadow .2s;
+    animation:mmRowIn .34s cubic-bezier(.2,.9,.3,1.15) both;
+  }
+  @keyframes mmRowIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+  .frow:active{transform:scale(.977)}
+  .frow.now{background:#fff;box-shadow:0 7px 20px rgba(155,93,229,.24)}
+  .frow.now .mm-txt b{color:var(--grape)}
+
+  .fempty{padding:44px 20px;text-align:center}
+  .fempty .ic{font-size:36px;display:block;margin-bottom:10px;opacity:.6}
+  .fempty b{display:block;font-size:14.5px;font-weight:800;color:var(--ink-2);margin-bottom:6px}
+  .fempty em{display:block;font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.9}
+
+  .fstate{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
+    padding:9px;border-radius:999px;
+    font-size:11.5px;font-weight:700;color:var(--muted);
+    background:rgba(255,255,255,.7);box-shadow:var(--sh-xs);
+  }
+  .fstate.ok{color:var(--mint-d)}
+  .fstate .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.75}
+
+  /* ===== 最近播放 ===== */
+  .rcard{
+    width:100%;border-radius:var(--r-lg);
+    background:var(--glass);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    box-shadow:var(--sh-md),var(--sh-in);
+    padding:14px;
+  }
+  .rhead{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+  .rhead .ri{
+    flex:none;width:30px;height:30px;border-radius:11px;
+    display:flex;align-items:center;justify-content:center;font-size:15px;
+    background:linear-gradient(145deg,#D7F2FF,#C9E9FF);
+    box-shadow:0 3px 9px rgba(91,167,230,.22);
+  }
+  .rhead b{font-size:14.5px;font-weight:900;color:var(--ink)}
+  .rhead em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
+  .rhead .clr{
+    margin-left:auto;border:none;background:transparent;cursor:pointer;
+    color:var(--muted);font-size:11.5px;font-weight:800;font-family:inherit;
+    padding:4px 8px;border-radius:999px;
+  }
+  .rhead .clr:active{opacity:.6}
+
+  .rlist{display:flex;flex-direction:column;gap:8px}
+</style>
+
+<div class="fcard" id="fCard">
+  <div class="fhead">
+    <span class="fi">❤️</span>
+    <div class="ft">
+      <b>我的收藏</b>
+      <em id="fCount">还没有收藏</em>
+    </div>
+    <button class="fplay" id="fPlayAll" disabled>
+      <svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+      播放全部
+    </button>
+  </div>
+  <div class="fbody">
+    <div class="flist" id="fList"></div>
+  </div>
+</div>
+
+<div class="fstate" id="fState"><span class="dot"></span><span>本地收藏</span></div>
+
+<div class="rcard" id="rCard" style="display:none">
+  <div class="rhead">
+    <span class="ri">🕘</span>
+    <b>最近播放</b>
+    <em id="rCount"></em>
+    <button class="clr" id="rClear">清空</button>
+  </div>
+  <div class="rlist" id="rList"></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var M = window.M, PL = window.PL, P = PL.P;
+
+  function heartSVG(filled, size){
+    var s = size || 18;
+    return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '"><path d="M12 21s-7.5-4.7-9.3-9C1.4 8.6 3.4 5 6.9 5c2 0 3.4 1.1 4.1 2.1C11.7 6.1 13.1 5 15.1 5c3.5 0 5.5 3.6 4.2 7-1.8 4.3-9.3 9-9.3 9z" fill="' + (filled ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/></svg>';
+  }
+  function eqHTML(){
+    var playing = P.audio && !P.audio.paused && !P.audio.ended;
+    return '<span class="mm-eq' + (playing ? '' : ' off') + '"><i></i><i></i><i></i></span>';
+  }
+
+  /* ---------- 收藏 ---------- */
+  function renderFav(){
+    var fav = PL.getFav();
+    var list = $('fList');
+    if (!list) return;
+    $('fCount').textContent = fav.length ? fav.length + ' 首歌曲' : '还没有收藏';
+    $('fPlayAll').disabled = !fav.length;
+
+    if (!fav.length) {
+      list.innerHTML =
+        '<div class="fempty">' +
+          '<span class="ic">🎧</span>' +
+          '<b>收藏夹还是空的</b>' +
+          '<em>在「找歌」里搜到喜欢的歌<br>点 ♡ 就能收进来</em>' +
+        '</div>';
+      return;
+    }
+    list.innerHTML = fav.map(function(t, i){
+      var isNow = P.cur && String(t.id) === String(P.cur.id);
+      return '<div class="frow' + (isNow ? ' now' : '') + '" data-i="' + i + '">' +
+        '<div class="mm-cover c' + (i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span>' +
+          '<img data-cv="' + i + '" alt=""></div>' +
+        '<div class="mm-txt"><b>' + M.esc(t.name) + '</b><em>' + M.esc(t.artist) +
+          (t.album ? ' · ' + M.esc(t.album) : '') + '</em></div>' +
+        '<div class="mm-row-btns">' +
+          '<button class="mm-round plain on" style="width:34px;height:34px" data-unfav="' + i + '" title="取消收藏">' +
+            heartSVG(true, 17) + '</button>' +
+          (isNow ? eqHTML() :
+            '<button class="mm-round coral" style="width:34px;height:34px" data-play="' + i + '">' +
+              '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button>') +
+        '</div></div>';
+    }).join('');
+
+    loadCovers(fav);
+  }
+
+  function loadCovers(fav){
+    Array.prototype.forEach.call($('fList').querySelectorAll('img[data-cv]'), function(img){
+      var t = fav[parseInt(img.dataset.cv, 10)];
+      if (!t) return;
+      M.fetchPic(t, 120).then(function(u){
+        if (!u) return;
+        img.onload = function(){ img.classList.add('ld'); };
+        img.onerror = function(){};
+        img.src = u;
+      });
+    });
+  }
+
+  $('fList').addEventListener('click', function(e){
+    var unf = e.target.closest('[data-unfav]');
+    if (unf) {
+      e.stopPropagation();
+      var t = PL.getFav()[parseInt(unf.dataset.unfav, 10)];
+      if (t) PL.toggleFav(t);
+      return;
+    }
+    var pl = e.target.closest('[data-play]');
+    if (pl) {
+      e.stopPropagation();
+      var t2 = PL.getFav()[parseInt(pl.dataset.play, 10)];
+      if (t2) PL.playTrack(t2);
+      return;
+    }
+    var row = e.target.closest('.frow');
+    if (row && row.dataset.i != null) {
+      var t3 = PL.getFav()[parseInt(row.dataset.i, 10)];
+      if (!t3) return;
+      if (P.cur && String(t3.id) === String(P.cur.id)) { PL.toggle(); return; }
+      PL.playTrack(t3);
+    }
+  });
+
+  $('fPlayAll').addEventListener('click', function(){
+    var fav = PL.getFav();
+    if (!fav.length) { window.toast('还没有收藏的歌'); return; }
+    PL.setQueue(fav.slice(), 0);
+    PL.play(0, true);
+    window.toast('播放收藏 · ' + fav.length + ' 首');
+  });
+
+  /* ---------- 同步状态 ---------- */
+  function renderState(){
+    var box = $('fState');
+    if (!box) return;
+    var u = '', p = '';
+    try { u = localStorage.getItem('blindbox_user') || ''; p = localStorage.getItem('blindbox_pass') || ''; } catch(e){}
+    if (!u || !p) {
+      box.className = 'fstate';
+      box.innerHTML = '<span class="dot"></span><span>仅存本地 · 登录后自动云同步</span>';
+    } else {
+      box.className = 'fstate ok';
+      box.innerHTML = '<span class="dot"></span><span>已登录 · 云端同步已开启</span>';
+    }
+  }
+
+  /* ---------- 最近播放 ---------- */
+  function renderRecent(){
+    var list = PL.getRecent();
+    var card = $('rCard');
+    if (!card) return;
+    if (!list.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    $('rCount').textContent = list.length + ' 首';
+    $('rList').innerHTML = list.slice(0, 12).map(function(t, i){
+      var isNow = P.cur && String(t.id) === String(P.cur.id);
+      return '<div class="mm-row' + (isNow ? ' now' : '') + '" data-ri="' + i + '">' +
+        '<div class="mm-cover c' + (i % 6 + 1) + '" style="width:40px;height:40px;border-radius:12px;font-size:15px">' +
+          '<span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span><img data-rv="' + i + '" alt=""></div>' +
+        '<div class="mm-txt"><b>' + M.esc(t.name) + '</b><em>' + M.esc(t.artist) + '</em></div>' +
+        (isNow ? eqHTML() : '<span class="mm-playic" style="width:28px;height:28px">' +
+          '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>') +
+        '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call($('rList').querySelectorAll('img[data-rv]'), function(img){
+      var t = list[parseInt(img.dataset.rv, 10)];
+      if (!t) return;
+      M.fetchPic(t, 100).then(function(u){
+        if (!u) return;
+        img.onload = function(){ img.classList.add('ld'); };
+        img.onerror = function(){};
+        img.src = u;
+      });
+    });
+  }
+  $('rList').addEventListener('click', function(e){
+    var row = e.target.closest('[data-ri]');
+    if (!row) return;
+    var t = PL.getRecent()[parseInt(row.dataset.ri, 10)];
+    if (!t) return;
+    if (P.cur && String(t.id) === String(P.cur.id)) { PL.toggle(); return; }
+    PL.playTrack(t);
+  });
+  $('rClear').addEventListener('click', function(){
+    try { localStorage.setItem('momusic_recent_v1', '[]'); } catch(e){}
+    renderRecent();
+    window.toast('最近播放已清空');
+  });
+
+  /* ---------- 事件 ---------- */
+  window.VON('fav', renderFav);
+  window.VON('track', function(){ renderFav(); renderRecent(); });
+  window.VON('state', function(){ renderFav(); renderRecent(); });
+  window.VON('play', renderFav);
+  window.VON('pause', renderFav);
+  window.VON('recent', renderRecent);
+
+  window.mmOnShow = function(){
+    renderFav();
+    renderRecent();
+    renderState();
+  };
+
+  /* ---------- 首屏 ---------- */
+  renderFav();
+  renderRecent();
+  renderState();
+  PL.loadFavorites().then(function(){
+    if (window.__view !== 'love') return;
+    renderFav();
+    renderState();
+  });
+})();
+</script>
+</body>
+</html>
