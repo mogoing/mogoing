@@ -230,7 +230,8 @@
     '作曲家':'蔡健雅','红色高跟鞋':'蔡健雅',
     '过火':'张信哲','信仰':'张信哲',
     '挪威的森林':'伍佰','突然的自我':'伍佰',
-    '飞鸟和蝉':'任然'
+    '飞鸟和蝉':'任然',
+    '起风了':'买辣椒也用券'
   };
 
   function knownArtist(songName) {
@@ -281,6 +282,9 @@
     var list = Object.keys(map).map(function (k) { return map[k]; })
       .sort(function (a, b) {
         if (a.known !== b.known) return a.known ? -1 : 1;      // 已知原唱最优先
+        // 常唱翻唱的知名歌手排后面（避免「起风了」推荐成周深）
+        var aC = COVER_PRONE_RE.test(a.name), bC = COVER_PRONE_RE.test(b.name);
+        if (aC !== bC) return aC ? 1 : -1;
         if (a.famous !== b.famous) return a.famous ? -1 : 1;    // 其次知名歌手
         return b.count - a.count;                               // 最后比出现次数
       })
@@ -308,6 +312,11 @@
     return /[\u4e00-\u9fa5]{2,}/.test(s);
   }
 
+  /* 惩罚「热门翻唱者」：周深、吴青峰这些经常出现在翻唱版本里，
+     但用户搜某首歌时往往要找的是真正的原唱（如「起风了」→ 买辣椒也用券）。
+     KNOWN_ORIGINAL 里的条目优先级最高，能盖过这个惩罚。 */
+  var COVER_PRONE_RE = /周深|吳青峰|吴青峰|李健|张碧晨|張碧晨|黄霄雲|黄霄云|刘惜君|劉惜君|周笔畅|周筆暢|郁可唯|汪小敏|蘑菇头|小阿七|李袁杰|花粥|隔壁老樊|程响|王靖雯|王靖雯不胖|阿悠悠|王贰浪|王貳浪/i;
+
   /* 打分：谁更像「原唱」—— 关键是歌手与用户意图、歌曲名纯净度 */
   function scoreOf(t, songKw, artistHint) {
     var s = 0;
@@ -328,6 +337,13 @@
 
     // ④ 知名歌手加分（整词匹配，避免 jay 命中 "Jay" 这种假名）
     if (FAMOUS_RE.test(ar)) s += 60;
+
+    // ④b 已知原唱直接给满，压过其它所有加分
+    var knownAr = knownArtist(pn);
+    if (knownAr && pArt.indexOf(plain(knownAr)) >= 0) s += 260;
+
+    // ④c 常唱翻唱的知名歌手（周深/吴青峰等）减分
+    if (COVER_PRONE_RE.test(ar)) s -= 90;
 
     // ⑤ 翻唱号 / 工作室重罚
     if (FAKE_ARTIST_RE.test(ar)) s -= 80;
