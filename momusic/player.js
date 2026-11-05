@@ -357,14 +357,32 @@
     if (!t) return false;
     return fav.some(function (x) { return String(x.id) === String(t.id); });
   }
-  function toFavObj(t) {
+  /* 把曲目存成可长期复用的精简对象。
+     只保存「音源线索」，**不保存直链**（直链约 1~2 小时就失效，存了也没用）：
+       source   —— 来自哪个音源（netease / kugou / qq / bilibili）
+       kgHashes —— 酷狗的 FileHash 列表
+       qqMid    —— QQ 的 songmid
+       bvid     —— B 站的视频 id
+     下次播放时凭这些线索直接去对应音源取链接，
+     省掉「搜歌名 → 猜歌手 → 挑原唱」这最慢的一步。 */
+  function trackSnapshot(t) {
     return {
-      id: String(t.id || ''), uid: String(t.uid || t.id || ''), name: String(t.name || ''),
-      artist: String(t.artist || ''), album: String(t.album || ''), pic: String(t.pic || ''),
-      cover: String(t.cover || ''), source: String(t.source || ''),
-      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, bvid: t.bvid || null, ts: Date.now()
+      id: String(t.id || ''),
+      uid: String(t.uid || t.id || ''),
+      name: String(t.name || ''),
+      artist: String(t.artist || ''),
+      album: String(t.album || ''),
+      pic: String(t.pic || ''),
+      cover: String(t.cover || ''),
+      source: String(t.source || ''),
+      kgHashes: t.kgHashes || null,
+      qqMid: t.qqMid || null,
+      bvid: t.bvid || null,
+      ts: Date.now()
     };
   }
+
+  function toFavObj(t) { return trackSnapshot(t); }
 
   async function loadFavorites() {
     loadFavLocal();
@@ -428,11 +446,7 @@
     var list = getRecent();
     var id = String(t.id);
     list = list.filter(function (x) { return String(x.id) !== id; });
-    list.unshift({
-      id: id, uid: String(t.uid || t.id || ''), name: t.name || '', artist: t.artist || '',
-      album: t.album || '', pic: t.pic || '', cover: t.cover || '', source: t.source || '',
-      kgHashes: t.kgHashes || null, qqMid: t.qqMid || null, bvid: t.bvid || null, ts: Date.now()
-    });
+    list.unshift(trackSnapshot(t));
     try { localStorage.setItem(K_RECENT, JSON.stringify(list.slice(0, 30))); } catch (e) {}
     emit('recent');
   }
