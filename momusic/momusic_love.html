@@ -7,129 +7,170 @@
 <body>
 
 <style>
-  #viewHost{
-    background:transparent;
-  }
-  #viewHost > * + *{
-    margin-top:13px;
-  }
+  #viewHost > * + *{margin-top:9px}
 
-  /* ===== 收藏总卡 ===== */
-  .fcard{
-    width:100%;border-radius:var(--r-lg);
-    background:linear-gradient(150deg,#FFFFFF 0%,#FFF7EC 58%,#FFEFE0 100%);
-    box-shadow:0 16px 42px rgba(155,93,229,.22),inset 0 0 0 2px rgba(255,255,255,.95);
-    overflow:hidden;
-    animation:mmPop .45s cubic-bezier(.2,.9,.3,1.15) both;
+  /* ===== 收藏页头卡：高对比渐变 ===== */
+  .hero2{
+    position:relative;width:100%;overflow:hidden;
+    border-radius:18px;padding:13px;color:#fff;
+    background:linear-gradient(135deg,#FF7A6E 0%,#F4517B 46%,#8B5CF6 100%);
+    box-shadow:0 9px 22px rgba(200,80,140,.22);
   }
-  @keyframes mmPop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-
-  .fhead{display:flex;align-items:center;gap:11px;padding:16px 16px 14px}
-  .fhead .fi{
-    flex:none;width:40px;height:40px;border-radius:14px;
-    display:flex;align-items:center;justify-content:center;font-size:19px;
-    background:linear-gradient(145deg,#FFE1E1,#FFD0D0);
-    box-shadow:0 5px 13px rgba(255,107,107,.26);
+  .hero2::after{
+    content:"";position:absolute;width:150px;height:150px;border-radius:50%;
+    right:-58px;top:-76px;background:rgba(255,255,255,.13);
   }
-  .fhead .ft{flex:1;min-width:0}
-  .fhead b{display:block;font-size:17px;font-weight:900;color:var(--ink);letter-spacing:.4px}
-  .fhead em{display:block;font-style:normal;font-size:11.5px;font-weight:700;color:var(--muted);margin-top:2px}
-  .fplay{
-    flex:none;height:40px;padding:0 16px;border:none;border-radius:999px;cursor:pointer;
-    font-family:inherit;font-size:13px;font-weight:800;color:#fff;
-    display:flex;align-items:center;gap:6px;
-    background:linear-gradient(135deg,var(--coral),var(--grape));
-    box-shadow:0 7px 18px rgba(255,107,107,.34);
+  .h2r{position:relative;z-index:2;display:flex;align-items:center;gap:7px}
+  .h2r .hi{
+    flex:none;width:26px;height:26px;border-radius:8px;
+    background:rgba(255,255,255,.22);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+  }
+  .h2r b{font-size:12px;font-weight:900;letter-spacing:1px}
+  .h2r .sync{
+    margin-left:auto;display:flex;align-items:center;gap:4px;
+    font-size:9px;font-weight:800;color:rgba(255,255,255,.82);
+  }
+  .h2r .sync s{width:4.5px;height:4.5px;border-radius:50%;background:#7CFFD9;text-decoration:none;display:block}
+  .hnum{position:relative;z-index:2;margin-top:7px;font-size:32px;font-weight:900;line-height:1;letter-spacing:-.6px}
+  .hnum i{font-style:normal;font-size:10px;font-weight:800;margin-left:3px;opacity:.86}
+  .hsub{position:relative;z-index:2;margin-top:6px;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.84)}
+  .h2btns{position:relative;z-index:2;display:flex;gap:6px;margin-top:10px}
+  .h2play{
+    flex:1;height:34px;border:none;border-radius:11px;cursor:pointer;
+    font-family:inherit;font-size:12.5px;font-weight:900;color:#E8457B;
+    background:#fff;display:flex;align-items:center;justify-content:center;gap:5px;
+    box-shadow:0 4px 11px rgba(120,40,120,.16);
     transition:transform .16s,opacity .2s;
   }
-  .fplay:active{transform:scale(.93)}
-  .fplay:disabled{opacity:.45;pointer-events:none}
+  .h2play:active{transform:scale(.96)}
+  .h2play:disabled{opacity:.5;pointer-events:none}
+  .h2ghost{
+    flex:none;height:34px;padding:0 12px;border:none;border-radius:11px;cursor:pointer;
+    font-family:inherit;font-size:11px;font-weight:800;color:#fff;
+    background:rgba(255,255,255,.20);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.26);
+    transition:transform .16s;
+  }
+  .h2ghost:active{transform:scale(.95)}
 
-  .fbody{padding:0 12px 14px}
-  .flist{display:flex;flex-direction:column;gap:9px}
+  /* ===== 收藏列表 ===== */
+  .flist{padding-top:9px}
 
   .frow{
-    display:flex;align-items:center;gap:12px;
-    padding:9px 11px;border-radius:var(--r-md);
-    background:rgba(255,255,255,.94);
-    box-shadow:0 3px 11px rgba(155,93,229,.09);
-    cursor:pointer;
-    transition:transform .15s,box-shadow .2s;
-    animation:mmRowIn .34s cubic-bezier(.2,.9,.3,1.15) both;
+    position:relative;display:flex;align-items:center;gap:8px;
+    padding:7px 1px;cursor:pointer;transition:transform .15s,opacity .2s;
   }
-  @keyframes mmRowIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
-  .frow:active{transform:scale(.977)}
-  .frow.now{background:#fff;box-shadow:0 7px 20px rgba(155,93,229,.24)}
-  .frow.now .mm-txt b{color:var(--grape)}
+  .frow + .frow::before{
+    content:"";position:absolute;left:1px;right:1px;top:0;height:1px;background:var(--line);
+  }
+  .frow:active{transform:scale(.985)}
+  .frow.now .fname{color:var(--grape-d)}
 
-  .fempty{padding:44px 20px;text-align:center}
-  .fempty .ic{font-size:36px;display:block;margin-bottom:10px;opacity:.6}
-  .fempty b{display:block;font-size:14.5px;font-weight:800;color:var(--ink-2);margin-bottom:6px}
-  .fempty em{display:block;font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.9}
+  .fcv{
+    flex:none;width:34px;height:34px;border-radius:10px;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:900;color:#fff;
+    background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
+  }
+  .fcv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
+  .fcv img.ld{opacity:1}
 
+  .ftx{flex:1;min-width:0}
+  .fname{
+    display:block;font-size:12.5px;font-weight:800;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
+  }
+  .fart{
+    display:block;font-style:normal;font-size:10px;font-weight:600;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
+  }
+
+  .fbtns{flex:none;display:flex;align-items:center;gap:4px}
+  .fbtns button{
+    width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:transform .16s;
+  }
+  .fbtns button:active{transform:scale(.86)}
+  .fplay{background:linear-gradient(135deg,#FF7A6E,#FF4D6A);color:#fff;box-shadow:0 3px 7px rgba(255,94,108,.24)}
+  .funfav{background:#FFF0F5;color:#F0457D}
+
+  .feq{display:flex;align-items:flex-end;gap:2px;height:13px;padding-right:2px}
+  .feq i{width:2.5px;border-radius:2px;background:var(--grape);animation:mmEq 1s ease-in-out infinite}
+  .feq i:nth-child(2){background:var(--coral);animation-delay:.22s}
+  .feq i:nth-child(3){background:var(--mint);animation-delay:.44s}
+  .feq.off i{animation-play-state:paused;height:4px}
+
+  /* 空态 */
+  .fempty{padding:38px 16px;text-align:center}
+  .fempty .ic{margin-bottom:8px;opacity:.4;display:flex;justify-content:center}
+  .fempty b{display:block;font-size:13px;font-weight:900;color:var(--ink-2);margin-bottom:5px}
+  .fempty em{
+    display:block;font-style:normal;font-size:11.5px;font-weight:600;
+    color:var(--muted);line-height:1.85;
+  }
+
+  /* 同步状态条 */
   .fstate{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:7px;
-    padding:9px;border-radius:999px;
-    font-size:11.5px;font-weight:700;color:var(--muted);
-    background:rgba(255,255,255,.7);box-shadow:var(--sh-xs);
+    width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+    padding:8px;border-radius:999px;
+    font-size:10.5px;font-weight:700;color:var(--muted);
+    background:rgba(255,255,255,.7);box-shadow:0 2px 9px rgba(90,70,150,.06);
   }
   .fstate.ok{color:var(--mint-d)}
-  .fstate .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.75}
+  .fstate .dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.75}
 
   /* ===== 最近播放 ===== */
-  .rcard{
-    width:100%;border-radius:var(--r-lg);
-    background:var(--glass);
-    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-    box-shadow:var(--sh-md),var(--sh-in);
-    padding:14px;
+  .sechd{display:flex;align-items:center;gap:6px;padding:0 1px 8px}
+  .sechd .ic{flex:none;width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+  .sechd b{font-size:14px;font-weight:900;color:var(--ink)}
+  .sechd em{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted)}
+  .sechd .clr{
+    margin-left:auto;border:none;background:none;cursor:pointer;
+    color:var(--muted);font-family:inherit;font-size:10.5px;font-weight:800;
+    padding:3px 7px;border-radius:999px;
   }
-  .rhead{display:flex;align-items:center;gap:9px;margin-bottom:11px}
-  .rhead .ri{
-    flex:none;width:30px;height:30px;border-radius:11px;
-    display:flex;align-items:center;justify-content:center;font-size:15px;
-    background:linear-gradient(145deg,#D7F2FF,#C9E9FF);
-    box-shadow:0 3px 9px rgba(91,167,230,.22);
-  }
-  .rhead b{font-size:14.5px;font-weight:900;color:var(--ink)}
-  .rhead em{font-style:normal;font-size:11px;font-weight:700;color:var(--muted)}
-  .rhead .clr{
-    margin-left:auto;border:none;background:transparent;cursor:pointer;
-    color:var(--muted);font-size:11.5px;font-weight:800;font-family:inherit;
-    padding:4px 8px;border-radius:999px;
-  }
-  .rhead .clr:active{opacity:.6}
-
-  .rlist{display:flex;flex-direction:column;gap:8px}
+  .sechd .clr:active{opacity:.6}
 </style>
 
-<div class="fcard" id="fCard">
-  <div class="fhead">
-    <span class="fi">❤️</span>
-    <div class="ft">
-      <b>我的收藏</b>
-      <em id="fCount">还没有收藏</em>
-    </div>
-    <button class="fplay" id="fPlayAll" disabled>
-      <svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+<!-- 收藏头卡 -->
+<div class="hero2" id="fCard">
+  <div class="h2r">
+    <span class="hi">
+      <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 20.4s-6.8-4.2-8.5-8.1C2.1 8.7 4 5.5 7.1 5.5c1.8 0 3.1 1 3.8 1.9.7-.9 2-1.9 3.8-1.9 3.1 0 5 3.2 3.6 6.8-1.7 3.9-8.5 8.1-8.5 8.1z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg>
+    </span>
+    <b>我的收藏</b>
+    <span class="sync"><s></s><span id="fSync">已同步</span></span>
+  </div>
+  <div class="hnum"><span id="fCount">0</span><i>首</i></div>
+  <div class="hsub">你收藏的歌都在这里~</div>
+  <div class="h2btns">
+    <button class="h2play" id="fPlayAll" disabled>
+      <svg viewBox="0 0 24 24" width="12" height="12"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
       播放全部
     </button>
+    <button class="h2ghost" id="fShuffle">随机</button>
   </div>
-  <div class="fbody">
-    <div class="flist" id="fList"></div>
-  </div>
+</div>
+
+<!-- 收藏列表 -->
+<div class="mm-card">
+  <div id="fList" class="flist"></div>
 </div>
 
 <div class="fstate" id="fState"><span class="dot"></span><span>本地收藏</span></div>
 
-<div class="rcard" id="rCard" style="display:none">
-  <div class="rhead">
-    <span class="ri">🕘</span>
+<!-- 最近播放 -->
+<div class="mm-card" id="rCard" style="display:none">
+  <div class="sechd">
+    <span class="ic" style="background:linear-gradient(145deg,#D7F2FF,#C9E9FF);box-shadow:0 3px 8px rgba(91,167,230,.20);color:#3A86C8">
+      <svg viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 7.5v5l3.4 2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+    </span>
     <b>最近播放</b>
     <em id="rCount"></em>
     <button class="clr" id="rClear">清空</button>
   </div>
-  <div class="rlist" id="rList"></div>
+  <div id="rList"></div>
 </div>
 
 <script>
@@ -139,45 +180,51 @@
   var M = window.M, PL = window.PL, P = PL.P;
 
   function heartSVG(filled, size){
-    var s = size || 18;
+    var s = size || 14;
     return '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s + '"><path d="M12 21s-7.5-4.7-9.3-9C1.4 8.6 3.4 5 6.9 5c2 0 3.4 1.1 4.1 2.1C11.7 6.1 13.1 5 15.1 5c3.5 0 5.5 3.6 4.2 7-1.8 4.3-9.3 9-9.3 9z" fill="' + (filled ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"/></svg>';
   }
   function eqHTML(){
     var playing = P.audio && !P.audio.paused && !P.audio.ended;
-    return '<span class="mm-eq' + (playing ? '' : ' off') + '"><i></i><i></i><i></i></span>';
+    return '<span class="feq' + (playing ? '' : ' off') + '"><i></i><i></i><i></i></span>';
   }
 
   /* ---------- 收藏 ---------- */
   function renderFav(){
-    var fav = PL.getFav();
+    var fav = PL.getFav() || [];
     var list = $('fList');
     if (!list) return;
-    $('fCount').textContent = fav.length ? fav.length + ' 首歌曲' : '还没有收藏';
+
+    $('fCount').textContent = fav.length;
     $('fPlayAll').disabled = !fav.length;
 
     if (!fav.length) {
       list.innerHTML =
         '<div class="fempty">' +
-          '<span class="ic">🎧</span>' +
-          '<b>收藏夹还是空的</b>' +
-          '<em>在「找歌」里搜到喜欢的歌<br>点 ♡ 就能收进来</em>' +
+          '<span class="ic">' +
+            '<svg viewBox="0 0 24 24" width="34" height="34" style="color:#C7BFDB"><path d="M12 20.4s-6.8-4.2-8.5-8.1C2.1 8.7 4 5.5 7.1 5.5c1.8 0 3.1 1 3.8 1.9.7-.9 2-1.9 3.8-1.9 3.1 0 5 3.2 3.6 6.8-1.7 3.9-8.5 8.1-8.5 8.1z" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>' +
+          '</span>' +
+          '<b>还没有收藏</b>' +
+          '<em>听到喜欢的歌，点一下收藏<br>下次就能在这里找到~</em>' +
         '</div>';
       return;
     }
+
     list.innerHTML = fav.map(function(t, i){
       var isNow = P.cur && String(t.id) === String(P.cur.id);
       return '<div class="frow' + (isNow ? ' now' : '') + '" data-i="' + i + '">' +
-        '<div class="mm-cover c' + (i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span>' +
+        '<div class="fcv c' + (i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span>' +
           '<img data-cv="' + i + '" alt=""></div>' +
-        '<div class="mm-txt"><b>' + M.esc(t.name) + '</b><em>' + M.esc(t.artist) +
-          (t.album ? ' · ' + M.esc(t.album) : '') + '</em></div>' +
-        '<div class="mm-row-btns">' +
-          '<button class="mm-round plain on" style="width:34px;height:34px" data-unfav="' + i + '" title="取消收藏">' +
-            heartSVG(true, 17) + '</button>' +
+        '<div class="ftx">' +
+          '<span class="fname">' + M.esc(t.name || '未知歌曲') + '</span>' +
+          '<em class="fart">' + M.esc(t.artist || '未知歌手') + '</em>' +
+        '</div>' +
+        '<div class="fbtns">' +
           (isNow ? eqHTML() :
-            '<button class="mm-round coral" style="width:34px;height:34px" data-play="' + i + '">' +
-              '<svg viewBox="0 0 24 24" width="15" height="15"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button>') +
-        '</div></div>';
+            '<button class="fplay" data-play="' + i + '" title="播放">' +
+              '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button>') +
+          '<button class="funfav" data-unfav="' + i + '" title="取消收藏">' + heartSVG(true, 14) + '</button>' +
+        '</div>' +
+        '</div>';
     }).join('');
 
     loadCovers(fav);
@@ -189,10 +236,10 @@
       if (!t) return;
       M.fetchPic(t, 120).then(function(u){
         if (!u) return;
-        img.onload = function(){ img.classList.add('ld'); };
+        img.onload = function(){ img.classList.add('ld'); var sp = img.parentNode.querySelector('span'); if (sp) sp.textContent = ''; };
         img.onerror = function(){};
         img.src = u;
-      });
+      }).catch(function(){});
     });
   }
 
@@ -224,8 +271,23 @@
     var fav = PL.getFav();
     if (!fav.length) { window.toast('还没有收藏的歌'); return; }
     PL.setQueue(fav.slice(), 0);
+    PL.setMode('order');
     PL.play(0, true);
-    window.toast('播放收藏 · ' + fav.length + ' 首');
+    window.toast('播放 ' + fav.length + ' 首');
+  });
+
+  $('fShuffle').addEventListener('click', function(){
+    var fav = PL.getFav();
+    if (!fav.length) { window.toast('还没有收藏的歌'); return; }
+    var arr = fav.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    PL.setQueue(arr, 0);
+    PL.setMode('shuffle');
+    PL.play(0, true);
+    window.toast('随机播放 ' + arr.length + ' 首');
   });
 
   /* ---------- 同步状态 ---------- */
@@ -236,44 +298,62 @@
     try { u = localStorage.getItem('blindbox_user') || ''; p = localStorage.getItem('blindbox_pass') || ''; } catch(e){}
     if (!u || !p) {
       box.className = 'fstate';
-      box.innerHTML = '<span class="dot"></span><span>仅存本地 · 登录后自动云同步</span>';
+      box.innerHTML = '<span class="dot"></span><span>仅存本机</span>';
+      $('fSync').textContent = '本地';
     } else {
       box.className = 'fstate ok';
       box.innerHTML = '<span class="dot"></span><span>已登录 · 云端同步已开启</span>';
+      $('fSync').textContent = '已同步';
     }
   }
 
   /* ---------- 最近播放 ---------- */
   function renderRecent(){
-    var list = PL.getRecent();
+    var list = PL.getRecent() || [];
     var card = $('rCard');
     if (!card) return;
     if (!list.length) { card.style.display = 'none'; return; }
     card.style.display = '';
     $('rCount').textContent = list.length + ' 首';
-    $('rList').innerHTML = list.slice(0, 12).map(function(t, i){
+    var items = list.slice(0, 12);
+
+    $('rList').innerHTML = items.map(function(t, i){
       var isNow = P.cur && String(t.id) === String(P.cur.id);
-      return '<div class="mm-row' + (isNow ? ' now' : '') + '" data-ri="' + i + '">' +
-        '<div class="mm-cover c' + (i % 6 + 1) + '" style="width:40px;height:40px;border-radius:12px;font-size:15px">' +
-          '<span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span><img data-rv="' + i + '" alt=""></div>' +
-        '<div class="mm-txt"><b>' + M.esc(t.name) + '</b><em>' + M.esc(t.artist) + '</em></div>' +
-        (isNow ? eqHTML() : '<span class="mm-playic" style="width:28px;height:28px">' +
-          '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>') +
+      return '<div class="frow' + (isNow ? ' now' : '') + '" data-ri="' + i + '">' +
+        '<div class="fcv c' + (i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span>' +
+          '<img data-rv="' + i + '" alt=""></div>' +
+        '<div class="ftx">' +
+          '<span class="fname">' + M.esc(t.name || '未知歌曲') + '</span>' +
+          '<em class="fart">' + M.esc(t.artist || '未知歌手') + '</em>' +
+        '</div>' +
+        '<div class="fbtns">' +
+          (isNow ? eqHTML() :
+            '<button class="fplay" data-rplay="' + i + '" title="播放">' +
+              '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button>') +
+        '</div>' +
         '</div>';
     }).join('');
 
     Array.prototype.forEach.call($('rList').querySelectorAll('img[data-rv]'), function(img){
-      var t = list[parseInt(img.dataset.rv, 10)];
+      var t = items[parseInt(img.dataset.rv, 10)];
       if (!t) return;
       M.fetchPic(t, 100).then(function(u){
         if (!u) return;
-        img.onload = function(){ img.classList.add('ld'); };
+        img.onload = function(){ img.classList.add('ld'); var sp = img.parentNode.querySelector('span'); if (sp) sp.textContent = ''; };
         img.onerror = function(){};
         img.src = u;
-      });
+      }).catch(function(){});
     });
   }
+
   $('rList').addEventListener('click', function(e){
+    var pl = e.target.closest('[data-rplay]');
+    if (pl) {
+      e.stopPropagation();
+      var t0 = PL.getRecent()[parseInt(pl.dataset.rplay, 10)];
+      if (t0) PL.playTrack(t0);
+      return;
+    }
     var row = e.target.closest('[data-ri]');
     if (!row) return;
     var t = PL.getRecent()[parseInt(row.dataset.ri, 10)];
@@ -281,6 +361,7 @@
     if (P.cur && String(t.id) === String(P.cur.id)) { PL.toggle(); return; }
     PL.playTrack(t);
   });
+
   $('rClear').addEventListener('click', function(){
     try { localStorage.setItem('momusic_recent_v1', '[]'); } catch(e){}
     renderRecent();
