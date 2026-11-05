@@ -228,19 +228,6 @@
   .more-btn:active{transform:scale(.97);color:var(--grape)}
   .alts{display:none;flex-direction:column;margin-top:9px}
   .alts.on{display:flex}
-
-  /* ===== 历史 ===== */
-  #history{width:100%;display:none;flex-wrap:wrap;gap:7px}
-  #history.on{display:flex}
-  .hchip{
-    display:inline-flex;align-items:center;gap:5px;
-    padding:7px 12px;border:none;border-radius:999px;cursor:pointer;font-family:inherit;
-    background:#fff;box-shadow:0 2px 9px rgba(90,70,150,.07);
-    font-size:11.5px;font-weight:800;color:var(--ink-2);
-    transition:transform .15s;
-  }
-  .hchip:active{transform:scale(.95)}
-  .hchip .x{color:var(--muted);font-size:10px;font-weight:900}
 </style>
 
 <!-- ===== 搜索 ===== -->
@@ -262,8 +249,6 @@
 </div>
 
 <div class="s-loading" id="sLoading"><span class="spinner"></span><span>正在为你找原唱…</span></div>
-
-<div id="history"></div>
 
 <!-- ===== 原唱结果（只有一张卡） ===== -->
 <div class="hero" id="hero" style="display:none">
@@ -352,7 +337,6 @@
   var $ = function(id){ return document.getElementById(id); };
   var M = window.M, PL = window.PL, P = PL.P;
 
-  var K_HIST = 'momusic_hist_v1';
   var hero = null, alts = [];
   var busy = false;
   var hintTimer = null;
@@ -385,41 +369,6 @@
     }
     host.innerHTML = html || '<div class="rail-empty">这里还空着</div>';
   }
-
-  /* ---------- 历史 ---------- */
-  function getHist(){
-    try { var a = JSON.parse(localStorage.getItem(K_HIST) || '[]'); return Array.isArray(a) ? a : []; } catch(e){ return []; }
-  }
-  function pushHist(kw){
-    kw = String(kw || '').trim();
-    if (!kw) return;
-    var list = getHist().filter(function(x){ return x !== kw; });
-    list.unshift(kw);
-    try { localStorage.setItem(K_HIST, JSON.stringify(list.slice(0, 8))); } catch(e){}
-    renderHist();
-  }
-  function renderHist(){
-    var box = $('history');
-    var list = getHist();
-    if (!list.length || hero) { box.classList.remove('on'); box.innerHTML = ''; return; }
-    box.innerHTML = list.map(function(k){
-      return '<button class="hchip" data-kw="' + M.esc(k) + '">' + M.esc(k) + '<span class="x">✕</span></button>';
-    }).join('');
-    box.classList.add('on');
-  }
-  $('history').addEventListener('click', function(e){
-    var c = e.target.closest('.hchip');
-    if (!c) return;
-    if (e.target.classList.contains('x')) {
-      e.stopPropagation();
-      var list = getHist().filter(function(x){ return x !== c.dataset.kw; });
-      try { localStorage.setItem(K_HIST, JSON.stringify(list)); } catch(err){}
-      renderHist();
-      return;
-    }
-    $('q').value = c.dataset.kw;
-    doSearch(c.dataset.kw);
-  });
 
   /* ---------- 搜索提示词 ---------- */
   var HINTS = {
@@ -543,7 +492,6 @@
     setGoText('找…');
     $('hero').style.display = 'none';
     $('hint').classList.remove('on');
-    $('history').classList.remove('on');
     $('sLoading').classList.add('on');
 
     var myView = window.__view;
@@ -559,7 +507,6 @@
       } catch (e) {}
       if (!r.hero) {
         $('sLoading').classList.remove('on');
-        renderHist();
         busy = false;
         $('qGo').disabled = false;
         setGoText('搜索');
@@ -568,7 +515,6 @@
       }
       hero = r.hero; alts = r.alts || [];
       $('homeBlocks').style.display = 'none';
-      pushHist(kw);
       renderHero();
       $('sLoading').classList.remove('on');
 
@@ -599,7 +545,6 @@
     } catch (e) {
       if (window.__view !== myView) return;
       $('sLoading').classList.remove('on');
-      renderHist();
       window.toast('搜索失败了，稍后再试');
     }
     busy = false;
@@ -688,7 +633,6 @@
     PL.persistQueue();
     PL.play(0, true);
     $('hint').classList.remove('on');
-    $('history').classList.remove('on');
   });
   $('hQ').addEventListener('click', function(){ PL.toggleQuality(); });
   $('hFav').addEventListener('click', async function(){
@@ -732,7 +676,6 @@
     $('hero').style.display = 'none';
     hero = null;
     $('homeBlocks').style.display = '';
-    renderHist();
     $('q').focus();
   });
 
@@ -1067,14 +1010,12 @@
 
   /* ---------- 首屏 ---------- */
   window.mmOnShow = function(){
-    renderHist();
     renderFavBtn();
     renderFavEntry();
     renderRecent();
     if (!hero) { renderPicks(); renderRec(false); }
   };
 
-  renderHist();
   renderFavEntry();
   renderRecent();
   renderPicks();
