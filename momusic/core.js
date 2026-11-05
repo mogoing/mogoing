@@ -760,10 +760,20 @@
     } catch (e) { return null; }
   }
 
-  /* 多通道路由，前端不暴露来源 */
+  /* 多通道路由，前端不暴露来源
+     ─────────────────────────────────────────────────────
+     关于「记住音源」：
+       直链会过期（约 1~2 小时），所以收藏/最近播放里**不存直链**，只存音源线索：
+         source   —— netease / kugou / qq / bilibili
+         kgHashes —— 酷狗 FileHash（永久）
+         qqMid    —— QQ songmid（永久）
+         bvid     —— B站视频 id（永久）
+       下次播放时，凭这些线索直接去对应音源取链接，不必再走「搜歌名 → 猜歌手 → 挑原唱」，
+       省掉的正是最慢的那一步（搜索 + 排序）。
+       内存里另有 20 分钟的直链缓存，只用于同一页面内重复播放，避免频繁请求。 */
   async function resolveUrl(t, quality) {
     if (!t) return null;
-    var key = (t.uid || t.id || (t.kgHashes || [])[0] || t.qqMid) + '|' + quality;
+    var key = (t.uid || t.id || (t.kgHashes || [])[0] || t.qqMid || t.bvid) + '|' + quality;
     var hit = urlCache.get(key);
     if (hit && Date.now() - hit.at < URL_TTL) return hit;
 
@@ -778,7 +788,9 @@
     var isBili = (t.source === 'bilibili') || /^bi_/.test(String(uid || ''));
     var chain = [];
 
-    // B站来源的曲目，商业音源一定拿不到，直接跳过省时间
+    // ★ 线索优先：知道它属于哪个音源，就把那条通道排到最前面
+    //   酷狗曲目 → FileHash 直接出音频；QQ 曲目 → songmid 直接出；B站 → bvid 直接出
+    //   这样就不用先盲试网易云、失败再换，能显著缩短等待
     if (!isBili) {
       if (t.kgHashes && t.kgHashes.length) {
         if (quality === 'loss') chain.push(function () { return kugouUrl(t, '999'); });
@@ -792,7 +804,8 @@
         if (quality === 'loss') chain.push(function () { return qqUrl(t, 6); }, function () { return qqUrl(t, 5); });
         chain.push(function () { return qqUrl(t, 5); }, function () { return qqUrl(t, 4); }, function () { return qqUrl(t, 3); });
       }
-      if (uid) {
+      // 网易云：只有纯数字 id 才有意义（bi_ 开头的不行）
+      if (uid && /^\d+$/.test(String(uid))) {
         var src = t.source || 'netease';
         if (quality === 'loss') chain.push(
           function () { return gdUrl(uid, 999, src); },
@@ -808,6 +821,7 @@
         );
       }   // end if (uid)
     }     // end if (!isBili)
+
     // 最后一道兜底：所有商业音源都拿不到时，走 B 站（周杰伦等版权歌专用）
     chain.push(function () { return bilibiliUrl(t, quality); });
 
@@ -853,7 +867,18 @@
       var text = line.replace(re, '').trim();
       if (!text) return;
       // 过滤制作人名单 / 版权声明这类非歌词行
-      if (/^(作词|作曲|编曲|制作人|监制|混音|母带|录音|和声|吉他|贝斯|鼓|键盘|弦乐|出品|企划|统筹|发行|版权|演唱|原唱|翻唱|OP|SP|策划|文案|封面|视觉|录音室|特别鸣谢|词|曲)\s*[:：]/i.test(text)) return;
+      // 注意：这类行常在开头带空格、括号、破折号，所以先清洗再匹配
+      var probe = text
+        .replace(/^[\s\-—:：·•\[\]()（）【】]+/, '')
+        .replace(/\s+/g, '');
+      if (/^(作词|作曲|编曲|制作人|监制|混音|母带|录音|和声编写|和声|吉他|贝斯|贝司|鼓|键盘|弦乐|出品|企划|统筹|发行|版权|演唱|原唱|翻唱|OP|SP|策划|文案|封面|视觉|录音室|特别鸣谢|词|曲|制作|演奏|监制人|出品人|发行人|策划人|指导|顾问|校对|翻译|校对:|美工|后期|合成|母带处理)/i.test(probe)) return;
+      // 整行像是「XX : 某某」且 XX 是职务/乐器词 → 也过滤（中英文都算）
+      if (/^[A-Za-z\u4e00-\u9fa5]{1,12}\s*[:：]/.test(text) &&
+          /作词|作曲|编曲|制作|混音|母带|录音|和声|吉他|贝斯|贝司|鼓|键盘|弦乐|出品|企划|统筹|发行|版权|演唱|原唱|翻唱|策划|文案|封面|视觉|鸣谢|演奏|指导|校对|后期|美工|合成|钢琴|箱琴|手风琴|小提琴|大提琴|口琴|萨克斯|长笛|二胡|古筝|琵琶|笛子|箫|唢呐|架子鼓|打击乐|配器|乐队|弦乐编写|童声|合唱|伴唱|独唱|念白|人声|录音师|混音师|母带师|制作人|监制|出品人|BASS|GUITAR|DRUM|PIANO|KEYBOARD|VOCAL|MIX|MASTER|ENGINEER|PRODUCER|ARRANGE|COMPOSER|LYRIC|STUDIO|RECORD/i.test(text)) return;
+      // 标题行（形如「稻香 - 周杰伦 (Jay Chou)」）不要：含破折号、无标点、长度短
+      if (text.length < 40 && /\s-\s/.test(text) && !/[，。！？,.!?；;]/.test(text)) return;
+      // 版权声明整行
+      if (/未经.*(许可|授权)|版权所有|翻唱、翻录|著作权/.test(text)) return;
       times.forEach(function (tt) { out.push({ t: tt, text: text }); });
     });
     out.sort(function (a, b) { return a.t - b.t; });
@@ -891,31 +916,98 @@
     } catch (e) { return null; }
   }
 
-  /* 取歌词：哪条路有就走哪条，实在没有再按歌名去网易云找一遍 */
+  /* QQ 歌词搜索通道：只有歌名/歌手时，先搜出 mid 再取词
+     QQ 对周杰伦等版权歌有正版歌词，是最好用的一条 */
+  async function lyricByQQSearch(name, artist) {
+    try {
+      var kw = (name + ' ' + artist).trim();
+      var r = await fetch(VKEYS_QQ + '?word=' + encodeURIComponent(kw) + '&page=1&num=10&_=' + Date.now());
+      if (!r.ok) return null;
+      var j = await r.json();
+      var list = (j && j.data) || [];
+      if (!list.length) return null;
+
+      var wantN = plain(name), wantA = plain(artist);
+      // 优先歌名完全相同且歌手命中 → 歌名相同 → 歌名包含
+      var best = null;
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        var sn = plain(it.song || it.name || '');
+        var sa = plain(it.singer || it.artist || '');
+        if (sn === wantN && (!wantA || sa.indexOf(wantA) >= 0)) { best = it; break; }
+      }
+      if (!best) {
+        for (var k = 0; k < list.length; k++) {
+          if (plain(list[k].song || list[k].name || '') === wantN) { best = list[k]; break; }
+        }
+      }
+      if (!best) {
+        for (var m = 0; m < list.length; m++) {
+          var sn2 = plain(list[m].song || list[m].name || '');
+          if (sn2 && wantN && (sn2.indexOf(wantN) >= 0 || wantN.indexOf(sn2) >= 0)) { best = list[m]; break; }
+        }
+      }
+      if (!best) return null;
+      var mid = String(best.mid || best.songmid || '');
+      if (!mid) return null;
+      return await lyricQQ(mid);
+    } catch (e) { return null; }
+  }
+
+  /* 取歌词：多通道兜底，只要能拿到就返回
+     注意：B站来源的曲子 id 形如 bi_BVxxx，不走网易云 id 通道，只能靠歌名搜索 */
   async function lyric(t) {
     if (!t) return null;
     var key = trackKey(t);
     if (lyricCache.has(key)) return lyricCache.get(key);
 
     var got = null;
+
+    // ① 有 QQ mid → QQ 歌词（质量较好）
     if (t.qqMid) got = await lyricQQ(t.qqMid);
-    if ((!got || !got.lrc) && (t.source === 'netease' || /^\d+$/.test(String(t.id || '')))) {
-      var nid = t.uid || t.id;
+
+    // ② 网易云 id（只有纯数字 id 才有效，bi_ 开头的不行）
+    var nid = String(t.uid || t.id || '');
+    if ((!got || !got.lrc) && /^\d+$/.test(nid)) {
       got = await lyricGD(nid);
-      if (!got || !got.lrc) got = await lyricVkeys(nid);   // GD 无词时换 vkeys
+      if (!got || !got.lrc) got = await lyricVkeys(nid);
     }
+
+    // ③ 保底：按「歌名 + 歌手」去网易云/QQ 搜，拿到 id 再取词
+    //    这一步对 B 站来源也有效——歌名/歌手是准的，只是音源不同
     if (!got || !got.lrc) {
-      // 保底：用歌名+歌手去网易云搜一次，拿 id 再取词
-      try {
-        var q = (t.name || '') + ' ' + ((t.artist || '').split('/')[0] || '');
-        var arr = await searchGD(q.trim(), 1, 10);
-        var cand = (arr || []).filter(function (x) {
-          return plain(x.name).indexOf(plain(t.name)) >= 0 &&
-                 plain(x.artist).indexOf(plain((t.artist || '').split('/')[0])) >= 0;
-        })[0] || (arr || [])[0];
-        if (cand) got = await lyricGD(cand.id);
-      } catch (e) {}
+      var name = String(t.name || '').replace(/[（(【\[].*?[）)】\]]/g, '').trim();
+      var artist = String(t.artist || '').split('/')[0].trim();
+      name = name.replace(/\s*(MV|4K|Hi-?Res|无损|完整版|修复版|歌词版)\s*/gi, ' ').trim();
+
+      // ③-a QQ 歌词（版权歌的正版词，优先）
+      try { got = await lyricByQQSearch(name, artist); } catch (e) {}
+
+      // ③-b 网易云歌词
+      if (!got || !got.lrc) {
+        try {
+          var q = (name + ' ' + artist).trim();
+          var arr = await searchGD(q, 1, 20);
+          if (!arr.length) arr = await searchVkeys(q);
+
+          var wantN = plain(name), wantA = plain(artist);
+          var cand = (arr || []).filter(function (x) {
+            return plain(x.name) === wantN && (!wantA || plain(x.artist).indexOf(wantA) >= 0);
+          })[0];
+          if (!cand) cand = (arr || []).filter(function (x) {
+            return plain(x.name) === wantN;
+          })[0];
+          if (!cand) cand = (arr || []).filter(function (x) {
+            return plain(x.name).indexOf(wantN) >= 0;
+          })[0];
+          if (cand) {
+            got = await lyricGD(cand.id);
+            if (!got || !got.lrc) got = await lyricVkeys(cand.id);
+          }
+        } catch (e) {}
+      }
     }
+
     if (!got || !got.lrc) { return null; }
 
     var lines = parseLRC(got.lrc);
