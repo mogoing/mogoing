@@ -158,7 +158,9 @@
     } catch (e) { return []; }
   }
 
-  /* 同歌手其它歌（补队列 / 猜你喜欢） */
+  /* 同歌手其它歌（补队列用）
+     保持原来的 GD 实现——这是搜索歌曲时一直在用的路径，稳定性已验证。
+     注意：不要换用 vkeys 的 id，那些 id 走 resolveUrl 解析直链会失败。 */
   async function searchArtistMore(artist) {
     if (!artist) return [];
     var want = plain(artist);
@@ -166,7 +168,7 @@
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         var r = await fetch(GD + '?types=search&source=netease&name=' + encodeURIComponent(artist) +
-          '&count=24&pages=1&_=' + Date.now() + (attempt ? '&r=' + attempt : ''));
+          '&count=30&pages=1&_=' + Date.now() + (attempt ? '&r=' + attempt : ''));
         if (!r.ok) { if (!attempt) { await sleep(400); continue; } return []; }
         var arr = await r.json();
         if (!Array.isArray(arr) || !arr.length) { if (!attempt) { await sleep(400); continue; } return []; }
@@ -183,7 +185,6 @@
             album: stripTags(t.album), pic: String(t.pic_id || ''), source: 'netease', more: true
           };
         });
-        // 过滤后为空也重试一次（可能是接口返回了异常内容）
         if (!out.length && !attempt) { await sleep(400); continue; }
         return out;
       } catch (e) {
