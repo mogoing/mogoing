@@ -92,8 +92,8 @@
   .rail::-webkit-scrollbar{display:none}
   .rail + .rail{margin-top:6px}
   .hc{
-    flex:none;width:146px;display:flex;align-items:center;gap:7px;
-    padding:6px 7px;border-radius:13px;background:#FBFAFE;
+    flex:none;width:176px;display:flex;align-items:center;gap:7px;
+    padding:6px 6px 6px 7px;border-radius:13px;background:#FBFAFE;
     box-shadow:inset 0 0 0 1px rgba(120,100,180,.05);
     scroll-snap-align:start;cursor:pointer;
     transition:transform .15s;
@@ -115,6 +115,39 @@
     display:block;font-style:normal;font-size:9.5px;font-weight:600;color:var(--muted);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
   }
+  /* 每首歌右侧的播放按钮 */
+  .hc .hcplay{
+    flex:none;width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    background:linear-gradient(135deg,#FF7A6E,#FF4D6A);
+    box-shadow:0 2px 6px rgba(255,94,108,.24);
+    transition:transform .16s;
+  }
+  .hc .hcplay:active{transform:scale(.84)}
+
+  /* ===== 歌手卡（猜你喜欢） ===== */
+  .ac{
+    flex:none;display:flex;align-items:center;gap:8px;
+    padding:7px 7px 7px 12px;border-radius:14px;background:#FBFAFE;
+    box-shadow:inset 0 0 0 1px rgba(120,100,180,.05);
+    scroll-snap-align:start;cursor:pointer;
+    transition:transform .15s;
+  }
+  .ac:active{transform:scale(.97)}
+  .ac .acn{
+    font-size:13px;font-weight:900;color:var(--ink);
+    white-space:nowrap;letter-spacing:.2px;
+  }
+  .ac .acplay{
+    flex:none;width:26px;height:26px;border:none;border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    background:linear-gradient(135deg,#A78BFA,#7C4DF6);
+    box-shadow:0 2px 7px rgba(124,77,246,.26);
+    transition:transform .16s;
+  }
+  .ac .acplay:active{transform:scale(.84)}
+  .ac .acplay.spin svg{animation:hcSpin .8s linear infinite}
+  @keyframes hcSpin{to{transform:rotate(360deg)}}
 
   .c1{background:linear-gradient(150deg,#FF9A8B,#FFC7A8);color:#fff}
   .c2{background:linear-gradient(150deg,#8FE3D8,#CFF6EF);color:#14786E}
@@ -294,22 +327,16 @@
     <div id="pickRails"></div>
   </div>
 
-  <!-- 猜你喜欢：3 横排，可左右滑 -->
+  <!-- 猜你喜欢：固定歌手，每个歌手后面带播放按钮，点了随机播这个歌手的歌 -->
   <div class="mm-card" id="rec">
     <div class="sechd">
       <span class="ic" style="background:linear-gradient(145deg,#A78BFA,#7C4DF6);color:#fff;box-shadow:0 3px 8px rgba(124,77,246,.22)">
         <svg viewBox="0 0 24 24" width="12" height="12"><path d="M12 3.5l2.3 5.3 5.7.5-4.3 3.8 1.3 5.6-5-3-5 3 1.3-5.6-4.3-3.8 5.7-.5z" fill="currentColor"/></svg>
       </span>
       <b>猜你喜欢</b>
-      <em id="recHint">根据你常听的歌手</em>
-      <button class="pa" id="recPlayAll">
-        <svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部
-      </button>
-      <button class="rf" id="recRefresh" title="换一批">
-        <svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 11a8 8 0 1 0-2.6 6.3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 4.5v6.5h-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-      </button>
+      <em id="recHint"></em>
     </div>
-    <div id="recRails"></div>
+    <div id="artistRails"></div>
   </div>
 
   <!-- 我的收藏入口 -->
@@ -327,7 +354,7 @@
   </button>
 
   <!-- 最近播放 -->
-  <div class="mm-card" id="recentCard"></div>
+  <div class="mm-card" id="recentCard" style="display:none"></div>
 
 </div>
 
@@ -342,11 +369,9 @@
   var hintTimer = null;
   var picks = [];        // 随便听听当前这一批（关键词）
   var pickSeq = 0;
-  var recTracks = [];    // 猜你喜欢当前这一批（已解析成曲目）
-  var recSeq = 0;
 
   var RAIL_PER = 3;      // 每排 3 个
-  var RAIL_ROWS = 3;     // 3 排
+  var RAIL_ROWS = 2;     // 随便听听：2 排
 
   function heartSVG(filled, size){
     var s = size || 14;
@@ -680,27 +705,56 @@
   });
 
   /* ---------- 随便听听 ---------- */
+  /* 歌池扩充到 48 首，配合「本批不重复」的抽取逻辑，
+     保证连点刷新也不会出现「留几个一模一样的」或「两轮后又重复」 */
   var PICKS = [
     '成都 赵雷','孤勇者 陈奕迅','起风了 买辣椒也用券','平凡之路 朴树',
     '演员 薛之谦','海阔天空 Beyond','小幸运 田馥甄','十年 陈奕迅',
     '夜空中最亮的星 逃跑计划','光年之外 邓紫棋','红豆 王菲','消愁 毛不易',
     '江南 林俊杰','模特 李荣浩','勇气 梁静茹','后来 刘若英',
-    '晴天 周杰伦','稻香 周杰伦','七里香 周杰伦','青花瓷 周杰伦'
+    '晴天 周杰伦','稻香 周杰伦','七里香 周杰伦','青花瓷 周杰伦',
+    '告白气球 周杰伦','夜曲 周杰伦','简单爱 周杰伦','花海 周杰伦',
+    '丑八怪 薛之谦','认真的雪 薛之谦','一半 薛之谦','动物世界 薛之谦',
+    '曹操 林俊杰','小酒窝 林俊杰','修炼爱情 林俊杰','可惜没如果 林俊杰',
+    '泡沫 邓紫棋','句号 邓紫棋','来自天堂的魔鬼 邓紫棋','多远都要在一起 邓紫棋',
+    '南方姑娘 赵雷','生如夏花 朴树','光辉岁月 Beyond','真的爱你 Beyond',
+    '匆匆那年 王菲','传奇 王菲','浮夸 陈奕迅','爱情转移 陈奕迅',
+    '李白 李荣浩','年少有为 李荣浩','宁夏 梁静茹','暖暖 梁静茹'
   ];
-  function shufflePicks(){
-    var arr = PICKS.slice();
-    for (var i = arr.length - 1; i > 0; i--) {
+
+  /* 本批已抽过的关键词：只增不减，抽不到新歌时才整体重置 */
+  var pickUsed = [];
+  var pickTracks = {};    // 关键词 -> 已解析好的曲目（供单首播放复用）
+
+  function shuffleArr(arr){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
-      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      var t = a[i]; a[i] = a[j]; a[j] = t;
     }
-    return arr.slice(0, RAIL_PER * RAIL_ROWS);
+    return a;
+  }
+
+  function nextPicks(){
+    var need = RAIL_PER * RAIL_ROWS;
+    var fresh = PICKS.filter(function(k){ return pickUsed.indexOf(k) < 0; });
+    if (fresh.length < need) {
+      // 池子用完了：重置，但把「上一批」排到最后，避免刚刷完就重复
+      var lastBatch = picks.slice();
+      pickUsed = [];
+      fresh = PICKS.filter(function(k){ return lastBatch.indexOf(k) < 0; });
+      if (fresh.length < need) fresh = PICKS.slice();
+    }
+    var out = shuffleArr(fresh).slice(0, need);
+    pickUsed = pickUsed.concat(out);
+    return out;
   }
 
   function renderPicks(){
     var box = $('pickRails');
     if (!box) return;
     var seq = ++pickSeq;
-    picks = shufflePicks();
+    picks = nextPicks();
 
     // 先用关键词占位，立刻有内容，不等网络
     buildRails(box, picks.map(function(kw, i){
@@ -709,7 +763,10 @@
     }), function(it){
       return '<div class="hc" data-kw="' + M.esc(it.kw) + '">' +
         '<div class="hcv c' + (it.i % 6 + 1) + '"><span>' + M.esc(it.name.charAt(0)) + '</span></div>' +
-        '<div class="hcn"><b>' + M.esc(it.name) + '</b><em>' + M.esc(it.artist) + '</em></div></div>';
+        '<div class="hcn"><b>' + M.esc(it.name) + '</b><em>' + M.esc(it.artist) + '</em></div>' +
+        '<button class="hcplay" data-pickplay="' + M.esc(it.kw) + '" title="播放这首">' +
+          '<svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+        '</button></div>';
     });
 
     // 异步补封面
@@ -738,9 +795,81 @@
     });
   }
 
+  /* 把这一批全部解析成曲目，组成播放队列（已解析的复用缓存） */
+  async function buildPickQueue(myView){
+    var out = [];
+    for (var i = 0; i < picks.length; i++) {
+      var kw = picks[i];
+      if (window.__view !== myView) return out;
+      var t = pickTracks[kw];
+      if (!t) {
+        try {
+          var r = await M.findBest(kw);
+          if (r && r.hero) { t = r.hero; pickTracks[kw] = t; }
+        } catch (e) {}
+      }
+      if (t) out.push(t);
+    }
+    return out;
+  }
+
+  /* 点单首的播放键：只播这一首，播完继续队列里的下一首 */
+  async function playPickSingle(kw, btn){
+    if (!kw) return;
+    var myView = window.__view;
+    if (btn) btn.style.opacity = '.55';
+
+    var t = pickTracks[kw];
+    if (!t) {
+      window.toast('正在解析…');
+      try {
+        var r = await M.findBest(kw);
+        if (r && r.hero) { t = r.hero; pickTracks[kw] = t; }
+      } catch (e) {}
+    }
+    if (window.__view !== myView) return;
+    if (!t) { window.toast('这首暂时解析不到，换一首试试'); return; }
+
+    // 先用这一首起播（不等整批解析完，点了就有反馈）
+    var idx = P.queue.findIndex(function(x){ return String(x.id) === String(t.id); });
+    if (idx < 0) {
+      P.queue.unshift(Object.assign({}, t));
+      idx = 0;
+    }
+    P.qi = idx;
+    P.cur = P.queue[idx];
+    PL.persistQueue();
+    PL.play(0, true);
+
+    // 后台把整批补齐进队列，这样这首播完能顺下去
+    var batch = await buildPickQueue(myView);
+    if (window.__view !== myView || !batch.length) return;
+    // 当前这首放到最前，其余按本批顺序跟在后面
+    var ordered = [];
+    var seen = {};
+    if (t) { ordered.push(t); seen[M.trackKey(t)] = 1; }
+    batch.forEach(function(x){
+      var k = M.trackKey(x);
+      if (seen[k]) return;
+      seen[k] = 1;
+      ordered.push(x);
+    });
+    var curIdx = ordered.findIndex(function(x){ return String(x.id) === String(t.id); });
+    PL.setQueue(ordered, curIdx < 0 ? 0 : curIdx);
+    PL.play(0, true);
+    if (btn) btn.style.opacity = '';
+  }
+
+  /* 点整张卡片 = 搜索这首；点右侧 ▶ = 只播这首，播完继续队列 */
   $('pickRails').addEventListener('click', function(e){
+    var pb = e.target.closest('[data-pickplay]');
+    if (pb) {
+      e.stopPropagation();
+      playPickSingle(pb.dataset.pickplay, pb);
+      return;
+    }
     var c = e.target.closest('.hc');
-    if (!c) return;
+    if (!c || !c.dataset.kw) return;
     $('q').value = c.dataset.kw;
     doSearch(c.dataset.kw);
   });
@@ -793,142 +922,198 @@
     window.toast('顺序播放 ' + resolved.length + ' 首');
   });
 
-  /* ---------- 猜你喜欢 ---------- */
-  var recPool = [];
+  /* ---------- 猜你喜欢：固定歌手，点 ▶ 随机播这位歌手的歌 ---------- */
+  var ARTISTS = ['徐良', '许嵩', '薛之谦', '汪苏泷', '林俊杰', '邓紫棋', 'Alan Walker'];
 
-  async function renderRec(force){
-    var box = $('recRails');
+  /* 每位歌手写死一份歌单（歌名 + 歌手）。
+     全部走 M.findBest('歌名 歌手') —— 就是搜索框里验证过 100% 能播的那条路径。
+     不走 searchArtistMore：那条路返回的是 vkeys 的 id，解析直链会失败。 */
+  var ARTIST_SONGS = {
+    '徐良': [
+      ['客官不可以', '徐良'],
+      ['坏女孩', '徐良'],
+      ['红装', '徐良'],
+      ['后会无期', '徐良'],
+      ['无颜女', '徐良'],
+      ['七秒钟的记忆', '徐良'],
+      ['他的猫', '徐良'],
+      ['情话', '徐良'],
+      ['那时雨', '徐良'],
+      ['321对不起', '徐良']
+    ],
+    '许嵩': [
+      ['有何不可', '许嵩'],
+      ['素颜', '许嵩'],
+      ['玫瑰花的葬礼', '许嵩'],
+      ['清明雨上', '许嵩'],
+      ['幻听', '许嵩'],
+      ['如果当时', '许嵩'],
+      ['断桥残雪', '许嵩'],
+      ['半城烟沙', '许嵩'],
+      ['城府', '许嵩'],
+      ['你若成风', '许嵩'],
+      ['天龙八部之宿敌', '许嵩'],
+      ['庐州月', '许嵩']
+    ],
+    '薛之谦': [
+      ['演员', '薛之谦'],
+      ['丑八怪', '薛之谦'],
+      ['认真的雪', '薛之谦'],
+      ['绅士', '薛之谦'],
+      ['意外', '薛之谦'],
+      ['你还要我怎样', '薛之谦'],
+      ['刚刚好', '薛之谦'],
+      ['动物世界', '薛之谦'],
+      ['天外来物', '薛之谦'],
+      ['像风一样', '薛之谦'],
+      ['方圆几里', '薛之谦'],
+      ['几个你', '薛之谦']
+    ],
+    '汪苏泷': [
+      ['不分手的恋爱', '汪苏泷'],
+      ['万有引力', '汪苏泷'],
+      ['有点甜', '汪苏泷'],
+      ['桃花扇', '汪苏泷'],
+      ['一笑倾城', '汪苏泷'],
+      ['小星星', '汪苏泷'],
+      ['专属味道', '汪苏泷'],
+      ['年轮', '汪苏泷'],
+      ['银河', '汪苏泷'],
+      ['三国杀', '汪苏泷'],
+      ['苦笑', '汪苏泷'],
+      ['大好时光', '汪苏泷']
+    ],
+    '林俊杰': [
+      ['江南', '林俊杰'],
+      ['曹操', '林俊杰'],
+      ['小酒窝', '林俊杰'],
+      ['修炼爱情', '林俊杰'],
+      ['可惜没如果', '林俊杰'],
+      ['她说', '林俊杰'],
+      ['一千年以后', '林俊杰'],
+      ['背对背拥抱', '林俊杰'],
+      ['醉赤壁', '林俊杰'],
+      ['不潮不用花钱', '林俊杰'],
+      ['学不会', '林俊杰'],
+      ['当你', '林俊杰']
+    ],
+    '邓紫棋': [
+      ['泡沫', '邓紫棋'],
+      ['光年之外', '邓紫棋'],
+      ['句号', '邓紫棋'],
+      ['多远都要在一起', '邓紫棋'],
+      ['来自天堂的魔鬼', '邓紫棋'],
+      ['喜欢你', '邓紫棋'],
+      ['龙卷风', '邓紫棋'],
+      ['倒数是不会的', '邓紫棋'],
+      ['一路逆风', '邓紫棋'],
+      ['画', '邓紫棋'],
+      ['我的秘密', '邓紫棋'],
+      ['你不是真正的快乐', '邓紫棋']
+    ],
+    'Alan Walker': [
+      ['Faded', 'Alan Walker'],
+      ['Alone', 'Alan Walker'],
+      ['Sing Me To Sleep', 'Alan Walker'],
+      ['The Spectre', 'Alan Walker'],
+      ['On My Way', 'Alan Walker'],
+      ['Darkside', 'Alan Walker'],
+      ['Play', 'Alan Walker'],
+      ['Diamond Heart', 'Alan Walker'],
+      ['All Falls Down', 'Alan Walker'],
+      ['Lily', 'Alan Walker'],
+      ['Sky', 'Alan Walker'],
+      ['Ignite', 'Alan Walker']
+    ]
+  };
+
+  function renderArtists(){
+    var box = $('artistRails');
     if (!box) return;
-    if (!force && recTracks.length) { paintRec(); return; }
+    $('recHint').textContent = '';
 
-    var seq = ++recSeq;
-    var myView = window.__view;
-    $('recHint').textContent = '正在挑…';
+    var html = '';
+    for (var r = 0; r < Math.ceil(ARTISTS.length / RAIL_PER); r++) {
+      var row = ARTISTS.slice(r * RAIL_PER, (r + 1) * RAIL_PER);
+      if (!row.length) break;
+      html += '<div class="rail">' + row.map(function(name){
+        return '<div class="ac" data-artist="' + M.esc(name) + '">' +
+          '<span class="acn">' + M.esc(name) + '</span>' +
+          '<button class="acplay" data-artistplay="' + M.esc(name) + '" title="随机播放' + M.esc(name) + '">' +
+            '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+          '</button></div>';
+      }).join('') + '</div>';
+    }
+    box.innerHTML = html;
+  }
 
-    // 种子：当前播放 + 最近播放 + 收藏
-    var seeds = [];
-    if (P.cur) seeds.push(P.cur);
-    seeds = seeds.concat(PL.getRecent().slice(0, 4), PL.getFav().slice(0, 3));
-    var sseen = {}, uniqSeeds = [];
-    seeds.forEach(function(t){
+  /* 解析某位歌手的整份歌单：全部走 findBest（旧的可播放路径） */
+  async function loadArtistTracks(name, myView){
+    var out = [], seen = {};
+    var songs = ARTIST_SONGS[name] || [];
+
+    function push(t){
       if (!t) return;
-      var k = String(t.id || '') + '|' + (t.artist || '');
-      if (sseen[k]) return;
-      sseen[k] = 1; uniqSeeds.push(t);
-    });
-
-    var nearQueue = P.queue.slice(Math.max(0, P.qi - 2), P.qi + 3);
-    var got = [];
-    try { got = await M.recommend(uniqSeeds, nearQueue) || []; } catch(e){ got = []; }
-    if (window.__view !== myView || seq !== recSeq) return;
-
-    if (got.length) {
-      recTracks = got.slice(0, RAIL_PER * RAIL_ROWS);
-      paintRec();
-      return;
+      var k = M.trackKey(t);
+      if (seen[k]) return;
+      seen[k] = 1;
+      out.push(t);
     }
 
-    // 没有种子（新用户）：退化成用底部推荐批次里没出现过的歌
-    if (!recPool.length) {
-      recPool = PICKS.slice();
-      for (var i = recPool.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var t2 = recPool[i]; recPool[i] = recPool[j]; recPool[j] = t2;
-      }
-    }
-    var warm = recPool.slice(0, RAIL_PER * RAIL_ROWS);
-    if (seq === recSeq) {
-      recTracks = warm.map(function(kw, i){
-        var parts = kw.split(/\s+/);
-        return {
-          id: 'seed_' + i, uid: 'seed_' + i,
-          name: parts[0], artist: parts.slice(1).join(' '),
-          source: '', _kw: kw
-        };
-      });
-      paintRec();
-    }
-  }
-
-  function paintRec(){
-    var box = $('recRails');
-    if (!box) return;
-    if (!recTracks.length) {
-      $('recHint').textContent = '多听几首就有推荐了';
-      box.innerHTML = '<div class="rail-empty">多听几首就有推荐了</div>';
-      return;
-    }
-    $('recHint').textContent = '根据你听过的歌';
-    buildRails(box, recTracks.map(function(t, i){
-      return { t: t, i: i };
-    }), function(it){
-      var t = it.t;
-      return '<div class="hc" data-rec="' + it.i + '">' +
-        '<div class="hcv c' + (it.i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span></div>' +
-        '<div class="hcn"><b>' + M.esc(t.name || '未知歌曲') + '</b><em>' + M.esc(t.artist || '') + '</em></div></div>';
-    });
-    // 补封面
-    recTracks.forEach(function(t, i){
-      if (!t || !t.id) return;
-      M.fetchPic(t, 120).then(function(u){
-        if (!u) return;
-        var cell = $('recRails').querySelectorAll('.hcv')[i];
-        if (!cell) return;
-        var img = document.createElement('img');
-        img.onload = function(){ img.classList.add('ld'); var sp = cell.querySelector('span'); if (sp) sp.textContent = ''; };
-        img.onerror = function(){ img.remove(); };
-        cell.appendChild(img);
-        img.src = u;
-      }).catch(function(){});
-    });
-  }
-
-  $('recRails').addEventListener('click', function(e){
-    var c = e.target.closest('[data-rec]');
-    if (!c) return;
-    var t = recTracks[parseInt(c.dataset.rec, 10)];
-    if (!t) return;
-    if (t._kw) { $('q').value = t._kw; doSearch(t._kw); return; }
-    PL.playTrack(t);
-  });
-  $('recRefresh').addEventListener('click', function(){
-    var b = $('recRefresh');
-    b.classList.add('spin');
-    window.VTIMER(function(){ b.classList.remove('spin'); }, 800);
-    recTracks = [];
-    renderRec(true);
-  });
-
-  /* 猜你喜欢播放全部：顺序播放里面的歌 */
-  $('recPlayAll').addEventListener('click', async function(){
-    if (!recTracks.length) { window.toast('还没有推荐'); return; }
-    var list = recTracks.slice();
-    var b = $('recPlayAll');
-    b.disabled = true;
-    var myView = window.__view;
-    window.toast('正在准备…');
-
-    // 占位种子里有 _kw 的，需要先解析
-    var out = [];
-    for (var i = 0; i < list.length; i++) {
-      var t = list[i];
-      if (t._kw) {
+    // 并发 3 路解析，快很多
+    var pool = songs.slice();
+    async function worker(){
+      while (pool.length) {
+        if (window.__view !== myView) return;
+        var s = pool.shift();
+        if (!s) continue;
         try {
-          var r = await M.findBest(t._kw);
-          if (r && r.hero) out.push(r.hero);
-        } catch(e) {}
-      } else {
-        out.push(t);
+          var r = await M.findBest(s[0] + ' ' + s[1]);
+          if (r && r.hero) push(r.hero);
+        } catch (e) {}
       }
-      if (window.__view !== myView) { b.disabled = false; return; }
     }
-    if (!out.length) { b.disabled = false; window.toast('这批都没解析到'); return; }
+    await Promise.all([worker(), worker(), worker()]);
+    return out;
+  }
 
-    PL.setQueue(out, 0);
+  /* 点歌手后面的 ▶：随机播放这位歌手的歌 */
+  async function playArtist(name, btn){
+    if (!name) return;
+    var myView = window.__view;
+    if (btn) btn.classList.add('spin');
+    window.toast('正在准备 ' + name + ' …');
+
+    var list = await loadArtistTracks(name, myView);
+    if (window.__view !== myView) { if (btn) btn.classList.remove('spin'); return; }
+    if (!list.length) {
+      if (btn) btn.classList.remove('spin');
+      window.toast('没找到 ' + name + ' 的歌');
+      return;
+    }
+
+    // 整批随机打乱后顺序播放 —— 效果就是「随机」，但不会和 shuffle 模式的
+    // ended 逻辑打架（shuffle 模式会重置 P.qi，导致刚起播就被打乱）
+    var arr = shuffleArr(list);
+    PL.setQueue(arr, 0);
     PL.setMode('order');
     PL.play(0, true);
-    b.disabled = false;
-    window.toast('顺序播放 ' + out.length + ' 首');
+    if (btn) btn.classList.remove('spin');
+    window.toast('播放 ' + name + ' · ' + arr.length + ' 首');
+  }
+
+  $('artistRails').addEventListener('click', function(e){
+    var pb = e.target.closest('[data-artistplay]');
+    if (pb) {
+      e.stopPropagation();
+      playArtist(pb.dataset.artistplay, pb);
+      return;
+    }
+    var card = e.target.closest('[data-artist]');
+    if (!card) return;
+    // 点整张卡 = 搜索这位歌手
+    $('q').value = card.dataset.artist;
+    doSearch(card.dataset.artist);
   });
 
   /* ---------- 我的收藏入口 ---------- */
@@ -946,21 +1131,24 @@
     var card = $('recentCard');
     if (!box || !card) return;
     var list = PL.getRecent() || [];
+    // 没有任何最近播放时整张卡隐藏，避免出现一条空卡片
+    if (!list.length) {
+      card.style.display = 'none';
+      card.innerHTML = '';
+      return;
+    }
+    card.style.display = '';
     card.innerHTML =
       '<div class="sechd">' +
         '<span class="ic" style="background:linear-gradient(145deg,#D7F2FF,#C9E9FF);box-shadow:0 3px 8px rgba(91,167,230,.20);color:#3A86C8">' +
           '<svg viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 7.5v5l3.4 2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>' +
         '</span>' +
         '<b>最近播放</b>' +
-        '<em>' + (list.length ? list.length + ' 首' : '') + '</em>' +
-        (list.length ? '<button class="pa" id="recentPlayAll"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部</button>' : '') +
+        '<em>' + list.length + ' 首</em>' +
+        '<button class="pa" id="recentPlayAll"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部</button>' +
       '</div>' +
       '<div id="recentRails"></div>';
     var rbox = $('recentRails');
-    if (!list.length) {
-      rbox.innerHTML = '<div class="rail-empty">听过的歌会记在这里~</div>';
-      return;
-    }
     var items = list.slice(0, RAIL_PER * 2);   // 2 排够用
     buildRails(rbox, items.map(function(t, i){ return { t: t, i: i }; }), function(it){
       var t = it.t;
@@ -1013,13 +1201,14 @@
     renderFavBtn();
     renderFavEntry();
     renderRecent();
-    if (!hero) { renderPicks(); renderRec(false); }
+    renderArtists();
+    if (!hero) renderPicks();
   };
 
   renderFavEntry();
   renderRecent();
+  renderArtists();
   renderPicks();
-  renderRec(false);
 
   try {
     var hasAB = (typeof AndroidBridge !== 'undefined' && AndroidBridge);
