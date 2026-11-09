@@ -101,8 +101,14 @@
     });
     a.addEventListener('timeupdate', function () {
       emit('time', a.currentTime || 0, a.duration || 0);
-      if (a.paused || !P.cur) return;
+      if (!P.cur) return;
       var now = Date.now();
+      // 系统媒体会话的进度：约 1 秒同步一次（车机进度条才跟得上）
+      if (now - lastMediaSync >= 1000) {
+        lastMediaSync = now;
+        nativeMediaState();
+      }
+      if (a.paused) return;
       if (now - lastSave < 3000) return;
       lastSave = now;
       saveState({ pos: a.currentTime || 0, dur: a.duration || 0 });
@@ -134,8 +140,48 @@
     return a;
   }
   var lastSave = 0;
+  var lastMediaSync = 0;   // 系统媒体会话（MediaSession）进度同步节流
 
-  /* ---------------- 原生壳通知栏 ---------------- */
+  /* ---------------- 原生壳通知栏 + 系统媒体会话 ----------------
+     v3.5：除了原来的通知栏（mediaStart/mediaUpdate/mediaStop），
+     再向 Android 的 MediaSession 同步「元数据」和「播放状态」。
+     有了它，小米 CarWith / 车机音乐卡片 / 方向盘按键 / 蓝牙线控 / 锁屏
+     才能识别出「烩菜听歌在放什么」，并回传控制指令。
+     这两个调用是「可选能力」：旧版 APK 没有这两个方法时静默跳过。 */
+  function nativeMediaSession(force) {
+    try {
+      if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
+      var t = P.cur;
+      if (!t) return;
+
+      // 元数据：歌名 / 歌手 / 专辑 / 封面 / 时长
+      if (AndroidBridge.mediaMeta) {
+        var dur = (P.audio && isFinite(P.audio.duration) && P.audio.duration > 0)
+          ? Math.round(P.audio.duration * 1000) : 0;
+        var art = t.pic || t.cover || '';
+        AndroidBridge.mediaMeta(
+          String(t.name || ''),
+          String(t.artist || ''),
+          String(t.album || ''),
+          String(art),
+          dur
+        );
+      }
+      nativeMediaState();
+    } catch (e) {}
+  }
+
+  /* 只同步播放状态与进度（比元数据频繁，单独一个入口） */
+  function nativeMediaState() {
+    try {
+      if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
+      if (!AndroidBridge.mediaState) return;
+      var playing = !!(P.audio && !P.audio.paused && !P.audio.ended);
+      var pos = (P.audio && isFinite(P.audio.currentTime)) ? Math.round(P.audio.currentTime * 1000) : 0;
+      AndroidBridge.mediaState(playing ? 1 : 0, pos);
+    } catch (e) {}
+  }
+
   function nativeMedia(onFlag) {
     try {
       if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
@@ -144,12 +190,14 @@
       } else if (AndroidBridge.mediaStop) {
         AndroidBridge.mediaStop();
       }
+      nativeMediaState();
     } catch (e) {}
   }
   function nativeMediaUpdate() {
     try {
       if (typeof AndroidBridge === 'undefined' || !AndroidBridge) return;
       if (AndroidBridge.mediaUpdate) AndroidBridge.mediaUpdate((P.cur && P.cur.name) || '', (P.cur && P.cur.artist) || '');
+      nativeMediaSession(true);
     } catch (e) {}
   }
 
