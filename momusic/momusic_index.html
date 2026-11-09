@@ -513,14 +513,11 @@
       return;
     }
     disarmExit();
-    // 网页版没有原生退出，退回 site 主页；APK 里走原生退出
-    try {
-      if (typeof AndroidBridge !== 'undefined' && AndroidBridge && AndroidBridge.exitApp) {
-        AndroidBridge.exitApp();   // 原生会把 backConsumed 置 true
-        return;
-      }
-    } catch(e){}
-    location.href = '../main.html';
+    // 再按一次 = 离开音乐模块，回到主站首页 main.html。
+    // 注意：APK 内也不再直接退出 App（不再调 exitApp），统一跳回 main.html，
+    // 这样车机上按返回是「退回主站」而不是「App 被关掉」。
+    try { location.replace('../main.html'); }
+    catch (e) { location.href = '../main.html'; }
   }
 
   /* 统一的「返回上一层」：非找歌页 → 回找歌页；已在找歌页 → 提示再按一次 */
