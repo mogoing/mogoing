@@ -2,305 +2,466 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>找歌</title>
+<style>
+/* ==========================================================
+   烩菜听歌 · 找歌页 ——「Risograph 印刷厂」
+   · 方内容用方角，圆内容用圆（唱片 / 歌手标签 / 中心孔）
+   · 投影一律实心硬偏移，不用模糊
+   · 专色只有 墨黑 / 橙 / 蓝 / 黄，其余靠网点和叠印
+   · 本页在 Pjax 里跑，外壳会把页面里的 body 选择器
+     改写成 #viewHost，所以这里不依赖 body 选择器
+   ========================================================== */
+
+@keyframes spinNF{to{transform:rotate(360deg)}}
+@keyframes mmPop{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+
+/* ============ 搜索条：印刷标签 ============ */
+.s-card{width:100%}
+.s-box{
+  display:flex;align-items:stretch;height:48px;
+  border:var(--edge) solid var(--ink);background:var(--paper);
+  box-shadow:var(--sh-sm);
+}
+.s-box .sic{
+  flex:none;display:flex;align-items:center;padding:0 0 0 13px;
+  color:var(--ink-2);pointer-events:none;
+}
+#q{
+  flex:1;min-width:0;align-self:stretch;
+  border:none;outline:none;background:none;
+  font-family:var(--sans);font-size:13.5px;font-weight:700;color:var(--ink);
+  padding:0 10px;-webkit-appearance:none;appearance:none;
+}
+#q::placeholder{color:var(--ink-3);font-weight:600}
+#q::-webkit-search-cancel-button,#q::-webkit-search-decoration{-webkit-appearance:none;display:none}
+#qClear{
+  flex:none;width:38px;border:none;border-left:var(--edge) solid var(--ink);
+  background:var(--paper-2);color:var(--ink-2);cursor:pointer;
+  display:none;align-items:center;justify-content:center;
+}
+#qClear.on{display:flex}
+#qClear:active{background:var(--paper-3)}
+/* 「搜」方块：JS 只改里面的 span 文字，两态都稳 */
+#qGo{
+  flex:none;width:56px;border:none;border-left:var(--edge) solid var(--ink);
+  background:var(--blue);color:var(--paper);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+#qGo span{
+  font-family:var(--serif);font-size:14px;font-weight:900;letter-spacing:1px;
+  color:var(--paper);
+}
+#qGo:active{background:var(--ink)}
+#qGo:disabled{opacity:.55;pointer-events:none}
+
+/* 搜索建议：与搜索条同宽的索引条 */
+#hint{
+  margin-top:9px;display:none;flex-direction:column;
+  border:var(--edge) solid var(--ink);background:var(--paper);box-shadow:var(--sh-sm);
+}
+#hint.on{display:flex}
+.hint{
+  display:flex;align-items:center;width:100%;height:42px;padding:0 12px;
+  border:none;cursor:pointer;font-family:inherit;text-align:left;background:var(--paper);
+}
+.hint + .hint{border-top:var(--edge2) solid var(--ink)}
+.hint:active{background:var(--paper-2)}
+.hint .hs{
+  flex:1;min-width:0;font-family:var(--serif);font-size:13px;font-weight:900;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hint .ha{
+  flex:none;max-width:46%;font-size:10.5px;font-weight:700;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ============ 检索中 ============ */
+.s-loading{
+  width:100%;margin-top:14px;display:none;align-items:center;justify-content:center;gap:10px;
+  padding:22px;border:var(--edge) solid var(--ink);background:var(--paper);box-shadow:var(--sh-sm);
+  font-size:12.5px;font-weight:700;color:var(--ink-2);
+}
+.s-loading.on{display:flex}
+.spinner{
+  width:16px;height:16px;flex:none;border-radius:50%;
+  border:2.5px solid var(--ink);border-top-color:var(--orange);
+  animation:spinNF .8s linear infinite;
+}
+
+/* ============ 头条海报（搜索结果） ============ */
+.hero{
+  position:relative;width:100%;margin-top:14px;
+  border:var(--edge) solid var(--ink);background:var(--paper);
+  box-shadow:var(--sh-md);overflow:hidden;
+}
+.hero.mm-pop{animation:mmPop .42s cubic-bezier(.2,.9,.3,1.08) both}
+/* 半调网点：只铺在图区，不盖住下面的按钮 */
+.hero-art::after{
+  content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
+  background-image:radial-gradient(rgba(20,17,13,.45) 38%,transparent 40%);
+  background-size:5px 5px;mix-blend-mode:multiply;opacity:.34;
+}
+
+/* 上半：蓝纸 + 唱片 */
+.hero-art{
+  position:relative;height:162px;display:flex;align-items:center;justify-content:center;
+  background:var(--blue);border-bottom:var(--edge) solid var(--ink);
+}
+.hero-cv{
+  position:relative;z-index:6;width:124px;height:124px;border-radius:50%;
+  border:var(--edge) solid var(--ink);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    repeating-radial-gradient(circle at 50% 50%,rgba(242,235,220,.16) 0 1px,transparent 1px 4px),
+    var(--ink);
+  box-shadow:4px 4px 0 rgba(20,17,13,.45);
+}
+/* 唱片中心的橙色标签 */
+.hero-cv::before{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:52px;height:52px;border-radius:50%;z-index:2;
+  background:var(--orange);border:var(--edge2) solid var(--ink);
+}
+.hero-cv span{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;
+  font-family:var(--serif);font-size:20px;font-weight:900;color:var(--ink);
+}
+.hero-cv img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .45s;z-index:3;
+}
+.hero-cv img.ld{opacity:1}
+/* 中心孔 */
+.hero-cv i{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:10px;height:10px;border-radius:50%;z-index:5;
+  background:var(--paper);border:var(--edge2) solid var(--ink);
+}
+
+/* 下半：橙块 + 标题 + 播放 */
+.hero-body{position:relative;z-index:2;padding:14px 15px 16px;background:var(--orange)}
+.hero-meta b{
+  display:block;font-family:var(--serif);font-size:25px;font-weight:900;
+  letter-spacing:-.6px;line-height:1.2;color:var(--ink);
+}
+.hero-meta em{
+  display:inline;font-style:normal;font-family:var(--serif);
+  font-size:12.5px;font-weight:700;color:rgba(20,17,13,.72);
+}
+.hero-meta .alb{display:inline;font-size:12.5px;font-weight:700;color:rgba(20,17,13,.72)}
+.hero-meta .alb:not(:empty)::before{content:" · "}
+
+/* 来源旗标 */
+.src{
+  display:inline-flex;align-items:center;gap:5px;margin-bottom:9px;
+  height:20px;padding:0 8px;border:var(--edge2) solid var(--ink);
+  background:var(--ink);color:var(--paper);
+  font-family:var(--disp);font-size:9px;letter-spacing:1.6px;
+}
+.src s{width:5px;height:5px;text-decoration:none;display:block;background:var(--paper)}
+.src.ne s{background:var(--orange)}
+.src.qq s{background:var(--blue)}
+.src.kg s{background:var(--yellow)}
+.src.bi s{background:var(--paper)}
+
+.hero-btns{display:flex;align-items:center;gap:9px;margin-top:13px}
+/* 主播放键：墨黑实心 —— 全屏唯一的高对比动作 */
+.hplay{
+  flex:1;height:40px;border:var(--edge) solid var(--ink);
+  background:var(--ink);color:var(--paper);cursor:pointer;
+  font-family:var(--serif);font-size:14px;font-weight:900;letter-spacing:1px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:3px 3px 0 var(--paper);
+}
+.hplay:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--paper)}
+.hq,.hfav{
+  flex:none;width:40px;height:40px;border:var(--edge) solid var(--ink);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-size:10px;letter-spacing:.4px;color:var(--ink);
+  background:var(--paper);
+}
+.hq:active,.hfav:active{transform:translate(2px,2px)}
+.hfav{background:var(--yellow);color:var(--ink)}
+.hfav.on{background:var(--ink);color:var(--orange)}
+
+/* 更多版本 */
+.more-btn{
+  width:100%;margin-top:12px;height:34px;
+  border:var(--edge2) solid var(--ink);background:var(--paper);cursor:pointer;
+  font-family:var(--disp);font-size:10px;letter-spacing:1.4px;color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+}
+.more-btn:active{background:var(--paper-2)}
+.alts{
+  display:none;flex-direction:column;margin-top:10px;
+  border:var(--edge2) solid var(--ink);background:var(--paper);
+}
+.alts.on{display:flex}
+.alts .mm-row{padding:8px 10px;gap:10px}
+.alts .mm-row + .mm-row::before{left:10px;right:10px;opacity:.35}
+.alts .mm-cover{
+  width:38px;height:38px;border-radius:0;border:var(--edge2) solid var(--ink);
+  font-family:var(--serif);font-size:14px;font-weight:900;
+}
+.alts .mm-txt b{font-family:var(--serif);font-size:12.5px;font-weight:900;color:var(--ink)}
+.alts .mm-txt em{font-style:normal;font-size:10px;font-weight:700;color:var(--ink-3)}
+.mm-row-btns{flex:none;display:flex;align-items:center;gap:6px}
+.mm-round{
+  border:var(--edge2) solid var(--ink);background:var(--yellow);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.mm-round.coral{background:var(--orange);color:var(--paper)}
+.mm-round:active{background:var(--orange);color:var(--paper)}
+
+/* ============ 首页区块 ============ */
+#homeBlocks{display:flow-root;margin-top:22px}
+#homeBlocks .rm-sec{margin:24px 0 14px}
+#homeBlocks #pick{margin-top:0}
+.rm-sec-row>div:first-child{flex:1;min-width:0;position:relative}
+/* kick 的延长线只到标题块为止，不要横穿右侧按钮 */
+.rm-sec-row .rm-kick{padding-right:0;max-width:100%}
+.rm-sec-row .rm-kick::after{flex:0 1 auto;max-width:46px}
+.rm-btn.sm{height:32px;font-size:11.5px;padding:0 12px}
+.rm-btn.sq.sm{width:32px;padding:0}
+.rm-btn:disabled{opacity:.5;pointer-events:none}
+.rm-sec-row .rt{align-self:flex-end;flex:none}
+.rm-sec-row .rt em{
+  font-style:normal;font-family:var(--disp);font-size:9px;
+  letter-spacing:1.4px;color:var(--ink-3);
+}
+#pickRefresh.spin svg{animation:spinNF .8s linear infinite}
+
+/* ---- 随便听听：唱片封套 ---- */
+#pickRails{display:flex;flex-direction:column;gap:12px}
+#pickRails .rail{
+  display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,#000 0 88%,transparent 99%);
+  mask-image:linear-gradient(90deg,#000 0 88%,transparent 99%);
+}
+#pickRails .rail::-webkit-scrollbar{display:none}
+#pickRails .hc{
+  flex:none;width:138px;position:relative;
+  display:flex;flex-direction:column;
+  border:var(--edge) solid var(--ink);background:var(--paper);
+  box-shadow:var(--sh-sm);overflow:hidden;cursor:pointer;
+  scroll-snap-align:start;
+}
+#pickRails .hc:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+#pickRails .hcv{
+  position:relative;height:112px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  border-bottom:var(--edge) solid var(--ink);
+}
+/* 封套上的黑胶唱片（封面图来了会盖住） */
+#pickRails .hcv::before{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:64%;padding-bottom:64%;border-radius:50%;
+  border:var(--edge2) solid var(--ink);
+  background:
+    radial-gradient(circle at 50% 50%,var(--orange) 0 19%,transparent 19.5%),
+    repeating-radial-gradient(circle at 50% 50%,rgba(242,235,220,.22) 0 1px,transparent 1px 4px),
+    var(--ink);
+}
+/* 网点 */
+#pickRails .hcv::after{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background-image:radial-gradient(rgba(20,17,13,.45) 38%,transparent 40%);
+  background-size:4px 4px;mix-blend-mode:multiply;opacity:.38;
+}
+#pickRails .hcv span{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;
+  font-family:var(--serif);font-size:15px;font-weight:900;color:var(--ink);
+}
+#pickRails .hcv img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity .4s;z-index:3;
+}
+#pickRails .hcv img.ld{opacity:1}
+#pickRails .hcn{padding:8px 9px 11px}
+#pickRails .hcn b{
+  display:block;font-family:var(--serif);font-size:13px;font-weight:900;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
+}
+#pickRails .hcn em{
+  display:block;font-style:normal;font-size:10px;font-weight:700;color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;padding-right:30px;
+}
+#pickRails .hcplay{
+  position:absolute;right:7px;bottom:9px;z-index:4;
+  width:26px;height:26px;border:var(--edge2) solid var(--ink);
+  background:var(--orange);color:var(--paper);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+#pickRails .hcplay:active{background:var(--ink)}
+
+/* ---- 猜你喜欢：唱片标签（4 列网格） ---- */
+#artistRails .rail{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:16px 2px;justify-items:center;
+}
+.ac{
+  position:relative;width:100%;max-width:78px;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  cursor:pointer;
+}
+.aclbl{
+  position:relative;width:58px;height:58px;border-radius:50%;
+  border:var(--edge) solid var(--ink);
+  display:flex;align-items:flex-start;justify-content:center;padding-top:7px;
+  box-shadow:var(--sh-xs);
+}
+/* 虚线内圈 */
+.aclbl::before{
+  content:"";position:absolute;inset:5px;border-radius:50%;
+  border:1.5px dashed rgba(20,17,13,.45);
+}
+/* 中心孔 */
+.aclbl::after{
+  content:"";position:absolute;left:50%;bottom:9px;transform:translateX(-50%);
+  width:8px;height:8px;border-radius:50%;z-index:2;
+  background:var(--paper);border:1.5px solid var(--ink);
+}
+.acn{
+  position:relative;z-index:1;
+  font-family:var(--serif);font-size:16px;line-height:1;font-weight:900;
+}
+.acfull{
+  font-family:var(--serif);font-size:11.5px;font-weight:900;color:var(--ink);
+  max-width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.acplay{
+  position:absolute;right:-6px;bottom:-6px;z-index:3;
+  width:24px;height:24px;border-radius:50%;border:var(--edge2) solid var(--ink);
+  background:var(--yellow);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.acplay:active{background:var(--orange);color:var(--paper)}
+.acplay.spin svg{animation:spinNF .8s linear infinite}
+.ac1 .aclbl{background:var(--orange)}
+.ac2 .aclbl{background:var(--yellow)}
+.ac3 .aclbl{background:var(--blue)}
+.ac4 .aclbl{background:var(--paper-3)}
+.ac1 .acn,.ac3 .acn{color:var(--paper)}
+.ac2 .acn,.ac4 .acn{color:var(--ink)}
+
+/* ---- 我的收藏：黄色便利贴 ---- */
+.favrow{
+  width:100%;display:flex;align-items:center;gap:13px;
+  padding:14px 16px;margin-top:26px;
+  border:var(--edge) solid var(--ink);background:var(--yellow);
+  box-shadow:var(--sh-md);cursor:pointer;font-family:inherit;text-align:left;
+}
+.favrow:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.favrow .fi{
+  flex:none;width:40px;height:40px;border:var(--edge) solid var(--ink);
+  background:var(--paper);color:var(--orange);
+  display:flex;align-items:center;justify-content:center;
+}
+.favrow .ftx{flex:1;min-width:0}
+.favrow b{
+  display:block;font-family:var(--serif);font-size:16px;font-weight:900;
+  letter-spacing:.4px;color:var(--ink);
+}
+.favrow em{
+  display:block;font-style:normal;font-size:10.5px;font-weight:700;
+  color:var(--ink-2);margin-top:2px;
+}
+.favrow .fa{flex:none;color:var(--ink);display:flex}
+
+/* ---- 最近播放：索引列表 ---- */
+#recentCard{margin-top:26px}
+#recentCard .rhead{padding:12px 12px 11px;border-bottom:var(--edge2) solid var(--ink)}
+#recentCard h2{
+  font-family:var(--serif);font-size:17px;font-weight:900;
+  letter-spacing:-.2px;line-height:1.25;color:var(--ink);
+}
+#recentRails{padding:0 12px 4px;counter-reset:rno}
+#recentRails .rail{display:block}
+#recentRails .hc{
+  display:flex;align-items:center;gap:10px;padding:9px 0;width:auto;
+  border:none;background:none;box-shadow:none;cursor:pointer;
+  border-top:1.5px solid var(--ink);
+}
+#recentRails .rail:first-child .hc:first-child{border-top:none}
+#recentRails .hc::before{
+  content:counter(rno);counter-increment:rno;
+  flex:none;width:20px;text-align:center;
+  font-family:var(--serif);font-size:14px;font-weight:900;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+#recentRails .hcv{
+  position:relative;flex:none;width:38px;height:38px;overflow:hidden;
+  border:var(--edge2) solid var(--ink);
+  display:flex;align-items:center;justify-content:center;
+}
+#recentRails .hcv span{font-family:var(--serif);font-size:14px;font-weight:900}
+#recentRails .hcn{flex:1;min-width:0}
+#recentRails .hcn b{
+  display:block;font-family:var(--serif);font-size:13px;font-weight:900;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
+}
+#recentRails .hcn em{
+  display:block;font-style:normal;font-size:10px;font-weight:700;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
+}
+
+/* ============ 4 色封面轮转（方块内容 → 方角） ============ */
+.c1{background:var(--orange);color:var(--paper)}
+.c2{background:var(--blue);color:var(--paper)}
+.c3{background:var(--yellow);color:var(--ink)}
+.c4{background:var(--paper-3);color:var(--ink)}
+.c5{background:var(--orange);color:var(--paper)}
+.c6{background:var(--blue);color:var(--paper)}
+
+/* 轨道空态 */
+.rail-empty{
+  width:100%;padding:20px 8px;text-align:center;
+  font-size:11.5px;font-weight:700;color:var(--ink-3);
+}
+</style>
 </head>
 <body>
-
-<style>
-  #viewHost > * + *{margin-top:9px}
-
-  /* ===== 搜索卡 ===== */
-  .s-card{width:100%;border-radius:18px;background:#fff;box-shadow:0 3px 14px rgba(90,70,150,.08);padding:11px}
-  .s-box{display:flex;align-items:center;gap:7px;height:40px;padding:0 4px 0 11px;border-radius:12px;background:#F5F2FB}
-  .s-box .sic{flex:none;color:#8E86AC;display:flex;align-items:center;pointer-events:none}
-  #q{
-    flex:1;min-width:0;height:40px;border:none;outline:none;background:transparent;
-    font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);
-    -webkit-appearance:none;appearance:none;
-  }
-  #q::placeholder{color:#B0A8C8;font-weight:600}
-  #q::-webkit-search-cancel-button,#q::-webkit-search-decoration{-webkit-appearance:none;display:none}
-  #qClear{
-    flex:none;width:22px;height:22px;border:none;border-radius:7px;cursor:pointer;
-    background:rgba(139,92,246,.1);color:#9A92B4;
-    display:none;align-items:center;justify-content:center;
-  }
-  #qClear.on{display:flex}
-  #qGo{
-    flex:none;height:32px;padding:0 12px;border:none;border-radius:9px;cursor:pointer;
-    font-family:inherit;font-size:12px;font-weight:900;letter-spacing:.8px;color:#fff;
-    display:flex;align-items:center;gap:4px;
-    background:linear-gradient(135deg,#FF7A6E,#FF4D6A);
-    box-shadow:0 4px 10px rgba(255,94,108,.26);
-    transition:transform .16s,opacity .2s;
-  }
-  #qGo svg{display:block;opacity:.95}
-  #qGo:active{transform:scale(.95)}
-  #qGo:disabled{opacity:.55;pointer-events:none}
-
-  /* 搜索建议：与搜索框同宽同高，只有歌名 + 歌手 */
-  #hint{margin-top:8px;display:none;flex-direction:column}
-  #hint.on{display:flex}
-  .hint{
-    display:flex;align-items:center;width:100%;height:40px;padding:0 11px;
-    border:none;border-radius:12px;cursor:pointer;font-family:inherit;text-align:left;
-    background:#FAF9FE;box-shadow:inset 0 0 0 1px rgba(120,100,180,.06);
-    transition:transform .14s,background .2s;
-  }
-  .hint + .hint{margin-top:6px}
-  .hint:active{transform:scale(.985);background:#F5F3FB}
-  .hint .hs{
-    flex:1;min-width:0;font-size:13px;font-weight:800;color:var(--ink);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .hint .ha{
-    flex:none;max-width:46%;font-size:10.5px;font-weight:600;color:var(--muted);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-
-  /* ===== 区块头 ===== */
-  .sechd{display:flex;align-items:center;gap:6px;padding:0 1px 8px}
-  .sechd .ic{flex:none;width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center}
-  .sechd b{font-size:14.5px;font-weight:900;color:var(--ink);letter-spacing:.2px}
-  .sechd em{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted)}
-  .sechd .pa{
-    margin-left:auto;flex:none;height:26px;padding:0 9px;border:none;border-radius:8px;cursor:pointer;
-    font-family:inherit;font-size:10.5px;font-weight:900;color:#fff;
-    display:flex;align-items:center;gap:3px;
-    background:linear-gradient(135deg,#FF7A6E,#FF4D6A);
-    box-shadow:0 3px 8px rgba(255,94,108,.24);
-    transition:transform .16s,opacity .2s;
-  }
-  .sechd .pa:active{transform:scale(.94)}
-  .sechd .pa:disabled{opacity:.5;pointer-events:none}
-  .sechd .rf{
-    flex:none;width:26px;height:26px;border:none;border-radius:50%;cursor:pointer;margin-left:4px;
-    background:#F5F2FB;color:#8B82A8;
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .3s,color .2s;
-  }
-  .sechd .rf:active{transform:rotate(180deg);color:var(--grape)}
-  .sechd .rf.spin svg{animation:spinNF .8s linear infinite}
-  @keyframes spinNF{to{transform:rotate(360deg)}}
-
-  /* ===== 横排轨道：可视区露出 2.5 个，可左右滑 ===== */
-  .rail{
-    display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;
-    -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
-    scrollbar-width:none;
-  }
-  .rail::-webkit-scrollbar{display:none}
-  .rail + .rail{margin-top:6px}
-  .hc{
-    flex:none;width:176px;display:flex;align-items:center;gap:7px;
-    padding:6px 6px 6px 7px;border-radius:13px;background:#FBFAFE;
-    box-shadow:inset 0 0 0 1px rgba(120,100,180,.05);
-    scroll-snap-align:start;cursor:pointer;
-    transition:transform .15s;
-  }
-  .hc:active{transform:scale(.97)}
-  .hc .hcv{
-    flex:none;width:40px;height:40px;border-radius:11px;position:relative;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;
-    font-size:15px;font-weight:900;
-  }
-  .hc .hcv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
-  .hc .hcv img.ld{opacity:1}
-  .hc .hcn{flex:1;min-width:0}
-  .hc .hcn b{
-    display:block;font-size:12px;font-weight:800;color:var(--ink);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.28;
-  }
-  .hc .hcn em{
-    display:block;font-style:normal;font-size:9.5px;font-weight:600;color:var(--muted);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
-  }
-  /* 每首歌右侧的播放按钮 */
-  .hc .hcplay{
-    flex:none;width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;color:#fff;
-    background:linear-gradient(135deg,#FF7A6E,#FF4D6A);
-    box-shadow:0 2px 6px rgba(255,94,108,.24);
-    transition:transform .16s;
-  }
-  .hc .hcplay:active{transform:scale(.84)}
-
-  /* ===== 歌手卡（猜你喜欢） ===== */
-  .ac{
-    flex:none;display:flex;align-items:center;gap:8px;
-    padding:7px 7px 7px 12px;border-radius:14px;background:#FBFAFE;
-    box-shadow:inset 0 0 0 1px rgba(120,100,180,.05);
-    scroll-snap-align:start;cursor:pointer;
-    transition:transform .15s;
-  }
-  .ac:active{transform:scale(.97)}
-  .ac .acn{
-    font-size:13px;font-weight:900;color:var(--ink);
-    white-space:nowrap;letter-spacing:.2px;
-  }
-  .ac .acplay{
-    flex:none;width:26px;height:26px;border:none;border-radius:50%;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;color:#fff;
-    background:linear-gradient(135deg,#A78BFA,#7C4DF6);
-    box-shadow:0 2px 7px rgba(124,77,246,.26);
-    transition:transform .16s;
-  }
-  .ac .acplay:active{transform:scale(.84)}
-  .ac .acplay.spin svg{animation:hcSpin .8s linear infinite}
-  @keyframes hcSpin{to{transform:rotate(360deg)}}
-
-  .c1{background:linear-gradient(150deg,#FF9A8B,#FFC7A8);color:#fff}
-  .c2{background:linear-gradient(150deg,#8FE3D8,#CFF6EF);color:#14786E}
-  .c3{background:linear-gradient(150deg,#C7B2FA,#EEDFFF);color:#fff}
-  .c4{background:linear-gradient(150deg,#FFD98A,#FFF0CC);color:#96660E}
-  .c5{background:linear-gradient(150deg,#FFB6D9,#FFE0F0);color:#A83572}
-  .c6{background:linear-gradient(150deg,#A8DCF6,#DDF1FE);color:#176C99}
-
-  /* 轨道空态 */
-  .rail-empty{
-    width:100%;padding:18px 8px;text-align:center;
-    font-size:11.5px;font-weight:700;color:var(--muted);
-  }
-
-  /* ===== 我的收藏入口 ===== */
-  .favrow{
-    width:100%;display:flex;align-items:center;gap:9px;
-    padding:11px 12px;border:none;border-radius:17px;cursor:pointer;font-family:inherit;text-align:left;
-    background:linear-gradient(135deg,#FF7A6E 0%,#F4517B 48%,#8B5CF6 100%);
-    box-shadow:0 8px 20px rgba(200,80,140,.22);
-    transition:transform .16s;
-  }
-  .favrow:active{transform:scale(.978)}
-  .favrow .fi{
-    flex:none;width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.22);
-    display:flex;align-items:center;justify-content:center;color:#fff;
-  }
-  .favrow .ftx{flex:1;min-width:0}
-  .favrow b{display:block;font-size:13px;font-weight:900;color:#fff;letter-spacing:.3px}
-  .favrow em{display:block;font-style:normal;font-size:10px;font-weight:700;color:rgba(255,255,255,.80);margin-top:1px}
-  .favrow .fa{flex:none;color:rgba(255,255,255,.72);display:flex}
-
-  /* ===== 搜索加载 ===== */
-  .s-loading{
-    width:100%;display:none;align-items:center;justify-content:center;gap:9px;
-    padding:22px;border-radius:18px;background:#fff;box-shadow:0 3px 14px rgba(90,70,150,.08);
-    font-size:12.5px;font-weight:700;color:var(--muted);
-  }
-  .s-loading.on{display:flex}
-  .spinner{
-    width:17px;height:17px;border-radius:50%;flex:none;
-    border:2.5px solid rgba(139,92,246,.2);border-top-color:var(--grape);
-    animation:spinNF .8s linear infinite;
-  }
-
-  /* ===== 原唱结果卡 ===== */
-  .hero{
-    width:100%;border-radius:18px;background:#fff;
-    box-shadow:0 4px 18px rgba(90,70,150,.10);padding:12px;overflow:hidden;
-  }
-  .hero.mm-pop{animation:mmPop .42s cubic-bezier(.2,.9,.3,1.12) both}
-  .hero-top{display:flex;align-items:center;gap:11px}
-  .hero-cv{
-    flex:none;width:56px;height:56px;border-radius:16px;position:relative;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;
-    color:#fff;font-size:21px;font-weight:900;
-    background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
-    box-shadow:0 6px 14px rgba(139,92,246,.20);
-  }
-  .hero-cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s}
-  .hero-cv img.ld{opacity:1}
-  .hero-meta{flex:1;min-width:0}
-  .hero-meta b{
-    display:block;font-size:17px;font-weight:900;color:var(--ink);line-height:1.28;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .hero-meta em{
-    display:block;font-style:normal;font-size:11.5px;font-weight:700;color:#8E86AC;margin-top:2px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  }
-  .hero-meta .alb{
-    display:block;font-size:10px;font-weight:600;color:var(--muted);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
-  }
-  /* 来源标签（取代原来的绿色「原唱」） */
-  .src{
-    display:inline-flex;align-items:center;gap:4px;margin-top:5px;height:18px;padding:0 7px;border-radius:6px;
-    background:#F5F3FA;font-size:9px;font-weight:900;letter-spacing:.3px;color:#8B82A8;
-  }
-  .src s{width:4.5px;height:4.5px;border-radius:50%;text-decoration:none;display:block}
-  .src.ne s{background:#D93B3B}
-  .src.qq s{background:#18A05A}
-  .src.kg s{background:#2F81D9}
-  .src.bi s{background:#F4517A}
-
-  .hero-btns{display:flex;align-items:center;gap:7px;margin-top:11px}
-  .hplay{
-    flex:1;height:38px;border:none;border-radius:12px;cursor:pointer;color:#fff;
-    font-family:inherit;font-size:13px;font-weight:900;letter-spacing:.3px;
-    display:flex;align-items:center;justify-content:center;gap:5px;
-    background:linear-gradient(135deg,#FF7A6E,#FF4D6A);
-    box-shadow:0 5px 13px rgba(255,94,108,.26);
-    transition:transform .16s;
-  }
-  .hplay:active{transform:scale(.95)}
-  .hq,.hfav{
-    flex:none;height:38px;padding:0 11px;border:none;border-radius:12px;cursor:pointer;
-    font-family:inherit;font-size:11px;font-weight:900;color:#6E6590;
-    background:#F5F2FB;display:flex;align-items:center;gap:4px;
-    transition:transform .16s,color .2s;
-  }
-  .hq:active,.hfav:active{transform:scale(.94)}
-  .hfav.on{color:var(--coral);background:#FFF0F4}
-
-  .more-btn{
-    width:100%;margin-top:10px;height:32px;
-    border:none;border-radius:10px;cursor:pointer;font-family:inherit;
-    font-size:11.5px;font-weight:800;color:var(--muted);
-    background:#F5F2FB;transition:transform .15s,color .2s;
-  }
-  .more-btn:active{transform:scale(.97);color:var(--grape)}
-  .alts{display:none;flex-direction:column;margin-top:9px}
-  .alts.on{display:flex}
-</style>
 
 <!-- ===== 搜索 ===== -->
 <div class="s-card" id="sCard">
   <div class="s-box">
     <span class="sic">
-      <svg viewBox="0 0 24 24" width="15" height="15"><circle cx="11" cy="11" r="6.4" stroke="currentColor" stroke-width="2.1" fill="none"/><path d="M16 16l4.4 4.4" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" fill="none"/></svg>
+      <svg viewBox="0 0 24 24" width="17" height="17"><circle cx="11" cy="11" r="6.6" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M15.8 15.8L20.5 20.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
     </span>
     <input id="q" type="search" placeholder="搜索歌名 / 歌手" enterkeyhint="search" autocomplete="off">
     <button id="qClear" title="清空">
       <svg viewBox="0 0 24 24" width="11" height="11"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>
     </button>
-    <button id="qGo">
-      <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><circle cx="11" cy="11" r="6.4" stroke="currentColor" stroke-width="2.1" fill="none"/><path d="M16 16l4.4 4.4" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" fill="none"/></svg>
-      <span>搜索</span>
-    </button>
+    <button id="qGo"><span>搜</span></button>
   </div>
   <div id="hint"></div>
 </div>
 
 <div class="s-loading" id="sLoading"><span class="spinner"></span><span>正在为你找原唱…</span></div>
 
-<!-- ===== 原唱结果（只有一张卡） ===== -->
+<!-- ===== 头条海报（搜索结果） ===== -->
 <div class="hero" id="hero" style="display:none">
-  <div class="hero-top">
-    <div class="hero-cv" id="hCv"><span id="hChar">♪</span><img id="hImg" alt=""></div>
+  <div class="hero-art">
+    <div class="hero-cv" id="hCv"><span id="hChar">♪</span><img id="hImg" alt=""><i></i></div>
+  </div>
+  <div class="hero-body">
     <div class="hero-meta">
+      <span class="src" id="hSrc" style="display:none"><s></s><span id="hSrcText"></span></span>
       <b id="hName">——</b>
       <em id="hArtist"></em>
       <span class="alb" id="hAlbum"></span>
-      <span class="src" id="hSrc" style="display:none"><s></s><span id="hSrcText"></span></span>
     </div>
-  </div>
-  <div class="hero-btns">
-    <button class="hplay" id="hPlay">
-      <svg viewBox="0 0 24 24" width="15" height="15"><path d="M8.6 5.2v13.6L19 12z" fill="currentColor"/></svg>
-      <span>播放</span>
-    </button>
-    <button class="hq" id="hQ"><span id="hQText">320K</span></button>
-    <button class="hfav" id="hFav"></button>
+    <div class="hero-btns">
+      <button class="hplay" id="hPlay">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M8.6 5.2v13.6L19 12z" fill="currentColor"/></svg>
+        <span>播放</span>
+      </button>
+      <button class="hq" id="hQ"><span id="hQText">320K</span></button>
+      <button class="hfav" id="hFav"></button>
+    </div>
   </div>
   <button class="more-btn" id="hMore" style="display:none">更多版本</button>
   <div class="alts" id="hAlts"></div>
@@ -309,32 +470,34 @@
 <!-- ===== 没搜到时的首页区块 ===== -->
 <div id="homeBlocks">
 
-  <!-- 随便听听：3 横排，可左右滑 -->
-  <div class="mm-card" id="pick">
-    <div class="sechd">
-      <span class="ic" style="background:linear-gradient(145deg,#FF8A80,#FF5E6C);color:#fff;box-shadow:0 3px 8px rgba(255,94,108,.22)">
-        <svg viewBox="0 0 24 24" width="12" height="12"><path d="M9 18V6.5l9-2v10" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="6.6" cy="18.4" r="2.4" fill="currentColor"/><circle cx="15.6" cy="16.9" r="2.4" fill="currentColor"/></svg>
-      </span>
-      <b>随便听听</b>
-      <em id="pickHint"></em>
-      <button class="pa" id="pickPlayAll">
-        <svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部
-      </button>
-      <button class="rf" id="pickRefresh" title="换一批">
-        <svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 11a8 8 0 1 0-2.6 6.3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 4.5v6.5h-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-      </button>
+  <!-- 随便听听：唱片封套横排 -->
+  <div class="rm-sec" id="pick">
+    <div class="rm-sec-row">
+      <div>
+        <div class="rm-kick blue">INDEX · 随便听听</div>
+        <h2 class="riso-print" data-t="今日索引"><span>今日索引</span></h2>
+      </div>
+      <div class="rt">
+        <em id="pickHint"></em>
+        <button class="rm-btn orange sm" id="pickPlayAll">
+          <svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部
+        </button>
+        <button class="rm-btn sq sm" id="pickRefresh" title="换一批">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M20 11a8 8 0 1 0-2.6 6.3" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M20 4.5v6.5h-6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+        </button>
+      </div>
     </div>
     <div id="pickRails"></div>
   </div>
 
-  <!-- 猜你喜欢：固定歌手，每个歌手后面带播放按钮，点了随机播这个歌手的歌 -->
-  <div class="mm-card" id="rec">
-    <div class="sechd">
-      <span class="ic" style="background:linear-gradient(145deg,#A78BFA,#7C4DF6);color:#fff;box-shadow:0 3px 8px rgba(124,77,246,.22)">
-        <svg viewBox="0 0 24 24" width="12" height="12"><path d="M12 3.5l2.3 5.3 5.7.5-4.3 3.8 1.3 5.6-5-3-5 3 1.3-5.6-4.3-3.8 5.7-.5z" fill="currentColor"/></svg>
-      </span>
-      <b>猜你喜欢</b>
-      <em id="recHint"></em>
+  <!-- 猜你喜欢：歌手唱片标签 -->
+  <div class="rm-sec" id="rec">
+    <div class="rm-sec-row">
+      <div>
+        <div class="rm-kick">RADIO · 猜你喜欢</div>
+        <h2 class="riso-print" data-t="随机电台"><span>随机电台</span></h2>
+      </div>
+      <div class="rt"><em id="recHint"></em></div>
     </div>
     <div id="artistRails"></div>
   </div>
@@ -342,19 +505,22 @@
   <!-- 我的收藏入口 -->
   <button class="favrow" id="favEntry">
     <span class="fi">
-      <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 20.4s-6.8-4.2-8.5-8.1C2.1 8.7 4 5.5 7.1 5.5c1.8 0 3.1 1 3.8 1.9.7-.9 2-1.9 3.8-1.9 3.1 0 5 3.2 3.6 6.8-1.7 3.9-8.5 8.1-8.5 8.1z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg>
+      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 20s-7.4-4.6-7.4-9.6A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 7.4 3c0 5-7.4 9.6-7.4 9.6z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg>
     </span>
     <div class="ftx">
       <b>我的收藏</b>
       <em id="favEntrySub">你收藏的歌都在这里~</em>
     </div>
     <span class="fa">
-      <svg viewBox="0 0 24 24" width="14" height="14"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
+      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
     </span>
   </button>
 
-  <!-- 最近播放 -->
-  <div class="mm-card" id="recentCard" style="display:none"></div>
+  <!-- 最近播放：JS 会把卡片内部整个重建（含一个新的 #recentRails）。
+       这里在卡片外再放一个隐藏的同名锚点，保证 JS 开头 getElementById
+       永远查得到；重建后靠文档顺序，内层的那个排在前面，渲染位置正确。 -->
+  <div class="rm-list" id="recentCard" style="display:none"></div>
+  <div id="recentRails" style="display:none"></div>
 
 </div>
 
@@ -516,7 +682,10 @@
     $('qGo').disabled = true;
     setGoText('找…');
     $('hero').style.display = 'none';
+    // 取消待触发的建议框定时器，否则 240ms 后建议会重新弹出
+    if (hintTimer) { window.VCLEAR(hintTimer); hintTimer = null; }
     $('hint').classList.remove('on');
+    $('hint').innerHTML = '';
     $('sLoading').classList.add('on');
 
     var myView = window.__view;
@@ -626,7 +795,7 @@
           '<div class="mm-row-btns">' +
             '<button class="mm-round coral" style="width:30px;height:30px" data-altplay="' + i + '">' +
               '<svg viewBox="0 0 24 24" width="13" height="13"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button>' +
-          '</div></div>';
+            '</div></div>';
       }).join('');
     } else {
       $('hMore').style.display = 'none';
@@ -1032,18 +1201,20 @@
     if (!box) return;
     $('recHint').textContent = '';
 
+    // 全部歌手放进同一条轨道，靠 flex-wrap 排成 4 列网格（4 + 3）
     var html = '';
-    for (var r = 0; r < Math.ceil(ARTISTS.length / RAIL_PER); r++) {
-      var row = ARTISTS.slice(r * RAIL_PER, (r + 1) * RAIL_PER);
-      if (!row.length) break;
-      html += '<div class="rail">' + row.map(function(name){
-        return '<div class="ac" data-artist="' + M.esc(name) + '">' +
-          '<span class="acn">' + M.esc(name) + '</span>' +
-          '<button class="acplay" data-artistplay="' + M.esc(name) + '" title="随机播放' + M.esc(name) + '">' +
-            '<svg viewBox="0 0 24 24" width="12" height="12"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
-          '</button></div>';
-      }).join('') + '</div>';
-    }
+    var tone = 0;
+    html += '<div class="rail">' + ARTISTS.map(function(name){
+      var cls = 'ac ac' + (tone % 4 + 1);
+      tone++;
+      return '<div class="' + cls + '" data-artist="' + M.esc(name) + '">' +
+        '<span class="aclbl"><span class="acn">' + M.esc(name.charAt(0)) + '</span>' +
+        '<button class="acplay" data-artistplay="' + M.esc(name) + '" title="随机播放' + M.esc(name) + '">' +
+          '<svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+        '</button></span>' +
+        '<b class="acfull">' + M.esc(name) + '</b>' +
+      '</div>';
+    }).join('') + '</div>';
     box.innerHTML = html;
   }
 
@@ -1139,13 +1310,13 @@
     }
     card.style.display = '';
     card.innerHTML =
-      '<div class="sechd">' +
-        '<span class="ic" style="background:linear-gradient(145deg,#D7F2FF,#C9E9FF);box-shadow:0 3px 8px rgba(91,167,230,.20);color:#3A86C8">' +
-          '<svg viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 7.5v5l3.4 2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>' +
-        '</span>' +
-        '<b>最近播放</b>' +
-        '<em>' + list.length + ' 首</em>' +
-        '<button class="pa" id="recentPlayAll"><svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部</button>' +
+      '<div class="rhead">' +
+        '<div class="rm-kick">RECENT · 最近播放</div>' +
+        '<div class="rm-sec-row"><h2>播放足迹</h2>' +
+          '<div class="rt"><button class="rm-btn ink sm" id="recentPlayAll">' +
+            '<svg viewBox="0 0 24 24" width="11" height="11"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>播放全部' +
+          '</button></div>' +
+        '</div>' +
       '</div>' +
       '<div id="recentRails"></div>';
     var rbox = $('recentRails');
