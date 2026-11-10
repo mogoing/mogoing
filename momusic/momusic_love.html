@@ -7,170 +7,218 @@
 <body>
 
 <style>
-  #viewHost > * + *{margin-top:9px}
+  /* ==========================================================
+     烩菜听歌 · 收藏目录页 ——「Risograph 印刷厂」
+     · 方内容用方角，圆内容用圆（此处没有圆形内容）
+     · 投影一律实心硬偏移，不用模糊
+     · 专色只有 墨黑 / 橙 / 蓝 / 黄，其余靠网点和叠印
+     · 本页在 Pjax 里跑，外壳会把页面里的 body 规则改写成 #viewHost，
+       所以这里不依赖 body 选择器
+     ========================================================== */
 
-  /* ===== 收藏页头卡：高对比渐变 ===== */
-  .hero2{
-    position:relative;width:100%;overflow:hidden;
-    border-radius:18px;padding:13px;color:#fff;
-    background:linear-gradient(135deg,#FF7A6E 0%,#F4517B 46%,#8B5CF6 100%);
-    box-shadow:0 9px 22px rgba(200,80,140,.22);
+  /* ============ 收藏标签卡（黄色便利贴 / 印刷标签） ============ */
+  .fv-head{
+    position:relative;
+    margin:12px 0 16px;
+    border:var(--edge) solid var(--ink);
+    background:var(--yellow);
+    box-shadow:var(--sh-lg);
+    padding:13px 14px 14px;
   }
-  .hero2::after{
-    content:"";position:absolute;width:150px;height:150px;border-radius:50%;
-    right:-58px;top:-76px;background:rgba(255,255,255,.13);
-  }
-  .h2r{position:relative;z-index:2;display:flex;align-items:center;gap:7px}
-  .h2r .hi{
-    flex:none;width:26px;height:26px;border-radius:8px;
-    background:rgba(255,255,255,.22);
-    display:flex;align-items:center;justify-content:center;color:#fff;
-  }
-  .h2r b{font-size:12px;font-weight:900;letter-spacing:1px}
-  .h2r .sync{
-    margin-left:auto;display:flex;align-items:center;gap:4px;
-    font-size:9px;font-weight:800;color:rgba(255,255,255,.82);
-  }
-  .h2r .sync s{width:4.5px;height:4.5px;border-radius:50%;background:#7CFFD9;text-decoration:none;display:block}
-  .hnum{position:relative;z-index:2;margin-top:7px;font-size:32px;font-weight:900;line-height:1;letter-spacing:-.6px}
-  .hnum i{font-style:normal;font-size:10px;font-weight:800;margin-left:3px;opacity:.86}
-  .hsub{position:relative;z-index:2;margin-top:6px;font-size:10.5px;font-weight:600;color:rgba(255,255,255,.84)}
-  .h2btns{position:relative;z-index:2;display:flex;gap:6px;margin-top:10px}
-  .h2play{
-    flex:1;height:34px;border:none;border-radius:11px;cursor:pointer;
-    font-family:inherit;font-size:12.5px;font-weight:900;color:#E8457B;
-    background:#fff;display:flex;align-items:center;justify-content:center;gap:5px;
-    box-shadow:0 4px 11px rgba(120,40,120,.16);
-    transition:transform .16s,opacity .2s;
-  }
-  .h2play:active{transform:scale(.96)}
-  .h2play:disabled{opacity:.5;pointer-events:none}
-  .h2ghost{
-    flex:none;height:34px;padding:0 12px;border:none;border-radius:11px;cursor:pointer;
-    font-family:inherit;font-size:11px;font-weight:800;color:#fff;
-    background:rgba(255,255,255,.20);
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.26);
-    transition:transform .16s;
-  }
-  .h2ghost:active{transform:scale(.95)}
+  .fv-head > *{position:relative;z-index:4}
+  .fv-head.riso-ht::after{opacity:.26}
 
-  /* ===== 收藏列表 ===== */
-  .flist{padding-top:9px}
+  .fv-kickrow{display:flex;align-items:center;gap:10px}
+  .fv-kickrow .rm-kick{flex:1;min-width:0;color:rgba(20,17,13,.74)}
+  .fv-sync{
+    flex:none;display:flex;align-items:center;gap:6px;
+    font-family:var(--sans);font-size:10px;font-weight:800;color:var(--ink-2);
+    white-space:nowrap;
+  }
+  .fv-sync .dot{flex:none;width:6px;height:6px;background:var(--ink);display:block}
 
+  .fv-numrow{display:flex;align-items:baseline;gap:9px;margin-top:11px}
+  .fv-numrow b{
+    font-family:var(--serif);font-size:40px;font-weight:900;
+    letter-spacing:-2px;line-height:1;color:var(--ink);
+    text-shadow:2px 2px 0 var(--blue);
+  }
+  .fv-numrow em{
+    font-style:normal;font-family:var(--serif);font-size:13px;
+    font-weight:700;color:rgba(20,17,13,.66);
+  }
+
+  .fv-acts{display:flex;gap:9px;margin-top:14px}
+  .fv-acts .rm-btn{height:38px}
+  .fv-acts .rm-btn:first-child{flex:1}
+  .rm-btn.ghost{background:var(--paper);color:var(--ink)}
+  /* 暂不可用：纸底 + 墨字 + 虚线描边，不做半透明弱化（半透明在黄底上会发脏） */
+  .rm-btn:disabled{
+    background:var(--paper);color:var(--ink-2);
+    border-style:dashed;box-shadow:none;
+    pointer-events:none;
+  }
+
+  /* ============ 索引目录（收藏列表 / 最近播放共用） ============ */
+  #fList{margin:0 0 14px}
   .frow{
-    position:relative;display:flex;align-items:center;gap:8px;
-    padding:7px 1px;cursor:pointer;transition:transform .15s,opacity .2s;
+    position:relative;display:flex;align-items:center;gap:10px;
+    padding:10px 11px;cursor:pointer;
   }
-  .frow + .frow::before{
-    content:"";position:absolute;left:1px;right:1px;top:0;height:1px;background:var(--line);
+  .frow + .frow{border-top:var(--edge2) solid var(--ink)}
+  /* 正在播放：左侧橙色标记条 + 底色加深 */
+  .frow.now{background:var(--paper-3)}
+  .frow.now::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--orange);
   }
-  .frow:active{transform:scale(.985)}
-  .frow.now .fname{color:var(--grape-d)}
+  .frow.now .fname{color:var(--orange-d)}
+  .frow:active{background:var(--paper-2)}
 
+  .frow .no{
+    flex:none;width:22px;text-align:center;
+    font-family:var(--serif);font-size:16px;font-weight:900;color:var(--ink-3);
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* 封面小方块：直角 + 描边 + 四色轮转 */
   .fcv{
-    flex:none;width:34px;height:34px;border-radius:10px;position:relative;overflow:hidden;
+    flex:none;width:42px;height:42px;position:relative;overflow:hidden;
+    border:var(--edge) solid var(--ink);
     display:flex;align-items:center;justify-content:center;
-    font-size:13px;font-weight:900;color:#fff;
-    background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
+    font-family:var(--serif);font-size:17px;font-weight:900;color:var(--paper);
   }
   .fcv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
   .fcv img.ld{opacity:1}
+  .c1{background:var(--orange);color:var(--paper)}
+  .c2{background:var(--blue);color:var(--paper)}
+  .c3{background:var(--yellow);color:var(--ink)}
+  /* 浅色块用网点底 + 墨字，保证对比度 */
+  .c4{background:var(--paper-3);color:var(--ink);
+    background-image:radial-gradient(rgba(20,17,13,.35) 38%,transparent 40%);
+    background-size:4px 4px}
+  .c5{background:var(--ink);color:var(--paper)}
+  .c6{background:var(--paper-2);color:var(--ink);
+    background-image:radial-gradient(rgba(27,63,216,.32) 38%,transparent 40%);
+    background-size:4px 4px}
 
   .ftx{flex:1;min-width:0}
   .fname{
-    display:block;font-size:12.5px;font-weight:800;color:var(--ink);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
+    display:block;font-family:var(--serif);font-size:14px;font-weight:900;
+    color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
   }
   .fart{
-    display:block;font-style:normal;font-size:10px;font-weight:600;color:var(--muted);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
+    display:block;font-style:normal;font-size:10.5px;font-weight:700;color:var(--ink-2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;
   }
 
-  .fbtns{flex:none;display:flex;align-items:center;gap:4px}
+  .fbtns{flex:none;display:flex;align-items:center;gap:6px}
   .fbtns button{
-    width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;transition:transform .16s;
+    flex:none;width:30px;height:30px;border:var(--edge2) solid var(--ink);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:transform .12s,background .15s,color .15s;
   }
-  .fbtns button:active{transform:scale(.86)}
-  .fplay{background:linear-gradient(135deg,#FF7A6E,#FF4D6A);color:#fff;box-shadow:0 3px 7px rgba(255,94,108,.24)}
-  .funfav{background:#FFF0F5;color:#F0457D}
+  .fbtns button:active{transform:translate(1px,1px)}
+  .fplay{background:var(--yellow);color:var(--ink)}
+  .fplay:active{background:var(--orange);color:var(--paper)}
+  .funfav{background:var(--orange);color:var(--paper)}
+  .funfav:active{background:var(--ink);color:var(--paper)}
 
-  .feq{display:flex;align-items:flex-end;gap:2px;height:13px;padding-right:2px}
-  .feq i{width:2.5px;border-radius:2px;background:var(--grape);animation:mmEq 1s ease-in-out infinite}
-  .feq i:nth-child(2){background:var(--coral);animation-delay:.22s}
-  .feq i:nth-child(3){background:var(--mint);animation-delay:.44s}
+  .feq{
+    flex:none;width:30px;height:16px;
+    display:flex;align-items:flex-end;justify-content:center;gap:2px;
+  }
+  .feq i{width:2.5px;background:var(--ink);animation:mmEq 1s ease-in-out infinite}
+  .feq i:nth-child(2){background:var(--orange);animation-delay:.22s}
+  .feq i:nth-child(3){background:var(--blue);animation-delay:.44s}
   .feq.off i{animation-play-state:paused;height:4px}
 
-  /* 空态 */
-  .fempty{padding:38px 16px;text-align:center}
-  .fempty .ic{margin-bottom:8px;opacity:.4;display:flex;justify-content:center}
-  .fempty b{display:block;font-size:13px;font-weight:900;color:var(--ink-2);margin-bottom:5px}
+  /* ============ 空态 ============ */
+  .fempty{padding:20px 18px 22px;text-align:center}
+  .fempty .ic{margin-bottom:8px;display:flex;justify-content:center;color:var(--ink-3)}
+  .fempty .ic svg{width:26px;height:26px}
+  .fempty b{
+    display:block;font-family:var(--serif);font-size:14px;font-weight:900;
+    color:var(--ink);margin-bottom:4px;
+  }
   .fempty em{
-    display:block;font-style:normal;font-size:11.5px;font-weight:600;
-    color:var(--muted);line-height:1.85;
+    display:block;font-style:normal;font-size:11px;font-weight:700;
+    color:var(--ink-3);line-height:1.7;
   }
 
-  /* 同步状态条 */
+  /* ============ 同步状态条：细印刷标签 ============ */
   .fstate{
-    width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
-    padding:8px;border-radius:999px;
-    font-size:10.5px;font-weight:700;color:var(--muted);
-    background:rgba(255,255,255,.7);box-shadow:0 2px 9px rgba(90,70,150,.06);
+    width:100%;display:flex;align-items:center;gap:8px;
+    margin:0;padding:7px 10px;
+    border:var(--edge2) solid var(--ink);background:var(--paper-2);
+    font-size:10.5px;font-weight:800;color:var(--ink-2);letter-spacing:.2px;
   }
-  .fstate.ok{color:var(--mint-d)}
-  .fstate .dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.75}
+  .fstate .dot{flex:none;width:7px;height:7px;background:var(--ink);display:block}
+  .fstate.ok{background:rgba(27,63,216,.10);color:var(--blue-d)}
+  .fstate.ok .dot{background:var(--blue)}
 
-  /* ===== 最近播放 ===== */
-  .sechd{display:flex;align-items:center;gap:6px;padding:0 1px 8px}
-  .sechd .ic{flex:none;width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center}
-  .sechd b{font-size:14px;font-weight:900;color:var(--ink)}
-  .sechd em{font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted)}
-  .sechd .clr{
-    margin-left:auto;border:none;background:none;cursor:pointer;
-    color:var(--muted);font-family:inherit;font-size:10.5px;font-weight:800;
-    padding:3px 7px;border-radius:999px;
+  /* ============ 最近播放：目录样式 ============ */
+  .rv-sec{margin:24px 0 0}
+  .sechd{display:flex;align-items:flex-end;gap:12px;margin-top:9px}
+  .sechd .ic{
+    flex:none;width:30px;height:30px;border:var(--edge2) solid var(--ink);
+    background:var(--yellow);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;
   }
-  .sechd .clr:active{opacity:.6}
+  .sechd b{
+    font-family:var(--serif);font-size:19px;font-weight:900;
+    color:var(--ink);line-height:1.2;letter-spacing:-.2px;
+  }
+  .sechd em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--ink-3)}
+  .sechd .clr{
+    margin-left:auto;flex:none;height:30px;padding:0 9px;
+    border:var(--edge2) solid var(--ink);background:var(--paper);color:var(--ink-2);
+    font-family:var(--sans);font-size:10.5px;font-weight:900;cursor:pointer;
+    white-space:nowrap;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .12s,background .15s,color .15s;
+  }
+  .sechd .clr:active{transform:translate(1px,1px);background:var(--ink);color:var(--paper)}
 </style>
 
-<!-- 收藏头卡 -->
-<div class="hero2" id="fCard">
-  <div class="h2r">
-    <span class="hi">
-      <svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 20.4s-6.8-4.2-8.5-8.1C2.1 8.7 4 5.5 7.1 5.5c1.8 0 3.1 1 3.8 1.9.7-.9 2-1.9 3.8-1.9 3.1 0 5 3.2 3.6 6.8-1.7 3.9-8.5 8.1-8.5 8.1z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/></svg>
-    </span>
-    <b>我的收藏</b>
-    <span class="sync"><s></s><span id="fSync">已同步</span></span>
+<!-- 收藏头卡：印刷标签 -->
+<div class="fv-head riso-ht" id="fCard">
+  <div class="fv-kickrow">
+    <span class="rm-kick plain">COLLECTION</span>
+    <span class="fv-sync"><i class="dot"></i><span id="fSync">已同步</span></span>
   </div>
-  <div class="hnum"><span id="fCount">0</span><i>首</i></div>
-  <div class="hsub">你收藏的歌都在这里~</div>
-  <div class="h2btns">
-    <button class="h2play" id="fPlayAll" disabled>
-      <svg viewBox="0 0 24 24" width="12" height="12"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+  <div class="fv-numrow">
+    <b id="fCount">0</b>
+    <em>首 · 仅存本机</em>
+  </div>
+  <div class="fv-acts">
+    <button class="rm-btn ink" id="fPlayAll" disabled>
+      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
       播放全部
     </button>
-    <button class="h2ghost" id="fShuffle">随机</button>
+    <button class="rm-btn ghost" id="fShuffle">
+      <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M4 7h3l9 10h4M4 17h3l2.3-2.6M16 7h4M20 7l-2.3-2.3M20 7l-2.3 2.3M20 17l-2.3 2.3M20 17l-2.3-2.3" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" fill="none"/></svg>
+      随机
+    </button>
   </div>
 </div>
 
-<!-- 收藏列表 -->
-<div class="mm-card">
-  <div id="fList" class="flist"></div>
-</div>
+<!-- 收藏索引目录 -->
+<div id="fList" class="rm-list"></div>
 
 <div class="fstate" id="fState"><span class="dot"></span><span>本地收藏</span></div>
 
 <!-- 最近播放 -->
-<div class="mm-card" id="rCard" style="display:none">
+<div class="rv-sec" id="rCard" style="display:none">
+  <div class="rm-kick">RECENTLY · 最近播放</div>
   <div class="sechd">
-    <span class="ic" style="background:linear-gradient(145deg,#D7F2FF,#C9E9FF);box-shadow:0 3px 8px rgba(91,167,230,.20);color:#3A86C8">
-      <svg viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 7.5v5l3.4 2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+    <span class="ic">
+      <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 7.5v5l3.4 2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
     </span>
-    <b>最近播放</b>
+    <b>播放足迹</b>
     <em id="rCount"></em>
-    <button class="clr" id="rClear">清空</button>
+    <button class="clr" id="rClear" title="清空">清空</button>
   </div>
-  <div id="rList"></div>
+  <div id="rList" class="rm-list" style="margin-top:11px"></div>
 </div>
 
 <script>
@@ -201,7 +249,7 @@
       list.innerHTML =
         '<div class="fempty">' +
           '<span class="ic">' +
-            '<svg viewBox="0 0 24 24" width="34" height="34" style="color:#C7BFDB"><path d="M12 20.4s-6.8-4.2-8.5-8.1C2.1 8.7 4 5.5 7.1 5.5c1.8 0 3.1 1 3.8 1.9.7-.9 2-1.9 3.8-1.9 3.1 0 5 3.2 3.6 6.8-1.7 3.9-8.5 8.1-8.5 8.1z" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>' +
+            '<svg viewBox="0 0 24 24" width="34" height="34" style="color:#7A7161"><path d="M12 20.4s-6.8-4.2-8.5-8.1C2.1 8.7 4 5.5 7.1 5.5c1.8 0 3.1 1 3.8 1.9.7-.9 2-1.9 3.8-1.9 3.1 0 5 3.2 3.6 6.8-1.7 3.9-8.5 8.1-8.5 8.1z" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>' +
           '</span>' +
           '<b>还没有收藏</b>' +
           '<em>听到喜欢的歌，点一下收藏<br>下次就能在这里找到~</em>' +
@@ -212,6 +260,7 @@
     list.innerHTML = fav.map(function(t, i){
       var isNow = P.cur && String(t.id) === String(P.cur.id);
       return '<div class="frow' + (isNow ? ' now' : '') + '" data-i="' + i + '">' +
+        '<span class="no">' + (i + 1) + '</span>' +
         '<div class="fcv c' + (i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span>' +
           '<img data-cv="' + i + '" alt=""></div>' +
         '<div class="ftx">' +
@@ -320,6 +369,7 @@
     $('rList').innerHTML = items.map(function(t, i){
       var isNow = P.cur && String(t.id) === String(P.cur.id);
       return '<div class="frow' + (isNow ? ' now' : '') + '" data-ri="' + i + '">' +
+        '<span class="no">' + (i + 1) + '</span>' +
         '<div class="fcv c' + (i % 6 + 1) + '"><span>' + M.esc((t.name || '♪').trim().charAt(0) || '♪') + '</span>' +
           '<img data-rv="' + i + '" alt=""></div>' +
         '<div class="ftx">' +
