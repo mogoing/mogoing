@@ -7,110 +7,210 @@
 <body>
 
 <style>
-  /* 播放页：整页铺满，歌词居中，底部无播放条（由外壳隐藏） */
-  #viewHost{padding:0}
-  #viewHost > *{width:100%;margin-left:0;margin-right:0}
-  .np-page{
-    width:100%;min-height:100%;display:flex;flex-direction:column;
-    padding:0 10px 8px;
+  /* ==========================================================
+     播放页 ·「Risograph 印刷厂」唱片内页（深色）
+     · 整页墨黑底，和另外两页的米白纸底形成"唱片内页"对比
+     · 深色页描边一律用纸色 / 橙 / 黄，墨黑只当"油墨边"
+     · 投影用 rgba(0,0,0,.5) 模拟落影
+     · 外壳会把下面那条 body 规则改写成外壳的 #viewHost，
+       所以整页深底会自动落到外壳容器上
+     ========================================================== */
+
+  body{
+    --paper:#F2EBDC; --paper-2:#E9E0C9; --ink:#14110D;
+    --orange:#FF5A1F; --blue:#1B3FD8; --yellow:#F5C400;
+    --serif:"Noto Serif SC","Noto Serif CJK SC","Source Han Serif SC","Songti SC","STSong","SimSun",serif;
+    --sans:"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,sans-serif;
+    --disp:"Impact","Haettenschweiler","Roboto Condensed","Arial Narrow",var(--sans);
+    background:#14110D;
+    color:var(--paper);
+    font-family:var(--sans);
   }
 
-  /* ===== 顶部曲目条：封面 + 名称 + 我喜欢的按钮 + 来源 ===== */
+  /* ---------- 外壳作用域：整页铺满，页面自带内边距 ---------- */
+  #viewHost{
+    padding:0;
+    background:#14110D;          /* 整页深底（外壳会把 body 规则改写到 #viewHost） */
+  }
+  /* 歌词页自带完整控件，外壳已隐藏底部播放条，不需要为它留白 */
+  #viewHost > #paperNew{padding-bottom:0}
+  #viewHost > *{width:100%;margin-left:0;margin-right:0;margin-top:0}
+  #viewHost > #paperNew{height:100%;margin-top:0}
+
+  /* ---------- 外壳顶栏 / 纸纹：这一页是深色内页 ----------
+     外壳用 body.lyric-dark 统一压暗（见 momusic_index.html 的 syncShell），
+     本页不需要再覆盖，避免两处重复。 */
+
+  .np-page{
+    position:relative;isolation:isolate;
+    width:100%;
+    height:100%;                 /* 兜底：老浏览器不支持 max() 时用这条 */
+    height:max(100%,560px);
+    display:flex;flex-direction:column;
+    padding:0 16px calc(12px + env(safe-area-inset-bottom,0px));
+    overflow:hidden;
+  }
+  /* 顶部暖色光晕：橙 + 蓝，模糊（正对唱片中心） */
+  .np-page::before{
+    content:"";position:absolute;left:50%;top:168px;transform:translate(-50%,-50%);
+    width:440px;height:440px;border-radius:50%;pointer-events:none;z-index:0;
+    background:radial-gradient(circle,rgba(255,90,31,.40),rgba(27,63,216,.16) 52%,transparent 72%);
+    filter:blur(10px);
+  }
+  /* 纸纹颗粒（深色页用 screen 叠） */
+  .np-page::after{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:3;opacity:.12;
+    mix-blend-mode:screen;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+    background-size:160px 160px;
+  }
+  .np-page > *{position:relative;z-index:1}
+
+  /* ===== 顶部曲目条：黑胶小图 + 歌名 + 收藏 + 来源 ===== */
   .npstrip{
     flex:none;display:flex;align-items:center;gap:9px;
-    padding:9px 12px;border-radius:16px;background:#fff;
-    box-shadow:0 3px 14px rgba(90,70,150,.08);
+    padding:8px 0 10px;
+    border-bottom:1.5px solid rgba(242,235,220,.22);
   }
   .npstrip .cv{
-    flex:none;width:40px;height:40px;border-radius:12px;position:relative;overflow:hidden;
+    flex:none;width:38px;height:38px;border-radius:50%;position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
-    font-size:15px;font-weight:900;color:#fff;background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
+    background:repeating-radial-gradient(circle at 50% 50%,rgba(242,235,220,.17) 0 1px,transparent 1px 4px),#0D0B08;
+    border:1.5px solid rgba(242,235,220,.24);
+    box-shadow:0 2px 6px rgba(0,0,0,.5);
   }
-  .npstrip .cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
+  .npstrip .cv::after{
+    content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:7px;height:7px;border-radius:50%;background:var(--orange);z-index:2;
+  }
+  .npstrip .cv #sChar{
+    position:relative;z-index:3;
+    font-family:var(--serif);font-size:14px;font-weight:900;color:var(--paper);
+    transform:translateY(-8px);line-height:1;
+  }
+  .npstrip .cv img{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    opacity:0;transition:opacity .4s;z-index:4;
+  }
   .npstrip .cv img.ld{opacity:1}
   .npstrip .tx2{flex:1;min-width:0}
   .npstrip b{
-    display:block;font-size:13.5px;font-weight:900;color:var(--ink);line-height:1.3;
+    display:block;font-family:var(--serif);font-size:15px;font-weight:900;color:var(--paper);line-height:1.3;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   .npstrip em{
-    display:block;font-style:normal;font-size:10px;font-weight:600;color:var(--muted);margin-top:1px;
+    display:block;font-style:normal;font-size:11px;font-weight:600;color:rgba(242,235,220,.52);margin-top:2px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  /* 我喜欢的按钮（在来源左边） */
+  /* 收藏：橙色方块 */
   #nLike{
-    flex:none;width:30px;height:30px;border:none;border-radius:50%;cursor:pointer;
-    background:#FFF0F4;color:#F0457D;display:flex;align-items:center;justify-content:center;
-    transition:transform .16s,background .2s;
+    flex:none;width:32px;height:32px;border:none;border-radius:0;cursor:pointer;
+    background:var(--orange);color:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:2px 2px 0 rgba(0,0,0,.5);
+    transition:transform .16s,box-shadow .16s;
   }
-  #nLike:active{transform:scale(.86)}
-  #nLike.on{background:#FFE3EB}
+  #nLike svg{width:17px;height:17px}
+  #nLike.on{box-shadow:2px 2px 0 var(--blue)}
+  #nLike:active{transform:translate(2px,2px);box-shadow:0 0 0 rgba(0,0,0,.5)}
+  /* 来源：灰底小方块 */
   #nSrc{
     flex:none;display:none;align-items:center;gap:4px;
-    height:19px;padding:0 7px;border-radius:6px;
-    background:#F5F3FA;font-size:9px;font-weight:900;color:#8B82A8;
+    height:20px;padding:0 7px;border-radius:0;
+    background:rgba(242,235,220,.13);border:1.5px solid rgba(242,235,220,.24);
+    font-family:var(--disp);font-size:9px;letter-spacing:1.2px;color:rgba(242,235,220,.8);
     white-space:nowrap;
   }
-  #nSrc s{width:4.5px;height:4.5px;border-radius:50%;text-decoration:none;display:block}
-  #nSrc.ne s{background:#D93B3B}
-  #nSrc.qq s{background:#18A05A}
-  #nSrc.kg s{background:#2F81D9}
-  #nSrc.bi s{background:#F4517A}
+  #nSrc s{width:5px;height:5px;border-radius:50%;text-decoration:none;display:block;background:var(--paper)}
+  #nSrc.ne s{background:var(--orange)}
+  #nSrc.qq s{background:var(--blue)}
+  #nSrc.kg s{background:var(--yellow)}
+  #nSrc.bi s{background:var(--paper)}
 
-  /* ===== 圆形唱片 ===== */
+  /* ===== 中央大唱片（212px 黑胶） ===== */
   .artwrap{
     flex:none;display:flex;flex-direction:column;align-items:center;
-    padding:16px 0 0;
+    padding:18px 0 0;
   }
   .disc{
-    position:relative;width:108px;height:108px;border-radius:50%;flex:none;
-    background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
-    box-shadow:0 12px 26px rgba(139,92,246,.24),0 0 0 5px rgba(255,255,255,.72),0 0 0 6.5px rgba(139,92,246,.12);
+    position:relative;width:212px;height:212px;border-radius:50%;flex:none;
+    border:2.5px solid rgba(0,0,0,.9);
+    background:
+      radial-gradient(circle at 50% 50%,rgba(242,235,220,.10) 0 30%,transparent 62%),
+      #14110D;
+    box-shadow:0 18px 40px rgba(0,0,0,.6),inset 0 0 0 2px rgba(242,235,220,.09);
   }
+  /* 沟槽 + 转动的锥形高光（只在播放时转，中心标签不动） */
   .disc .groove{
     position:absolute;inset:0;border-radius:50%;
-    background:repeating-radial-gradient(circle,rgba(255,255,255,.20) 0 1.5px,transparent 1.5px 4.5px);
+    background:
+      conic-gradient(from 0deg,rgba(242,235,220,.17),transparent 22%,rgba(242,235,220,.12) 48%,transparent 70%,rgba(242,235,220,.17)),
+      repeating-radial-gradient(circle at 50% 50%,rgba(242,235,220,.10) 0 1px,transparent 1px 4px);
+    -webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 36px,#000 44px);
+    mask-image:radial-gradient(circle at 50% 50%,transparent 36px,#000 44px);
   }
-  .disc .glint{position:absolute;inset:0;border-radius:50%;overflow:hidden}
-  .disc .glint::after{
-    content:"";position:absolute;left:50%;top:0;width:48px;height:100%;margin-left:-24px;
-    background:linear-gradient(100deg,transparent 38%,rgba(255,255,255,.30) 50%,transparent 62%);
+  /* 静止的镜面反光 */
+  .disc .glint{
+    position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none;
+    background:radial-gradient(ellipse at 32% 22%,rgba(242,235,220,.14),transparent 46%);
   }
+  /* 橙色唱片标签 */
   .disc .face{
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:64px;height:64px;border-radius:50%;
+    width:76px;height:76px;border-radius:50%;
     display:flex;align-items:center;justify-content:center;
-    font-size:24px;font-weight:900;color:var(--grape-d);background:rgba(255,255,255,.94);
-    box-shadow:0 3px 10px rgba(90,60,140,.16),inset 0 0 0 2px rgba(139,92,246,.14);
+    overflow:hidden;
+    background:
+      radial-gradient(circle at 50% 50%,rgba(20,17,13,.11) 0 1px,transparent 1px 4px),
+      var(--orange);
+    border:2.5px solid rgba(0,0,0,.85);
+    box-shadow:0 3px 10px rgba(0,0,0,.55);
     z-index:3;
   }
-  .disc .face img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;opacity:0;transition:opacity .4s}
+  .disc .face #nFaceChar{
+    position:relative;z-index:2;
+    font-family:var(--serif);font-size:28px;font-weight:900;color:var(--paper);
+    transform:translateY(-17px);line-height:1;
+  }
+  .disc .face img{
+    position:absolute;left:8px;top:8px;width:calc(100% - 16px);height:calc(100% - 16px);
+    object-fit:cover;border-radius:50%;
+    opacity:0;transition:opacity .4s;z-index:1;
+  }
   .disc .face img.ld{opacity:1}
+  /* 中心孔 */
   .disc .hub{
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:8px;height:8px;border-radius:50%;
-    background:rgba(139,92,246,.34);box-shadow:0 0 0 3px rgba(255,255,255,.7);z-index:4;
+    width:9px;height:9px;border-radius:50%;
+    background:#0B0906;box-shadow:0 0 0 2px rgba(0,0,0,.4);
+    z-index:4;
   }
-  /* 只转纹理和反光，文字/封面不动 */
-  .disc.spin .groove,.disc.spin .glint{animation:discSpin 16s linear infinite}
+  /* 只转沟槽，标签 / 文字不动 */
+  .disc.spin .groove{animation:discSpin 12s linear infinite}
   @keyframes discSpin{to{transform:rotate(360deg)}}
 
+  /* 歌名 / 歌手（套印偏移：橙 + 蓝两层错位） */
   .nname{
-    margin-top:9px;font-size:16px;font-weight:900;color:var(--ink);
-    max-width:88%;text-align:center;
+    margin-top:14px;
+    font-family:var(--serif);font-size:26px;font-weight:900;letter-spacing:-.5px;
+    color:var(--paper);
+    text-shadow:2px 2px 0 rgba(255,90,31,.62),3.6px 3.6px 0 rgba(27,63,216,.42);
+    max-width:92%;text-align:center;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   .nart{
-    margin-top:1px;font-size:10px;font-weight:600;color:var(--muted);
-    max-width:88%;text-align:center;
+    margin-top:5px;font-size:12px;font-weight:700;color:rgba(242,235,220,.5);
+    max-width:92%;text-align:center;letter-spacing:.4px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
 
-  /* ===== 歌词（居中高亮、跟随滚动） ===== */
+  /* ===== 歌词（浮在深底上，居中高亮、跟随滚动） =====
+     注意：外壳 scopeCSS 会把子页 CSS 里的 min-height 全部剥掉，
+     所以这里用 height 兜底 + flex 撑开，保证 #lyrBox 一定有高度。 */
   .lyrarea{
-    flex:1;min-height:0;overflow:hidden;position:relative;
-    margin:10px 0 0;border-radius:16px;background:#fff;
-    box-shadow:0 3px 14px rgba(90,70,150,.08);
+    flex:1 1 auto;height:340px;
+    overflow:hidden;position:relative;
+    margin:16px 0 0;
   }
   #lyrBox{position:absolute;inset:0;overflow:hidden}
   #lyrScroll{
@@ -120,79 +220,97 @@
     will-change:transform;
   }
   .lrow{
-    padding:0 16px;text-align:center;font-size:13.5px;font-weight:600;
-    color:#C6BFD6;line-height:1.35;cursor:pointer;
-    transition:color .3s,font-size .3s,font-weight .3s;
+    padding:0 18px;text-align:center;
+    font-family:var(--serif);font-size:16px;font-weight:600;
+    color:rgba(242,235,220,.24);line-height:24px;cursor:pointer;
+    transition:color .3s;
   }
-  .lrow + .lrow{margin-top:20px}
-  .lrow.near{color:#A9A0C2}
-  .lrow.cur{font-size:17px;font-weight:900;color:var(--grape-d)}
+  .lrow + .lrow{margin-top:8px}
+  .lrow.near{color:rgba(242,235,220,.58)}
+  .lrow.cur{
+    font-size:21px;font-weight:900;color:var(--yellow);line-height:28px;
+    text-shadow:2px 2px 0 rgba(255,90,31,.55);
+  }
   .lrow .tr{
-    display:block;font-size:10.5px;font-weight:600;color:#BDB5D0;margin-top:3px;
+    display:block;font-size:11px;font-weight:600;color:rgba(242,235,220,.3);margin-top:2px;line-height:1.4;
   }
-  .lrow.cur .tr{color:#A695D6}
+  .lrow.cur .tr{color:rgba(245,196,0,.72)}
 
   .lyr-empty,.lyr-loading{
     position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:5px;
-    font-size:12px;font-weight:700;color:var(--muted);line-height:1.9;text-align:center;
+    align-items:center;justify-content:center;gap:6px;
+    font-family:var(--serif);font-size:13px;font-weight:600;color:rgba(242,235,220,.45);
+    line-height:2;text-align:center;
   }
   .lyr-skel{
     position:absolute;inset:0;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:15px;padding:0 20px;
   }
   .lyr-skel i{
-    display:block;height:11px;border-radius:6px;background:rgba(120,100,180,.10);
+    display:block;height:11px;border-radius:0;background:rgba(242,235,220,.10);
     position:relative;overflow:hidden;
   }
   .lyr-skel i::after{
     content:"";position:absolute;inset:0;transform:translateX(-100%);
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);
+    background:linear-gradient(90deg,transparent,rgba(242,235,220,.22),transparent);
     animation:skShine 1.5s infinite;
   }
   @keyframes skShine{to{transform:translateX(100%)}}
 
-  /* 跟随开关：贴在歌词区右上角 */
+  /* 跟随开关：贴在唱片右上角（不压歌词） */
   #nFollow{
-    position:absolute;right:8px;top:8px;z-index:6;
-    height:22px;padding:0 8px;border:none;border-radius:7px;cursor:pointer;
-    font-family:inherit;font-size:9.5px;font-weight:800;color:var(--muted);
-    background:rgba(245,242,251,.94);
-    transition:color .2s,background .2s;
+    position:absolute;right:0;top:0;z-index:6;
+    height:22px;padding:0 9px;border:1.5px solid rgba(242,235,220,.4);border-radius:0;cursor:pointer;
+    font-family:var(--disp);font-size:10px;font-weight:800;letter-spacing:1.2px;
+    color:rgba(242,235,220,.75);background:rgba(20,17,13,.4);
+    transition:color .2s,background .2s,border-color .2s;
   }
-  #nFollow.on{color:var(--grape);background:rgba(139,92,246,.10)}
+  #nFollow.on{color:var(--ink);background:var(--orange);border-color:var(--orange)}
 
-  /* ===== 进度条（可拖动，上下留白） ===== */
-  .progwrap{flex:none;padding:16px 30px 0}
-  .prog{position:relative;height:6px;border-radius:3px;background:#EFEAF8;cursor:pointer;touch-action:none}
+  /* ===== 进度条（8px 横条 + 圆形滑块） ===== */
+  .progwrap{flex:none;padding:12px 4px 0}
+  .prog{
+    position:relative;height:8px;
+    background:rgba(242,235,220,.12);border:1.5px solid rgba(242,235,220,.3);
+    cursor:pointer;touch-action:none;
+  }
   .prog i{
-    position:absolute;left:0;top:0;bottom:0;width:0;border-radius:3px;
-    background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));
+    position:absolute;left:0;top:0;bottom:0;width:0;
+    background:var(--yellow);
   }
   .prog u{
     position:absolute;top:50%;left:0;transform:translate(-50%,-50%);
-    width:16px;height:16px;border-radius:50%;background:#fff;
-    box-shadow:0 2px 7px rgba(90,70,150,.28);
+    width:14px;height:14px;border-radius:50%;background:var(--paper);
+    box-shadow:0 2px 6px rgba(0,0,0,.6);
   }
   .ptime2{
     display:flex;justify-content:space-between;
-    margin-top:6px;font-size:10px;font-weight:700;color:var(--muted);
-    font-variant-numeric:tabular-nums;
+    margin-top:8px;font-family:var(--disp);font-size:10.5px;letter-spacing:.8px;
+    color:rgba(242,235,220,.5);font-variant-numeric:tabular-nums;
   }
 
-  /* ===== 控件行：顺序 上一首 播放暂停 下一首 列表 ===== */
+  /* ===== 控件行：模式 上一首 播放/暂停 下一首 列表 ===== */
   .ctrls{
-    flex:none;display:flex;align-items:center;justify-content:space-between;
-    padding:10px 34px 18px;
+    flex:none;display:flex;align-items:center;justify-content:center;gap:22px;
+    padding:10px 0 8px;
   }
   .cb{
-    width:44px;height:44px;border:none;background:none;cursor:pointer;
-    color:#8A81A6;display:flex;align-items:center;justify-content:center;
+    width:34px;height:34px;border:none;background:none;cursor:pointer;
+    color:rgba(242,235,220,.62);display:flex;align-items:center;justify-content:center;
     transition:transform .16s,color .2s;
   }
-  .cb:active{transform:scale(.84)}
-  .cb.on{color:var(--grape)}
-  #cPlay{color:var(--coral)}
+  .cb:active{transform:scale(.86)}
+  .cb.on{color:var(--orange)}
+  /* 中间：黄色 64px 方形 + 4px 橙色硬投影 */
+  #cPlay{
+    width:64px;height:64px;flex:none;
+    background:var(--yellow);color:var(--ink);
+    border:2.5px solid rgba(0,0,0,.9);
+    box-shadow:4px 4px 0 var(--orange);
+    transition:transform .14s,box-shadow .14s;
+  }
+  #cPlay svg{width:30px;height:30px}
+  #cPlay:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--orange)}
 </style>
 
 <div class="np-page" id="npPage">
@@ -212,6 +330,7 @@
 
   <!-- 圆形唱片 -->
   <div class="artwrap">
+    <button id="nFollow" class="on" title="跟随播放">跟随中</button>
     <div class="disc" id="nDisc">
       <i class="groove"></i><i class="glint"></i>
       <span class="face" id="nFace"><span id="nFaceChar">♪</span><img id="nFaceImg" alt=""></span>
@@ -223,7 +342,6 @@
 
   <!-- 歌词 -->
   <div class="lyrarea">
-    <button id="nFollow" class="on" title="跟随播放">跟随中</button>
     <div id="lyrBox">
       <div class="lyr-skel" id="lyrSkel"><i style="width:58%"></i><i style="width:74%"></i><i style="width:46%"></i><i style="width:66%"></i><i style="width:52%"></i></div>
       <div id="lyrScroll"></div>
@@ -266,7 +384,7 @@
   var MODE_ICON = {
     order: '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 9a5 5 0 0 1 5-5h9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 15a5 5 0 0 1-5 5H6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M17 1.8l3.1 2.4-3.1 2.4M7 17.4L3.9 19.8l3.1 2.4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
     one: '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 9a5 5 0 0 1 5-5h9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 15a5 5 0 0 1-5 5H6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M17 1.8l3.1 2.4-3.1 2.4M7 17.4L3.9 19.8l3.1 2.4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><text x="12" y="14.6" font-size="8.5" font-weight="900" text-anchor="middle" fill="currentColor">1</text></svg>',
-    shuffle: '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 7h3l9 10h4M4 17h3l2.3-2.6M16 7h4M20 7l-2.3-2.3M20 7l-2.3 2.3M20 17l-2.3 2.3M20 17l-2.3-2.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>'
+    shuffle: '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 7h3l9 10h4M4 17h3l2.3-2.6M16 7h4M20 7l-2.3-2.3M20 7l2.3 2.3M20 17l2.3 2.3M20 17l-2.3 2.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>'
   };
   var SOURCE_NAME = { netease:'网易云', qq:'QQ音乐', kugou:'酷狗', bilibili:'B站' };
   var SOURCE_CLS  = { netease:'ne', qq:'qq', kugou:'kg', bilibili:'bi' };
