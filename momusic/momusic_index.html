@@ -3,50 +3,77 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#FFF8F2">
+<meta name="theme-color" content="#F2EBDC">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>烩菜听歌每天好心情~</title>
-<link rel="stylesheet" href="theme.css?v=40">
+<link rel="stylesheet" href="theme.css?v=43">
 <!-- 库先于正文加载：任何视图脚本注入执行时，MUSIC / PLAYER 已就绪 -->
-<script src="core.js?v=40"></script>
-<script src="player.js?v=40"></script>
+<script src="core.js?v=43"></script>
+<script src="player.js?v=43"></script>
 <style>
   html,body{height:100%}
   body{
     display:flex;flex-direction:column;
     overflow:hidden;
-    background:linear-gradient(172deg,#FDFBFF 0%,#FFF8F2 56%,#FFEFE4 100%);
+    background:var(--paper);
     background-attachment:fixed;
   }
 
-  /* ===== 顶栏 ===== */
+  /* ===== 顶栏：报刊报头 ===== */
   .sh-head{
     flex:none;position:relative;z-index:10;
-    padding:calc(10px + env(safe-area-inset-top,0px)) clamp(11px,3vw,22px) 6px;
-    background:linear-gradient(180deg,rgba(253,251,255,.94),rgba(253,251,255,.58) 62%,rgba(253,251,255,0));
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    padding:calc(10px + env(safe-area-inset-top,0px)) clamp(11px,3vw,22px) 0;
   }
-  .sh-head-in{width:min(100%,760px);margin:0 auto;display:flex;align-items:center;gap:8px}
-  .sh-title{flex:1;min-width:0;text-align:center}
+  .sh-head-in{width:min(100%,760px);margin:0 auto;display:flex;align-items:center;gap:10px}
+  .sh-title{flex:1;min-width:0;padding-top:2px}
   .sh-title b{
-    display:block;font-size:18px;font-weight:900;letter-spacing:.2px;color:var(--ink);
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    display:block;font-family:var(--serif);font-size:20px;font-weight:900;letter-spacing:-.3px;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;
   }
   .sh-title i{
-    display:block;font-style:normal;font-size:8.5px;font-weight:800;
-    color:var(--muted);letter-spacing:2.2px;margin-top:1px;
+    display:block;font-style:normal;font-family:var(--disp);font-size:8.5px;font-weight:400;
+    color:var(--ink-3);letter-spacing:2.6px;margin-top:3px;
   }
+  /* 刊期号：贴在标题下方的小字，不跟音质挤在一行 */
+  .sh-issue{
+    flex:none;text-align:right;font-family:var(--disp);font-size:9px;letter-spacing:1.6px;
+    color:var(--ink-3);line-height:1.55;padding-top:4px;
+  }
+  .sh-issue b{display:block;font-family:var(--serif);font-size:13px;letter-spacing:0;color:var(--ink)}
   #qBadge{
-    flex:none;height:28px;padding:0 9px;border:none;border-radius:9px;cursor:pointer;
-    font-family:inherit;font-size:10px;font-weight:900;letter-spacing:.2px;color:var(--ink);
-    background:#fff;box-shadow:var(--sh-xs);
-    display:flex;align-items:center;gap:4px;
-    transition:transform .16s,color .25s;
+    flex:none;height:30px;padding:0 11px;border:var(--edge2) solid var(--ink);cursor:pointer;
+    font-family:var(--disp);font-size:9.5px;font-weight:400;letter-spacing:1.6px;color:var(--ink);
+    background:var(--paper);box-shadow:var(--sh-xs);
+    display:flex;align-items:center;gap:5px;
+    transition:transform .14s,box-shadow .14s;
+    margin-top:3px;
   }
-  #qBadge:active{transform:scale(.92)}
-  #qBadge s{width:5px;height:5px;border-radius:50%;background:var(--mint);text-decoration:none;display:block}
-  #qBadge.loss s{background:var(--coral)}
+  #qBadge:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+  #qBadge s{width:5px;height:5px;border-radius:50%;background:var(--blue);text-decoration:none;display:block}
+  #qBadge.loss s{background:var(--orange)}
+  /* 报头下方双线 */
+  .sh-rule{height:3px;background:var(--ink);margin-top:9px;position:relative;width:min(100%,760px);margin-left:auto;margin-right:auto}
+  .sh-rule::after{content:"";position:absolute;left:0;right:0;top:6px;height:1.5px;background:var(--ink);opacity:.45}
+
+  /* ===== 歌词页：整页压暗（唱片内页） =====
+     歌词页是墨黑底，报头和纸纹也要跟着压暗，否则顶部会留一条米白带。 */
+  body.lyric-dark{background:#14110D}
+  body.lyric-dark .sh-head{background:transparent}
+  body.lyric-dark .sh-title b{color:var(--paper)}
+  body.lyric-dark .sh-title i{color:rgba(242,235,220,.5)}
+  body.lyric-dark .sh-issue{color:rgba(242,235,220,.5)}
+  body.lyric-dark .sh-issue b{color:var(--paper)}
+  body.lyric-dark .sh-rule{background:var(--paper)}
+  body.lyric-dark .sh-rule::after{background:rgba(242,235,220,.35)}
+  body.lyric-dark .mm-icon-btn{background:transparent;border-color:rgba(242,235,220,.5);color:var(--paper);box-shadow:none}
+  body.lyric-dark #qBadge{background:transparent;border-color:rgba(242,235,220,.5);color:var(--paper);box-shadow:none}
+  body.lyric-dark .mm-icon-btn:active{box-shadow:none}
+  body.lyric-dark #qBadge:active{box-shadow:none}
+  /* 套印偏移在深底上要用 screen 叠，multiply 会把橙色压没 */
+  body.lyric-dark .sh-title b.riso-print::after{color:var(--orange);mix-blend-mode:screen}
+  /* 纸纹在墨黑底上用 screen，避免压死页面 */
+  body.lyric-dark::after{mix-blend-mode:screen;opacity:.09}
 
   /* ===== 正文区：Pjax 只换这里，audio 在壳里永不销毁 ===== */
   .sh-stage{flex:1;min-height:0;position:relative;z-index:1;width:100%}
@@ -55,10 +82,52 @@
     overflow-y:auto;overflow-x:hidden;
     -webkit-overflow-scrolling:touch;
     display:block;
-    padding:0 clamp(10px,3vw,22px) 14px;
-    opacity:1;transition:opacity .22s ease;
+    /* 底部留出播放条的高度（播放条 76px + 16px 底距 + 14px 内距） */
+    padding:0 clamp(10px,3vw,22px) 112px;
   }
-  #viewHost.fade{opacity:0}
+
+  /* ===== 撕纸转场 =====
+     新页从上方压下来，旧页被撕开翻落。
+     两层叠放，互不干扰；动画结束后旧层被移除。 */
+  .paper-layer{
+    width:min(100%,760px);margin-left:auto;margin-right:auto;
+    position:relative;
+    will-change:transform,opacity;
+  }
+  /* 新页层：底部留出播放条的高度（播放条 ~76px + 底距 16px + 安全区） */
+  #paperNew{padding-bottom:96px}
+  #paperOld{
+    position:absolute;left:0;right:0;top:0;
+    width:auto;
+    z-index:1;
+    padding:0 clamp(10px,3vw,22px);
+    background:var(--paper);
+    overflow:hidden;
+  }
+  #paperNew{ z-index:2; }
+  @keyframes tearIn{
+    0%  {opacity:0;transform:translateY(-22px) rotate(-.7deg) scale(.985);}
+    55% {opacity:1;}
+    100%{opacity:1;transform:translateY(0) rotate(0) scale(1);}
+  }
+  @keyframes tearOut{
+    0%  {opacity:1;transform:translateY(0) rotate(0);}
+    35% {opacity:1;transform:translateY(-6px) rotate(-1.1deg);}
+    100%{opacity:0;transform:translateY(34px) rotate(3.4deg);}
+  }
+  /* 撕开瞬间：纸张边缘的一道亮缝 */
+  #paperOld::after{
+    content:"";position:absolute;left:-6px;right:-6px;top:-2px;height:2px;
+    background:linear-gradient(90deg,transparent,var(--paper) 18%,var(--paper) 82%,transparent);
+    opacity:0;
+  }
+  #paperOld.tearing::after{animation:tearSeam .34s ease-out both}
+  @keyframes tearSeam{
+    0%{opacity:0;transform:scaleX(.2)}
+    30%{opacity:.9;transform:scaleX(1)}
+    100%{opacity:0}
+  }
+
   #viewHost > *{width:min(100%,760px);margin-left:auto;margin-right:auto}
   #viewHost > * + *{margin-top:9px}
 
@@ -70,8 +139,8 @@
     pointer-events:none;transition:opacity .3s;
   }
   .sh-skel.off{opacity:0;pointer-events:none}
-  .sh-skel .bar{border-radius:18px;background:rgba(255,255,255,.72);height:56px;box-shadow:var(--sh-xs);flex:none}
-  .sh-skel .card{border-radius:18px;background:rgba(255,255,255,.68);height:196px;box-shadow:var(--sh-xs);flex:none}
+  .sh-skel .bar{border:var(--edge) solid var(--ink);border-radius:0;background:var(--paper-2);height:54px;box-shadow:var(--sh-sm);flex:none}
+  .sh-skel .card{border:var(--edge) solid var(--ink);border-radius:0;background:var(--paper-2);height:196px;box-shadow:var(--sh-sm);flex:none}
   .sh-skel .row{height:52px;flex:none}
   .sh-skel > *{position:relative;overflow:hidden}
   .sh-skel > *::after{
@@ -81,10 +150,10 @@
   }
   @keyframes mmShine{to{transform:translateX(100%)}}
 
-  /* ===== 底部播放条：全站唯一一条 ===== */
+  /* ===== 底部播放条：全站唯一一条（印刷标签风格） ===== */
   .sh-player{
     flex:none;position:relative;z-index:20;
-    padding:0 clamp(9px,2.6vw,20px) calc(20px + env(safe-area-inset-bottom,0px));
+    padding:0 clamp(9px,2.6vw,20px) calc(16px + env(safe-area-inset-bottom,0px));
     transition:transform .3s cubic-bezier(.3,.9,.3,1),opacity .3s;
   }
   /* 歌词页隐藏播放条（那个页面自带一整套控件） */
@@ -92,72 +161,86 @@
 
   .sh-player-in{
     width:min(100%,760px);margin:0 auto;
-    border-radius:22px;
-    background:rgba(255,255,255,.98);
-    backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);
-    box-shadow:0 10px 26px rgba(90,70,150,.13),0 0 0 1px rgba(255,255,255,.9);
+    border:var(--edge) solid var(--ink);
+    background:var(--paper);
+    box-shadow:var(--sh-md);
     overflow:hidden;
     position:relative;
   }
-  .sh-pbar{height:3px;background:#F2EEFA;position:relative;cursor:pointer;touch-action:none}
+  .sh-pbar{height:7px;background:var(--paper-2);border-bottom:var(--edge2) solid var(--ink);position:relative;cursor:pointer;touch-action:none}
   .sh-pbar i{
-    position:absolute;left:0;top:0;bottom:0;width:0;border-radius:0 3px 3px 0;
-    background:linear-gradient(90deg,var(--coral),var(--sunny),var(--mint));
+    position:absolute;left:0;top:0;bottom:0;width:0;
+    background:var(--orange);
   }
-  .sh-prow{display:flex;align-items:center;gap:10px;padding:13px 14px 13px 11px}
+  .sh-pbar u{
+    position:absolute;top:50%;left:0;transform:translate(-50%,-50%);
+    width:12px;height:12px;background:var(--ink);border:2px solid var(--paper);
+    box-sizing:border-box;display:none;
+  }
+  .sh-pbar:hover u{display:block}
+  .sh-prow{display:flex;align-items:center;gap:10px;padding:11px 12px 12px 11px}
 
   /* 整条点击区：除右侧控件以外都能进歌词页 */
   .sh-hit{position:absolute;left:0;top:0;bottom:0;right:118px;z-index:2;cursor:pointer}
 
+  /* 唱片（圆 —— 圆形的内容用圆） */
   .sh-cover{
-    flex:none;width:44px;height:44px;border-radius:13px;position:relative;overflow:hidden;
+    flex:none;width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
-    color:#fff;font-size:16px;font-weight:900;
-    background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
+    color:var(--paper);font-family:var(--serif);font-size:17px;font-weight:900;
+    background:
+      repeating-radial-gradient(circle at 50% 50%,rgba(242,235,220,.14) 0 1px,transparent 1px 4px),
+      var(--ink);
+    border:var(--edge2) solid var(--ink);
   }
   .sh-cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
   .sh-cover img.ld{opacity:1}
+  .sh-cover::after{
+    content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:10px;height:10px;border-radius:50%;background:var(--orange);
+  }
   .sh-meta{flex:1;min-width:0}
   .sh-meta b{
-    display:block;font-size:13.5px;font-weight:900;color:var(--ink);
+    display:block;font-family:var(--serif);font-size:14px;font-weight:900;color:var(--ink);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
   }
   .sh-meta em{
-    display:block;font-style:normal;font-size:10px;font-weight:600;color:var(--muted);
+    display:block;font-style:normal;font-size:10.5px;font-weight:700;color:var(--ink-2);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
   }
-  .sh-pbtns{flex:none;display:flex;align-items:center;gap:15px;padding-right:3px;position:relative;z-index:3}
-  /* 收起状态的播放/暂停：纯图标，无圆形底 */
+  .sh-pbtns{flex:none;display:flex;align-items:center;gap:8px;padding-right:2px;position:relative;z-index:3}
+  /* 收起状态的播放/暂停：方形印刷按钮 */
   #shToggle{
-    flex:none;width:26px;height:26px;border:none;background:none;cursor:pointer;
-    color:var(--coral);display:flex;align-items:center;justify-content:center;
-    transition:transform .16s cubic-bezier(.3,.9,.3,1.2);
+    flex:none;width:34px;height:34px;border:var(--edge2) solid var(--ink);background:var(--yellow);cursor:pointer;
+    color:var(--ink);display:flex;align-items:center;justify-content:center;
+    transition:transform .12s,background .15s;
   }
-  #shToggle:active{transform:scale(.86)}
+  #shToggle:active{transform:translate(1px,1px);background:var(--orange);color:var(--paper)}
   .sh-mini{
-    width:26px;height:26px;border:none;cursor:pointer;background:none;
-    color:#9A92B4;display:flex;align-items:center;justify-content:center;
-    transition:transform .16s,color .2s;border-radius:50%;
+    width:30px;height:30px;border:var(--edge2) solid var(--ink);cursor:pointer;background:var(--paper);
+    color:var(--ink-2);display:flex;align-items:center;justify-content:center;
+    transition:transform .14s,color .2s;
   }
-  .sh-mini:active{transform:scale(.86)}
-  .sh-mini.on{color:var(--grape)}
+  .sh-mini:active{transform:translate(1px,1px)}
+  .sh-mini.on{color:var(--orange)}
 
   /* ===== Toast ===== */
   .sh-toast{
     position:fixed;left:50%;top:calc(74px + env(safe-area-inset-top,0px));
     transform:translateX(-50%) translateY(-10px) scale(.96);
     z-index:60;pointer-events:none;max-width:82vw;
-    padding:10px 18px;border-radius:999px;
-    background:rgba(43,37,64,.92);color:#fff;
-    font-size:12.5px;font-weight:700;box-shadow:0 10px 26px rgba(43,37,64,.30);
-    opacity:0;transition:opacity .28s,transform .28s cubic-bezier(.3,.9,.3,1.2);
+    padding:10px 18px;
+    border:var(--edge2) solid var(--ink);background:var(--paper);color:var(--ink);
+    font-size:12.5px;font-weight:800;letter-spacing:.2px;
+    box-shadow:var(--sh-sm);
+    opacity:0;transition:opacity .24s,transform .24s cubic-bezier(.3,.9,.3,1.2);
   }
   .sh-toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 
   /* ===== 播放列表抽屉 ===== */
   .sh-queue-mask{
     position:fixed;inset:0;z-index:38;
-    background:rgba(43,37,64,.38);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+    background:rgba(20,17,13,.42);
     opacity:0;pointer-events:none;transition:opacity .25s;
   }
   .sh-queue-mask.show{opacity:1;pointer-events:auto}
@@ -168,31 +251,31 @@
     width:min(100vw - 12px,760px);
     max-height:70vh;
     display:flex;flex-direction:column;
-    background:linear-gradient(175deg,#FFFDFB,#FFF4EA);
-    border-radius:26px 26px 0 0;
-    box-shadow:0 -14px 36px rgba(80,60,140,.20);
-    padding:7px 10px calc(22px + env(safe-area-inset-bottom,0px));
+    background:var(--paper);
+    border:var(--edge) solid var(--ink);border-bottom:none;
+    box-shadow:0 -10px 0 rgba(20,17,13,.10), 0 -18px 34px rgba(20,17,13,.22);
+    padding:9px 10px calc(22px + env(safe-area-inset-bottom,0px));
     transition:transform .32s cubic-bezier(.3,.9,.3,1);
   }
   .sh-queue.show{transform:translateX(-50%) translateY(0)}
 
-  .sh-qhandle{width:34px;height:4px;border-radius:2px;background:#E1DAF0;margin:2px auto 9px;flex:none}
+  .sh-qhandle{width:34px;height:4px;background:var(--ink);margin:0 auto 9px;flex:none}
 
-  .sh-queue-hd{display:flex;align-items:center;gap:7px;padding:0 3px 9px;flex:none}
+  .sh-queue-hd{display:flex;align-items:center;gap:8px;padding:0 3px 9px;flex:none}
   .sh-queue-hd .qi{
-    flex:none;width:25px;height:25px;border-radius:9px;
+    flex:none;width:26px;height:26px;border:var(--edge2) solid var(--ink);
     display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(145deg,#D9C8FF,#C4ACFF);color:var(--grape-d);
+    background:var(--blue);color:var(--paper);
   }
-  .sh-queue-hd b{font-size:14px;font-weight:900;color:var(--ink)}
-  .sh-queue-hd em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--muted)}
+  .sh-queue-hd b{font-family:var(--serif);font-size:15px;font-weight:900;color:var(--ink)}
+  .sh-queue-hd em{font-style:normal;font-size:10.5px;font-weight:700;color:var(--ink-3)}
   #shQueueClear{
-    margin-left:auto;height:25px;padding:0 8px;border:none;border-radius:8px;cursor:pointer;
-    background:#F6F2FC;color:#8B82A8;font-family:inherit;font-size:10px;font-weight:800;
+    margin-left:auto;height:26px;padding:0 9px;border:var(--edge2) solid var(--ink);cursor:pointer;
+    background:var(--paper);color:var(--ink);font-family:var(--disp);font-size:9.5px;letter-spacing:1.4px;
   }
   #shQueueClose{
-    width:26px;height:26px;border:none;border-radius:8px;cursor:pointer;
-    background:#F6F2FC;color:var(--ink-2);
+    width:28px;height:28px;border:var(--edge2) solid var(--ink);cursor:pointer;
+    background:var(--paper);color:var(--ink);
     display:flex;align-items:center;justify-content:center;
   }
   .sh-queue-list{flex:1;overflow-y:auto;min-height:0}
@@ -200,74 +283,74 @@
   /* 队列行：点整行播放 / ▶ 播放 / 🗑 删除 */
   .sh-qrow{
     position:relative;
-    display:flex;align-items:center;gap:8px;
-    padding:7px 3px;
-    cursor:pointer;transition:transform .14s;
+    display:flex;align-items:center;gap:9px;
+    padding:8px 3px;
+    cursor:pointer;transition:background .15s;
   }
   .sh-qrow + .sh-qrow::before{
-    content:"";position:absolute;left:3px;right:3px;top:0;height:1px;background:var(--line);
+    content:"";position:absolute;left:3px;right:3px;top:0;height:1.5px;background:var(--ink);opacity:.5;
   }
-  .sh-qrow:active{transform:scale(.985)}
-  .sh-qrow.now{border-radius:12px;background:rgba(139,92,246,.05)}
+  .sh-qrow:active{background:var(--paper-2)}
+  .sh-qrow.now{background:var(--paper-2)}
   .sh-qrow.now::before{display:none}
-  .sh-qrow.now .sh-qname{color:var(--grape-d)}
+  .sh-qrow.now .sh-qname{color:var(--orange)}
   .sh-qrow .sh-qcv{
-    flex:none;width:34px;height:34px;border-radius:10px;position:relative;overflow:hidden;
+    flex:none;width:36px;height:36px;border:var(--edge2) solid var(--ink);position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
-    color:#fff;font-size:13px;font-weight:900;
-    background:linear-gradient(150deg,#C7B2FA,#FFB7D8);
+    color:var(--paper);font-family:var(--serif);font-size:14px;font-weight:900;
+    background:var(--orange);
   }
   .sh-qrow .sh-qcv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .4s}
   .sh-qrow .sh-qcv img.ld{opacity:1}
   .sh-qrow .sh-qtx{flex:1;min-width:0}
   .sh-qrow .sh-qname{
-    display:block;font-size:12.5px;font-weight:800;color:var(--ink);
+    display:block;font-family:var(--serif);font-size:13px;font-weight:900;color:var(--ink);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
   }
   .sh-qrow .sh-qart{
-    display:block;font-style:normal;font-size:10px;font-weight:600;color:var(--muted);
+    display:block;font-style:normal;font-size:10px;font-weight:700;color:var(--ink-3);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;
   }
-  .sh-qrow .sh-qbtns{flex:none;display:flex;align-items:center;gap:4px}
+  .sh-qrow .sh-qbtns{flex:none;display:flex;align-items:center;gap:5px}
   .sh-qrow .sh-qeq{
     display:flex;align-items:flex-end;gap:2px;height:13px;padding-right:2px;
   }
-  .sh-qrow .sh-qeq i{width:2.5px;border-radius:2px;background:var(--grape);animation:shEq 1s ease-in-out infinite}
-  .sh-qrow .sh-qeq i:nth-child(2){background:var(--coral);animation-delay:.22s}
-  .sh-qrow .sh-qeq i:nth-child(3){background:var(--mint);animation-delay:.44s}
+  .sh-qrow .sh-qeq i{width:2.5px;border-radius:2px;background:var(--ink);animation:shEq 1s ease-in-out infinite}
+  .sh-qrow .sh-qeq i:nth-child(2){background:var(--orange);animation-delay:.22s}
+  .sh-qrow .sh-qeq i:nth-child(3){background:var(--blue);animation-delay:.44s}
   .sh-qrow .sh-qeq.off i{animation-play-state:paused;height:4px}
   @keyframes shEq{0%,100%{height:4px}50%{height:13px}}
 
   .sh-qplay{
-    width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;color:#fff;
+    width:30px;height:30px;border:var(--edge2) solid var(--ink);cursor:pointer;color:var(--ink);
     display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,#FF7A6E,#FF4D6A);
-    box-shadow:0 3px 7px rgba(255,94,108,.24);
+    background:var(--yellow);
   }
+  .sh-qplay:active{background:var(--orange);color:var(--paper)}
   .sh-qdel{
-    width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;
-    background:#F6F2FC;color:#C0B9D2;
+    width:30px;height:30px;border:var(--edge2) solid var(--ink);cursor:pointer;
+    background:var(--paper);color:var(--ink-3);
     display:flex;align-items:center;justify-content:center;
   }
-  .sh-qempty{padding:42px 16px;text-align:center;font-size:12.5px;font-weight:700;color:var(--muted);line-height:1.95}
+  .sh-qempty{padding:42px 16px;text-align:center;font-size:12.5px;font-weight:700;color:var(--ink-3);line-height:1.95}
 </style>
 </head>
 <body>
 
-<div class="mm-blobs"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
-
-<!-- ===== 顶栏 ===== -->
+<!-- ===== 顶栏：报刊报头 ===== -->
 <header class="sh-head">
   <div class="sh-head-in">
     <button class="mm-icon-btn" id="shBack" title="返回">
       <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
     </button>
     <div class="sh-title">
-      <b>烩菜听歌每天好心情~</b>
-      <i>MUSIC · 丰稔季</i>
+      <b class="riso-print" data-t="烩菜听歌"><span>烩菜听歌</span></b>
+      <i>HUICAICHUNTING · RADIO</i>
     </div>
+    <span class="sh-issue"><b id="shIssueNo">NO.248</b>丰稔季</span>
     <button id="qBadge" title="切换音质"><s></s><span id="qBadgeText">320K</span></button>
   </div>
+  <div class="sh-rule"></div>
 </header>
 
 <!-- ===== 正文区（Pjax 局部刷新） ===== -->
@@ -284,7 +367,7 @@
 <div class="sh-player" id="shPlayer">
   <div class="sh-player-in">
     <i class="sh-hit" id="shHit"></i>
-    <div class="sh-pbar" id="shBar"><i id="shBarFill"></i></div>
+    <div class="sh-pbar" id="shBar"><i id="shBarFill"></i><u id="shBarKnob"></u></div>
     <div class="sh-prow">
       <div class="sh-cover"><span id="shCoverChar">♪</span><img id="shCoverImg" alt=""></div>
       <div class="sh-meta">
@@ -411,10 +494,36 @@
       .replace(/background\s*:\s*transparent\s*(;|\})/g, '$1');
   }
 
+  /* ==========================================================
+     撕纸转场
+     旧页像一张纸被撕下来（撕开 + 翻落 + 淡出），
+     新页从上方压下来（落下 + 阴影收紧）。
+     用两个叠放的层实现，不用动画库。
+     ========================================================== */
+  var tearAnim = 0;
+  function tearTransition(oldEl, newEl, done){
+    // 新页入场：从上方落下 + 轻微旋转归位
+    // 旧页退场：撕开（上下错开）→ 翻落
+    // 顺序很关键：先给新页设动画 → 强制重排让它跑起来 → 再动旧页
+    newEl.style.transformOrigin = '50% 0%';
+    newEl.style.animation = 'tearIn .42s cubic-bezier(.2,.85,.3,1) both';
+    void newEl.offsetWidth;              // 强制重排，让新页动画先落地
+    oldEl.style.transformOrigin = '50% 0%';
+    oldEl.classList.add('tearing');
+    oldEl.style.animation = 'tearOut .34s cubic-bezier(.55,0,.75,.3) both';
+    oldEl.style.pointerEvents = 'none';
+
+    setTimeout(function(){
+      try { oldEl.remove(); } catch(e){}
+      newEl.style.animation = '';
+      newEl.style.transformOrigin = '';
+      done && done();
+    }, 440);
+  }
+
   /* ---------- Pjax：拉子页 → 只替换正文 ---------- */
   async function loadView(src, key){
     skel.classList.remove('off');
-    if (host.innerHTML) host.classList.add('fade');
 
     try {
       var res = await fetch(src + (src.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store' });
@@ -434,11 +543,48 @@
       }
 
       // 2) 正文 DOM（跳过 script，稍后按序注入执行）
-      host.innerHTML = '';
+      //    旧内容先搬进「纸屑层」，新内容放进「新页层」，然后演撕纸动画
+      //
+      //    关键：内容一直装在 #paperNew 这层里。切换时把 #paperNew 的**子节点**
+      //    搬进新的 #paperOld，然后把旧 #paperNew 整个移除 ——
+      //    否则 DOM 里会同时存在两个 #paperNew，下一次切换就会搬到空层，
+      //    页面内容会丢。
+      var oldPaper = document.createElement('div');
+      oldPaper.id = 'paperOld';
+      oldPaper.className = 'paper-layer';
+
+      var prevLayer = host.querySelector('#paperNew');
+      var movers = [];
+      if (prevLayer) {
+        // 正常情况：旧内容在 #paperNew 里
+        Array.prototype.forEach.call(prevLayer.childNodes, function(n){ movers.push(n); });
+        movers.forEach(function(el){ oldPaper.appendChild(el); });
+        try { prevLayer.parentNode.removeChild(prevLayer); } catch(e){}
+      } else {
+        // 兜底：直接搬 host 的子节点（排除包装层本身）
+        Array.prototype.forEach.call(host.children, function(el){
+          if (el.id === 'paperOld' || el.id === 'paperNew') return;
+          movers.push(el);
+        });
+        movers.forEach(function(el){ oldPaper.appendChild(el); });
+      }
+      var hadOld = movers.length > 0;
+
+      var newPaper = document.createElement('div');
+      newPaper.id = 'paperNew';
+      newPaper.className = 'paper-layer';
       Array.prototype.forEach.call(doc.body.children, function(el){
         if (el.tagName === 'SCRIPT' || el.tagName === 'LINK') return;
-        host.appendChild(document.importNode(el, true));
+        newPaper.appendChild(document.importNode(el, true));
       });
+
+      // 清理可能残留的旧纸屑层
+      Array.prototype.forEach.call(host.querySelectorAll('#paperOld'), function(el){
+        try { el.parentNode.removeChild(el); } catch(e){}
+      });
+
+      host.appendChild(oldPaper);
+      host.appendChild(newPaper);
 
       // 3) 标记当前视图，供延迟回调判断自己是否已被替换
       window.__view = key;
@@ -458,12 +604,20 @@
       if (typeof window.mmOnShow === 'function') {
         try { window.mmOnShow(); } catch(e){}
       }
+
+      // 6) 演撕纸转场
+      if (oldPaper.childNodes.length) {
+        tearTransition(oldPaper, newPaper);
+      } else {
+        try { oldPaper.remove(); } catch(e){}
+        newPaper.style.animation = 'tearIn .3s cubic-bezier(.2,.85,.3,1) both';
+        setTimeout(function(){ newPaper.style.animation = ''; }, 320);
+      }
     } catch (e) {
-      host.innerHTML = '<div style="padding:60px 20px;text-align:center;font-size:13px;font-weight:700;color:#A79FBE;line-height:2">页面加载失败<br>下拉刷新试试</div>';
+      host.innerHTML = '<div style="padding:60px 20px;text-align:center;font-size:13px;font-weight:700;color:#7A7161;line-height:2">页面加载失败<br>下拉刷新试试</div>';
       toast('页面加载失败');
     }
 
-    host.classList.remove('fade');
     skel.classList.add('off');
     loading = false;
   }
@@ -484,6 +638,9 @@
     var pl = $('shPlayer');
     if (HIDE_PLAYER_VIEWS[key]) pl.classList.add('hide');
     else pl.classList.remove('hide');
+    // 歌词页整页压暗（唱片内页）
+    if (HIDE_PLAYER_VIEWS[key]) document.body.classList.add('lyric-dark');
+    else document.body.classList.remove('lyric-dark');
   }
 
   function goView(src, key){
@@ -493,7 +650,7 @@
     // 进非首页时清掉退出拦截
     if (key !== 'search') disarmExit();
     syncShell(key);
-    host.innerHTML = '';          // 立刻清空，骨架接管画面，不残留上一页
+    // 注意：**不要**在这里清空 host —— 旧内容要留给 loadView 搬进「纸屑层」演撕纸动画
     host.scrollTop = 0;
     loadView(src, key);
   }
@@ -747,6 +904,8 @@
   function renderBar(c, d){
     var pct = (isFinite(d) && d > 0) ? Math.min(100, c / d * 100) : 0;
     $('shBarFill').style.width = pct + '%';
+    var knob = $('shBarKnob');
+    if (knob) knob.style.left = pct + '%';
   }
   function renderQuality(){
     var b = $('qBadge');
@@ -817,6 +976,18 @@
   window.PL.on('quality', renderQuality);
 
   /* ---------- 启动 ---------- */
+  /* 刊期号：按「丰稔季」第 N 天算，每天一刊 */
+  (function initIssue(){
+    var el = $('shIssueNo');
+    if (!el) return;
+    try {
+      var d = new Date();
+      var start = new Date(d.getFullYear(), 0, 1);
+      var day = Math.floor((d - start) / 86400000);
+      el.textContent = 'NO.' + (200 + day);
+    } catch (e) { el.textContent = 'NO.248'; }
+  })();
+
   renderQuality();
   renderMode();
   renderBtn();
